@@ -1,0 +1,31 @@
+{
+  "name": "muehle-web-spiel",
+  "version": "1.0.0",
+  "description": "Multiplayer Web-Spiel Mühle (Nine Men's Morris) mit HTML5, CSS3, JavaScript, Express und Socket.io",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "echo 'Build step completed (vanilla frontend, no bundle required)'",
+    "test": "jest --verbose"
+  },
+  "keywords": [
+    "muehle",
+    "nine-mens-morris",
+    "boardgame",
+    "socketio",
+    "express",
+    "multiplayer",
+    "ipv6",
+    "ipv4"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "socket.io-client": "^4.8.1"
+  }
+}

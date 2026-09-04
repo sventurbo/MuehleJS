@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mühle / Nine Men's Morris – Multiplayer Web-Spiel</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Main Top Navigation -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+            <rect x="2" y="2" width="28" height="28" stroke="#ffa502" stroke-width="2.5" rx="3"/>
+            <rect x="7" y="7" width="18" height="18" stroke="#ffa502" stroke-width="2" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="7" stroke="#ffa502" stroke-width="2"/>
+            <line x1="16" y1="25" x2="16" y2="30" stroke="#ffa502" stroke-width="2"/>
+            <line x1="2" y1="16" x2="7" y2="16" stroke="#ffa502" stroke-width="2"/>
+            <line x1="25" y1="16" x2="30" y2="16" stroke="#ffa502" stroke-width="2"/>
+          </svg>
+        </div>
+        <h1 class="brand-title">MÜHLE <span>Online</span></h1>
+      </div>
+
+      <div class="header-controls">
+        <span id="conn-status-indicator" class="conn-status online">● Online</span>
+        <button id="btn-sound-toggle" class="btn-icon" title="Ton umschalten">
+          <span id="sound-icon">🔊</span>
+        </button>
+        <button id="btn-rules-header" class="btn-icon btn-rules-trigger" title="Spielregeln">
+          <span>❓</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Screens -->
+    <main class="app-main">
+
+      <!-- SCREEN 1: LOGIN & LOBBY -->
+      <section id="screen-login" class="screen">
+        <div class="login-card">
+          <div class="login-hero">
+            <div class="hero-board-preview">
+              <div class="preview-stone preview-w"></div>
+              <div class="preview-line"></div>
+              <div class="preview-stone preview-b"></div>
+            </div>
+            <h2>Willkommen bei Mühle Online</h2>
+            <p class="subtitle">Das klassische Strategiespiel für zwei Spieler im Browser. Tritt gegen einen Mitspieler an!</p>
+          </div>
+
+          <div class="login-form-box">
+            <label for="username-input" class="form-label">Dein Spielername</label>
+            <div class="input-group">
+              <input type="text" id="username-input" class="text-input" placeholder="z.B. MeisterStratege" maxlength="20" autofocus autocomplete="off">
+              <button id="btn-find-game" class="btn btn-primary">Spieler suchen ⚔️</button>
+            </div>
+            <p class="form-hint">Sobald sich ein zweiter Spieler anmeldet, startet die Partie automatisch.</p>
+          </div>
+
+          <div class="login-actions">
+            <button id="btn-rules-login" class="btn btn-secondary">📖 Spielregeln anzeigen</button>
+          </div>
+
+          <div class="network-badge">
+            <span>🌐 Server läuft mit Dual-Stack IPv6 &amp; IPv4</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 2: MATCHMAKING QUEUE -->
+      <section id="screen-queue" class="screen hidden">
+        <div class="queue-card">
+          <div class="radar-container">
+            <div class="radar-ring r1"></div>
+            <div class="radar-ring r2"></div>
+            <div class="radar-ring r3"></div>
+            <div class="radar-center">⚔️</div>
+          </div>
+          <h2>Gegner wird gesucht...</h2>
+          <p id="queue-status-text" class="queue-status">Warte auf einen weiteren Mitspieler...</p>
+          <p class="queue-subtext">Die Partie startet sofort, wenn ein zweiter Spieler beitritt.</p>
+          <button id="btn-cancel-queue" class="btn btn-secondary">Abbrechen</button>
+        </div>
+      </section>
+
+      <!-- SCREEN 3: ACTIVE GAMEPLAY -->
+      <section id="screen-game" class="screen hidden">
+        <!-- Top Game Status Banner -->
+        <div class="game-hud-top">
+          <div class="hud-phase-box">
+            <span id="hud-phase-text" class="phase-name">Phase 1: Setzen</span>
+          </div>
+          <div id="hud-turn-badge" class="hud-badge my-turn">Du bist am Zug</div>
+          <div class="hud-game-actions">
+            <button id="btn-rules-game" class="btn-tool" title="Regeln">📖 Regeln</button>
+            <button id="btn-surrender" class="btn-tool btn-danger" title="Partie aufgeben">🏳️ Aufgeben</button>
+          </div>
+        </div>
+
+        <!-- Instruction Banner -->
+        <div id="hud-status-banner" class="hud-status-banner my-turn">
+          <span id="hud-instruction-text">Setzphase: Platziere einen Stein auf ein freies Feld.</span>
+        </div>
+
+        <!-- Gameplay Layout: Players & Board -->
+        <div class="game-arena">
+          <!-- Left: Player White Profile -->
+          <aside class="player-panel" id="player-w-card">
+            <div class="player-header">
+              <div class="stone-avatar avatar-w">⚪</div>
+              <div class="player-meta">
+                <h3 id="player-w-name" class="player-name">Spieler 1</h3>
+                <span class="color-tag">Weiß (Zieht zuerst)</span>
+              </div>
+            </div>
+
+            <div class="player-stats">
+              <div class="stat-item">
+                <span class="stat-label">Noch zu setzen:</span>
+                <span id="player-w-pieces-left" class="stat-val">9</span>
+              </div>
+              <div class="pips-container" id="player-w-pips"></div>
+
+              <div class="stat-item">
+                <span class="stat-label">Geschlagene Steine:</span>
+                <span id="player-w-captured" class="stat-val highlight-stat">0</span>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Center: SVG Board Container -->
+          <div class="board-wrapper">
+            <div id="board-container" class="board-container"></div>
+          </div>
+
+          <!-- Right: Player Black Profile -->
+          <aside class="player-panel" id="player-b-card">
+            <div class="player-header">
+              <div class="stone-avatar avatar-b">⚫</div>
+              <div class="player-meta">
+                <h3 id="player-b-name" class="player-name">Spieler 2</h3>
+                <span class="color-tag">Schwarz</span>
+              </div>
+            </div>
+
+            <div class="player-stats">
+              <div class="stat-item">
+                <span class="stat-label">Noch zu setzen:</span>
+                <span id="player-b-pieces-left" class="stat-val">9</span>
+              </div>
+              <div class="pips-container" id="player-b-pips"></div>
+
+              <div class="stat-item">
+                <span class="stat-label">Geschlagene Steine:</span>
+                <span id="player-b-captured" class="stat-val highlight-stat">0</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <!-- Bottom Game Drawer: Move Log & Chat -->
+        <section class="game-bottom-dock">
+          <!-- Move History Log -->
+          <div class="dock-panel move-log-panel">
+            <div class="panel-header">
+              <h4>📜 Zugprotokoll</h4>
+            </div>
+            <ul id="move-log-list" class="move-log-list"></ul>
+          </div>
+
+          <!-- Live Chat Panel -->
+          <div class="dock-panel chat-panel">
+            <div class="panel-header">
+              <h4>💬 Spiel-Chat</h4>
+            </div>
+            <div id="chat-messages" class="chat-messages"></div>
+            <form id="chat-form" class="chat-form">
+              <input type="text" id="chat-input" placeholder="Nachricht an Mitspieler..." maxlength="120" autocomplete="off">
+              <button type="submit" class="btn-chat-send">Senden</button>
+            </form>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <!-- MODAL: GAME OVER -->
+    <div id="modal-game-over" class="modal-backdrop hidden">
+      <div class="modal-card game-over-box">
+        <h2 id="game-over-title" class="game-over-title win">Partie Beendet</h2>
+        <div id="game-over-winner-name" class="winner-subtitle">Gewinner: Spieler</div>
+        <p id="game-over-reason" class="reason-text">Begründung</p>
+
+        <div class="modal-btn-row">
+          <button id="btn-play-again" class="btn btn-primary">Erneut an Start gehen 🔄</button>
+          <button id="btn-back-to-lobby" class="btn btn-secondary">Zurück zur Startseite</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: RULES EXPLANATION -->
+    <div id="modal-rules" class="modal-backdrop hidden">
+      <div class="modal-card rules-card">
+        <div class="rules-header">
+          <h2>Offizielle Mühle-Regeln</h2>
+          <button id="btn-close-rules" class="btn-close-modal">✕</button>
+        </div>
+        <div class="rules-body">
+          <section class="rule-section">
+            <h3>1. Das Spielfeld und Ziel</h3>
+            <p>Das Spielfeld besteht aus drei ineinanderliegenden Quadraten mit 24 Punkten (Schnittpunkten). Beide Spieler starten mit je 9 Spielsteinen. Ziel ist es, den Gegner so weit zu dezimieren (auf 2 Steine), dass er keine Mühle mehr bilden kann, oder ihn vollständig einzusperren.</p>
+          </section>
+
+          <section class="rule-section">
+            <h3>2. Die drei Spielphasen</h3>
+            <ul>
+              <li><strong>Phase 1: Setzphase:</strong> Die Spieler setzen abwechselnd je einen ihrer 9 Steine auf ein freies Feld auf dem Brett.</li>
+              <li><strong>Phase 2: Zugphase:</strong> Wenn alle 18 Steine gesetzt sind, wird abwechselnd ein eigener Stein entlang einer markierten Linie auf ein freies Nachbarfeld gezogen.</li>
+              <li><strong>Phase 3: Endphase (Springen):</strong> Hat ein Spieler nur noch genau 3 Steine auf dem Feld, darf er mit seinen Steinen auf jedes beliebige freie Feld springen (auch ohne Linienverbindung).</li>
+            </ul>
+          </section>
+
+          <section class="rule-section">
+            <h3>3. Mühle bilden und Steine schlagen</h3>
+            <p>Gelingt es einem Spieler, drei eigene Steine in einer geraden Linie anzuordnen, hat er eine <strong>Mühle</strong> geschlossen.</p>
+            <p>Der Spieler darf daraufhin sofort einen beliebigen gegnerischen Stein vom Brett entfernen.</p>
+            <p><strong>Mühlenschutz-Regel:</strong> Steine, die sich in einer geschlossenen gegnerischen Mühle befinden, dürfen <em>nicht</em> geschlagen werden – es sei denn, der Gegner hat ausschließlich Steine in Mühlen.</p>
+          </section>
+
+          <section class="rule-section">
+            <h3>4. Spielende &amp; Sieg</h3>
+            <ul>
+              <li>Ein Spieler <strong>verliert</strong>, wenn er auf <strong>2 Steine</strong> reduziert wird.</li>
+              <li>Ein Spieler <strong>verliert</strong>, wenn er am Zug ist und <strong>keinen legalen Zug</strong> mehr ausführen kann (eingesperrt ist).</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <!-- Socket.io client script provided by Express server -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Application scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/boardRenderer.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // Link header rules button to modal
+    document.getElementById('btn-rules-header').addEventListener('click', () => {
+      document.getElementById('modal-rules').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>
