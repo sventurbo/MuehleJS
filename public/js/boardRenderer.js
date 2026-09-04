@@ -180,31 +180,42 @@ class BoardRenderer {
       const isRemovable = this.removablePoints.includes(pt);
       const isMyPiece = piece === playerColor;
 
-      // Group for this point
-      elementsHtml += `<g class="board-point-group" data-point="${pt}" style="cursor: pointer;">`;
+      // Group for this point, translated to the exact intersection coordinates
+      elementsHtml += `<g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">`;
 
       // 1. Transparent wide hit area for easy clicking
-      elementsHtml += `<circle cx="${c.x}" cy="${c.y}" r="28" fill="transparent" class="hit-area" />`;
+      elementsHtml += `<circle cx="0" cy="0" r="28" fill="transparent" class="hit-area" />`;
 
-      // 2. Highlight for valid destination
+      // 2. Highlight for valid destination (concentric, perfectly centered pulsing indicator)
       if (isValidDest) {
         elementsHtml += `
-          <circle cx="${c.x}" cy="${c.y}" r="18" fill="rgba(46, 213, 115, 0.25)" stroke="#2ed573" stroke-width="3" stroke-dasharray="4,3" class="dest-indicator anim-pulse" filter="url(#cyanGlow)" />
-          <circle cx="${c.x}" cy="${c.y}" r="6" fill="#2ed573" class="dest-dot" />
+          <circle cx="0" cy="0" r="18" fill="rgba(46, 213, 115, 0.22)" stroke="#2ed573" stroke-width="2.5" stroke-dasharray="5,3" class="dest-indicator" filter="url(#cyanGlow)">
+            <animate attributeName="r" values="14;21;14" dur="1.3s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.4;1;0.4" dur="1.3s" repeatCount="indefinite" />
+            <animate attributeName="fill-opacity" values="0.15;0.35;0.15" dur="1.3s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="0" cy="0" r="6" fill="#2ed573" class="dest-dot">
+            <animate attributeName="r" values="5;7;5" dur="1.3s" repeatCount="indefinite" />
+          </circle>
         `;
       }
 
-      // 3. Highlight for selected stone
+      // 3. Highlight for selected stone (concentric animated dashed ring)
       if (isSelected) {
         elementsHtml += `
-          <circle cx="${c.x}" cy="${c.y}" r="26" fill="none" stroke="#ffa502" stroke-width="3.5" class="selection-ring anim-spin" />
+          <circle cx="0" cy="0" r="26" fill="none" stroke="#ffa502" stroke-width="3" stroke-dasharray="6,4" class="selection-ring">
+            <animate attributeName="stroke-dashoffset" values="0;40" dur="2s" repeatCount="indefinite" />
+          </circle>
         `;
       }
 
-      // 4. Highlight for removable opponent piece
+      // 4. Highlight for removable opponent piece (concentric pulsing target)
       if (isRemovable) {
         elementsHtml += `
-          <circle cx="${c.x}" cy="${c.y}" r="26" fill="rgba(255, 71, 87, 0.3)" stroke="#ff4757" stroke-width="3" class="removal-target anim-pulse" />
+          <circle cx="0" cy="0" r="26" fill="rgba(255, 71, 87, 0.25)" stroke="#ff4757" stroke-width="3" stroke-dasharray="5,3" class="removal-target">
+            <animate attributeName="r" values="24;28;24" dur="1.2s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite" />
+          </circle>
         `;
       }
 
@@ -226,10 +237,10 @@ class BoardRenderer {
         elementsHtml += `
           <g class="${pieceClasses}">
             <!-- Stone Body -->
-            <circle cx="${c.x}" cy="${c.y}" r="21" fill="${fillGrad}" stroke="${rimColor}" stroke-width="2" filter="url(#pieceShadow)"/>
+            <circle cx="0" cy="0" r="21" fill="${fillGrad}" stroke="${rimColor}" stroke-width="2" filter="url(#pieceShadow)"/>
             <!-- Stone Embossed Rings -->
-            <circle cx="${c.x}" cy="${c.y}" r="14" fill="none" stroke="${innerRim}" stroke-width="1.5" stroke-opacity="0.7"/>
-            <circle cx="${c.x}" cy="${c.y}" r="7" fill="none" stroke="${innerRim}" stroke-width="1.5" stroke-opacity="0.5"/>
+            <circle cx="0" cy="0" r="14" fill="none" stroke="${innerRim}" stroke-width="1.5" stroke-opacity="0.7"/>
+            <circle cx="0" cy="0" r="7" fill="none" stroke="${innerRim}" stroke-width="1.5" stroke-opacity="0.5"/>
           </g>
         `;
       }
@@ -277,3 +288,4 @@ class BoardRenderer {
 
 window.BoardRenderer = BoardRenderer;
 window.POINT_COORDS = POINT_COORDS;
+

@@ -783,7 +783,7 @@ body {
 }
 
 .game-piece {
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: filter 0.2s ease;
 }
 
 .piece-selectable {
@@ -791,56 +791,12 @@ body {
 }
 
 .piece-selectable:hover {
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
-  transform: scale(1.06);
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.95));
 }
 
 .piece-removable {
   cursor: pointer;
-  animation: pulseRemovable 1.2s infinite alternate;
-}
-
-@keyframes pulseRemovable {
-  0% {
-    filter: drop-shadow(0 0 4px rgba(255, 71, 87, 0.5));
-  }
-  100% {
-    filter: drop-shadow(0 0 12px rgba(255, 71, 87, 1));
-  }
-}
-
-.anim-pulse {
-  animation: pulseRing 1.5s infinite ease-in-out;
-}
-
-@keyframes pulseRing {
-  0% {
-    transform: scale(0.92);
-    opacity: 0.7;
-    transform-origin: center;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 1;
-    transform-origin: center;
-  }
-  100% {
-    transform: scale(0.92);
-    opacity: 0.7;
-    transform-origin: center;
-  }
-}
-
-.selection-ring {
-  stroke-dasharray: 6, 4;
-  animation: spinRing 6s linear infinite;
-  transform-origin: center;
-}
-
-@keyframes spinRing {
-  100% {
-    transform: rotate(360deg);
-  }
+  filter: drop-shadow(0 0 8px rgba(255, 71, 87, 0.8));
 }
 
 .mill-gold-beam {
@@ -1053,3 +1009,4 @@ body {
     height: 140px;
   }
 }
+
