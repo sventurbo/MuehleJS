@@ -18,8 +18,10 @@ const PORT = parseInt(process.env.PORT || cliPort || '3000', 10);
 
 // Initialize Express application
 const app = express();
+app.disable('x-powered-by');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
 
 // API health and info endpoint
 app.get('/api/status', (req, res) => {
@@ -34,11 +36,13 @@ app.get('/api/status', (req, res) => {
 const primaryServer = http.createServer(app);
 
 // Socket.io instance with cross-origin support and heartbeat tuning
+// Socket.io instance with cross-origin support, heartbeat tuning, and max payload protection (DOS-03)
 const io = new Server(primaryServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
   },
+  maxHttpBufferSize: 1e4, // 10 KB max payload per WebSocket frame (prevents DoS large payload attacks)
   pingTimeout: 10000,
   pingInterval: 5000
 });
