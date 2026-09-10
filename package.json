@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "build": "echo 'Build step completed (vanilla frontend, no bundle required)'",
-    "test": "jest --verbose"
+    "test": "jest --verbose",
+    "contrast-check": "node scripts/contrast-check.js"
   },
   "keywords": [
     "muehle",
