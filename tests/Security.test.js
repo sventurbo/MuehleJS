@@ -180,11 +180,80 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
   });
 
-  describe('DOS-03: maxHttpBufferSize Configuration', () => {
-    test('server io configuration restricts maxHttpBufferSize to <= 10 KB', () => {
-      expect(serverIo.opts.maxHttpBufferSize).toBeDefined();
-      expect(serverIo.opts.maxHttpBufferSize).toBeLessThanOrEqual(10240); // 10 KB
-    });
-  });
-});
+describe('Username Validation (Issue #1)', () => {
+     let ioMock;
+     let gm;
+
+     beforeEach(() => {
+       ioMock = { to: jest.fn().mockReturnValue({ emit: jest.fn() }) };
+       gm = new GameManager(ioMock);
+     });
+
+     test('rejects empty username from matchmaking queue', () => {
+       const socket = {
+         id: 'sock_empty',
+         connected: true,
+         join: jest.fn(),
+         emit: jest.fn()
+       };
+       gm.enqueuePlayer(socket, '');
+       expect(gm.waitingQueue.length).toBe(0);
+       expect(socket.emit).not.toHaveBeenCalled();
+     });
+
+     test('rejects whitespace-only username from matchmaking queue', () => {
+       const socket = {
+         id: 'sock_ws',
+         connected: true,
+         join: jest.fn(),
+         emit: jest.fn()
+       };
+       gm.enqueuePlayer(socket, '   ');
+       expect(gm.waitingQueue.length).toBe(0);
+     });
+
+     test('truncates username longer than 12 characters', () => {
+       const socket = {
+         id: 'sock_long',
+         connected: true,
+         join: jest.fn(),
+         emit: jest.fn()
+       };
+       gm.enqueuePlayer(socket, 'ThisNameIsWayTooLong');
+       expect(gm.waitingQueue.length).toBe(1);
+       expect(gm.waitingQueue[0].username).toHaveLength(12);
+     });
+
+     test('accepts exactly 12 character username', () => {
+       const socket = {
+         id: 'sock_exact',
+         connected: true,
+         join: jest.fn(),
+         emit: jest.fn()
+       };
+       gm.enqueuePlayer(socket, '123456789012');
+       expect(gm.waitingQueue.length).toBe(1);
+       expect(gm.waitingQueue[0].username).toBe('123456789012');
+     });
+
+     test('accepts short username without truncation', () => {
+       const socket = {
+         id: 'sock_short',
+         connected: true,
+         join: jest.fn(),
+         emit: jest.fn()
+       };
+       gm.enqueuePlayer(socket, 'Alice');
+       expect(gm.waitingQueue.length).toBe(1);
+       expect(gm.waitingQueue[0].username).toBe('Alice');
+     });
+   });
+
+   describe('DOS-03: maxHttpBufferSize Configuration', () => {
+     test('server io configuration restricts maxHttpBufferSize to <= 10 KB', () => {
+       expect(serverIo.opts.maxHttpBufferSize).toBeDefined();
+       expect(serverIo.opts.maxHttpBufferSize).toBeLessThanOrEqual(10240); // 10 KB
+     });
+   });
+ });
 

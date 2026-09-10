@@ -305,11 +305,12 @@ class MuehleApp {
     });
   }
 
-  _handleLogin() {
-    const username = this.usernameInput.value.trim() || 'Spieler';
-    this.myName = username;
-    this.socket.emit('login', { username });
-  }
+_handleLogin() {
+     const username = this.usernameInput.value.trim().substring(0, 12);
+     if (!username) return;
+     this.myName = username;
+     this.socket.emit('login', { username });
+   }
 
   _switchScreen(screenName) {
     Object.keys(this.screens).forEach(key => {
