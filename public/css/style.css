@@ -238,10 +238,13 @@ body {
 .input-group {
   display: flex;
   gap: 10px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .text-input {
   flex: 1;
+  min-width: 0;
   background: #151922;
   border: 1px solid var(--border-color);
   color: #fff;
@@ -273,6 +276,10 @@ body {
   cursor: pointer;
   transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
   white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .btn-primary {
