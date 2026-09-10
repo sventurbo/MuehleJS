@@ -40,6 +40,15 @@
   --badge-finished-bg: #2b1d02;
   --rules-body-color: #d2dae6;
   --badge-my-turn-color: #0b2214;
+  /* Board colors - SAME in both themes to keep board independent */
+  --board-plate: #2a2e39;
+  --board-plate-end: #181b22;
+  --board-line: #5a647d;
+  --board-socket: #1b1e28;
+  --board-socket-stroke: #5a647d;
+  --board-label: #6c7899;
+  --board-plate-stroke: #3a4052;
+  --board-plate-inner: #252a36;
 }
 
 @media (prefers-color-scheme: light) {
@@ -75,6 +84,15 @@
     --badge-finished-bg: #f5e6cc;
     --rules-body-color: #3a3a5c;
     --badge-my-turn-color: #0b2214;
+    /* Board colors - SAME in both themes to keep board independent */
+    --board-plate: #2a2e39;
+    --board-plate-end: #181b22;
+    --board-line: #5a647d;
+    --board-socket: #1b1e28;
+    --board-socket-stroke: #5a647d;
+    --board-label: #6c7899;
+    --board-plate-stroke: #3a4052;
+    --board-plate-inner: #252a36;
   }
 }
 
@@ -835,8 +853,45 @@ body {
 }
 
 /* ==========================================================================
-   Interactive Pieces, Highlights & Animations
-   ========================================================================== */
+    Interactive Pieces, Highlights & Animations
+    ========================================================================== */
+
+/* Board theme-independent colors - same in both light/dark modes */
+.grid-socket {
+  fill: var(--board-socket);
+  stroke: var(--board-socket-stroke);
+}
+
+.board-line {
+  stroke: var(--board-line);
+}
+
+.board-plate {
+  stroke: var(--board-plate-stroke);
+}
+
+.grid-label {
+  fill: var(--board-label);
+}
+
+.dest-indicator {
+  fill: rgba(46, 213, 115, 0.22);
+  stroke: var(--accent-green);
+}
+
+.selection-ring {
+  stroke: var(--accent-gold);
+}
+
+.removal-target {
+  fill: rgba(255, 71, 87, 0.25);
+  stroke: var(--accent-red);
+}
+
+.mill-gold-beam {
+  stroke: var(--accent-gold);
+}
+
 .board-point-group:hover .grid-socket {
   fill: var(--hover-socket);
   stroke: var(--accent-gold);

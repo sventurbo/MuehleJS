@@ -119,7 +119,7 @@ class BoardRenderer {
         </defs>
 
         <!-- Board Surface Plate -->
-        <rect x="15" y="15" width="570" height="570" rx="24" class="board-plate" fill="url(#boardGrad)" stroke="#3a4052" stroke-width="4"/>
+        <rect x="15" y="15" width="570" height="570" rx="24" class="board-plate" fill="url(#boardGrad)" stroke-width="4"/>
         <rect x="25" y="25" width="550" height="550" rx="18" fill="none" stroke="#252a36" stroke-width="1.5"/>
 
         <!-- Grid Lines Group -->
@@ -127,7 +127,7 @@ class BoardRenderer {
           ${BOARD_LINES.map(([p1, p2]) => {
             const c1 = POINT_COORDS[p1];
             const c2 = POINT_COORDS[p2];
-            return `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" class="board-line" stroke="#5a647d" stroke-width="5" stroke-linecap="round"/>`;
+            return `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" class="board-line" stroke-width="5" stroke-linecap="round"/>`;
           }).join('')}
         </g>
 
@@ -137,12 +137,12 @@ class BoardRenderer {
         <!-- Board Intersection Points (Base sockets) -->
         <g id="grid-nodes">
           ${Object.entries(POINT_COORDS).map(([pt, c]) => `
-            <circle cx="${c.x}" cy="${c.y}" r="9" class="grid-socket" fill="#1b1e28" stroke="#5a647d" stroke-width="2.5" />
+            <circle cx="${c.x}" cy="${c.y}" r="9" class="grid-socket" stroke-width="2.5" />
           `).join('')}
         </g>
 
         <!-- Coordinate Labels (subtle) -->
-        <g id="grid-labels" class="grid-labels" font-size="10" fill="#6c7899" text-anchor="middle" dominant-baseline="central">
+        <g id="grid-labels" class="grid-labels" font-size="10" class="grid-label" text-anchor="middle" dominant-baseline="central">
           ${Object.entries(POINT_COORDS).map(([pt, c]) => {
             const dy = (c.y < 300) ? -18 : (c.y > 300 ? 18 : 0);
             const dx = (c.y === 300) ? (c.x < 300 ? -18 : 18) : 0;
