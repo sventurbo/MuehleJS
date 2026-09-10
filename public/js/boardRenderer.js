@@ -142,11 +142,11 @@ class BoardRenderer {
         </g>
 
         <!-- Coordinate Labels (subtle) -->
-        <g id="grid-labels" class="grid-labels" font-size="10" class="grid-label" text-anchor="middle" dominant-baseline="central">
+        <g id="grid-labels" class="grid-labels" font-size="10" text-anchor="middle" dominant-baseline="central">
           ${Object.entries(POINT_COORDS).map(([pt, c]) => {
             const dy = (c.y < 300) ? -18 : (c.y > 300 ? 18 : 0);
             const dx = (c.y === 300) ? (c.x < 300 ? -18 : 18) : 0;
-            return `<text x="${c.x + dx}" y="${c.y + dy}">${pt}</text>`;
+            return `<text x="${c.x + dx}" y="${c.y + dy}" class="grid-label">${pt}</text>`;
           }).join('')}
         </g>
 
