@@ -351,12 +351,39 @@ describe('MuehleGame Rule Engine', () => {
       expect(game.winReason).toContain('eingesperrt');
     });
 
-    test('forfeit gives immediate victory to opponent', () => {
-      const res = game.forfeit('W');
-      expect(res.success).toBe(true);
-      expect(game.winner).toBe('B');
-      expect(game.phase).toBe('FINISHED');
-    });
-  });
-});
+test('forfeit gives immediate victory to opponent', () => {
+       const res = game.forfeit('W');
+       expect(res.success).toBe(true);
+       expect(game.winner).toBe('B');
+       expect(game.phase).toBe('FINISHED');
+     });
+
+     test('placePiece return includes point coordinate', () => {
+       const result = game.placePiece('W', 'a7');
+       expect(result.success).toBe(true);
+       expect(result.point).toBe('a7');
+     });
+
+     test('movePiece return includes from and to coordinates', () => {
+       game.phase = 'MOVING';
+       game.board['a7'] = 'W';
+       game.board['d7'] = null;
+       const result = game.movePiece('W', 'a7', 'd7');
+       expect(result.success).toBe(true);
+       expect(result.from).toBe('a7');
+       expect(result.to).toBe('d7');
+     });
+
+     test('removePiece return includes point coordinate', () => {
+       game.phase = 'MOVING';
+       game.awaitingRemoval = true;
+       game.board['a7'] = 'B';
+       game.board['d7'] = 'W';
+       game.board['g7'] = 'W';
+       const result = game.removePiece('W', 'a7');
+       expect(result.success).toBe(true);
+       expect(result.point).toBe('a7');
+     });
+   });
+ });
 
