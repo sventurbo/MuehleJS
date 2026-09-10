@@ -39,6 +39,7 @@
   --opponent-turn-color: #576574;
   --badge-finished-bg: #2b1d02;
   --rules-body-color: #d2dae6;
+  --badge-my-turn-color: #0b2214;
 }
 
 @media (prefers-color-scheme: light) {
@@ -73,6 +74,7 @@
     --opponent-turn-color: #555770;
     --badge-finished-bg: #f5e6cc;
     --rules-body-color: #3a3a5c;
+    --badge-my-turn-color: #0b2214;
   }
 }
 
@@ -128,7 +130,7 @@ body {
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: 1.5px;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .brand-title span {
@@ -179,7 +181,7 @@ body {
 }
 
 .btn-icon:hover {
-  background: #2b3345;
+  background: var(--btn-icon-hover);
   transform: translateY(-1px);
 }
 
@@ -243,8 +245,8 @@ body {
 }
 
 .preview-b {
-  background: radial-gradient(circle at 35% 30%, #4e5565, #090a0d);
-  border: 2px solid #333;
+  background: radial-gradient(circle at 35% 30%, #4e5565, var(--black-stone-color));
+  border: 2px solid var(--border-color);
 }
 
 .preview-line {
@@ -258,7 +260,7 @@ body {
   font-size: 1.7rem;
   font-weight: 700;
   margin-bottom: 10px;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .login-hero .subtitle {
@@ -296,9 +298,9 @@ body {
 .text-input {
   flex: 1;
   min-width: 0;
-  background: #151922;
+  background: var(--input-bg);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-main);
   padding: 12px 16px;
   border-radius: var(--radius-sm);
   font-size: 1rem;
@@ -335,23 +337,23 @@ body {
 
 .btn-primary {
   background: var(--accent-blue);
-  color: #fff;
+  color: #ffffff;
 }
 
 .btn-primary:hover {
-  background: #4b7bec;
+  background: var(--accent-blue);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(56, 103, 214, 0.35);
 }
 
 .btn-secondary {
-  background: #283042;
+  background: var(--btn-secondary-bg);
   color: var(--text-main);
   border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background: #333d52;
+  background: var(--btn-secondary-hover);
 }
 
 .btn-danger {
@@ -498,13 +500,13 @@ body {
 
 .hud-badge.my-turn {
   background: var(--accent-green);
-  color: #0b2214;
+  color: var(--badge-my-turn-color);
   box-shadow: 0 0 16px var(--rgba-green-40);
 }
 
 .hud-badge.opponent-turn {
-  background: #3a4253;
-  color: #cad1df;
+  background: var(--opponent-turn-bg);
+  color: var(--opponent-turn-color);
 }
 
 .hud-badge.finished {
@@ -531,7 +533,7 @@ body {
 }
 
 .btn-tool:hover {
-  background: #2b3345;
+  background: var(--btn-tool-hover);
 }
 
 /* Status Banner */
@@ -609,7 +611,7 @@ body {
 .player-name {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -668,16 +670,16 @@ body {
 }
 
 .pip-white.inactive {
-  background: #2e3545;
+  background: var(--pip-inactive);
 }
 
 .pip-black.active {
-  background: #111317;
-  border: 1px solid #4a5468;
+  background: var(--pip-black-active);
+  border: 1px solid var(--border-color);
 }
 
 .pip-black.inactive {
-  background: #2e3545;
+  background: var(--pip-inactive);
 }
 
 /* Board Center Wrapper */
@@ -817,14 +819,14 @@ body {
   background: transparent;
   border: none;
   padding: 6px 10px;
-  color: #fff;
+  color: var(--text-main);
   font-size: 0.82rem;
   outline: none;
 }
 
 .btn-chat-send {
   background: var(--accent-blue);
-  color: #fff;
+  color: #ffffff;
   border: none;
   padding: 0 14px;
   font-size: 0.8rem;
@@ -910,6 +912,7 @@ body {
   font-size: 1.8rem;
   font-weight: 800;
   margin-bottom: 8px;
+  color: var(--text-main);
 }
 
 .game-over-title.win {
@@ -923,7 +926,7 @@ body {
 .winner-subtitle {
   font-size: 1.15rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-main);
   margin-bottom: 12px;
 }
 
@@ -958,7 +961,7 @@ body {
 
 .rules-header h2 {
   font-size: 1.3rem;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .btn-close-modal {
@@ -973,7 +976,7 @@ body {
 }
 
 .btn-close-modal:hover {
-  color: #fff;
+  color: var(--text-main);
 }
 
 .rules-body {
@@ -1016,7 +1019,7 @@ body {
 
 .toast {
   background: var(--bg-card);
-  color: #fff;
+  color: var(--text-main);
   border: 1px solid var(--border-color);
   padding: 12px 18px;
   border-radius: var(--radius-sm);
