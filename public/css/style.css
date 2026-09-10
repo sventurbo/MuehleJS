@@ -23,6 +23,57 @@
   --radius-md: 12px;
   --radius-lg: 20px;
   --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --rgba-green-15: rgba(46, 213, 115, 0.15);
+  --rgba-green-08: rgba(46, 213, 115, 0.08);
+  --rgba-red-15: rgba(255, 71, 87, 0.15);
+  --rgba-red-04: rgba(255, 71, 87, 0.4);
+  --rgba-red-18: rgba(255, 71, 87, 0.18);
+  --rgba-gold-10: rgba(255, 165, 2, 0.1);
+  --rgba-green-40: rgba(46, 213, 115, 0.4);
+  --rgba-green-02: rgba(255, 255, 255, 0.02);
+  --zebra-stripe: rgba(0, 0, 0, 0.03);
+  --rgba-red-03: rgba(220, 53, 69, 0.3);
+  --hover-socket: #3b4255;
+  --chat-bubble-me: #253966;
+  --chat-bubble-me-border: #3b5998;
+  --opponent-turn-color: #576574;
+  --badge-finished-bg: #2b1d02;
+  --rules-body-color: #d2dae6;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-main: #f0f2f5;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --border-color: #c8ccd4;
+    --text-main: #1a1a2e;
+    --text-muted: #555770;
+    --accent-gold: #e69000;
+    --accent-blue: #2b5cb8;
+    --accent-green: #1f9d5a;
+    --accent-red: #dc3545;
+    --accent-cyan: #0a9192;
+    --white-stone-color: #ffffff;
+    --black-stone-color: #1a1a2e;
+    --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.1);
+    --rgba-green-15: rgba(31, 157, 90, 0.15);
+    --rgba-green-08: rgba(31, 157, 90, 0.08);
+    --rgba-red-15: rgba(220, 53, 69, 0.15);
+    --rgba-red-04: rgba(220, 53, 69, 0.4);
+    --rgba-red-18: rgba(220, 53, 69, 0.18);
+    --rgba-gold-10: rgba(230, 144, 0, 0.1);
+    --rgba-green-40: rgba(31, 157, 90, 0.4);
+    --rgba-green-02: rgba(0, 0, 0, 0.03);
+    --zebra-stripe: rgba(0, 0, 0, 0.03);
+    --rgba-red-03: rgba(220, 53, 69, 0.3);
+    --hover-socket: #d8d8e0;
+    --chat-bubble-me: #dbe4f7;
+    --chat-bubble-me-border: #7a8fb5;
+    --opponent-turn-color: #555770;
+    --badge-finished-bg: #f5e6cc;
+    --rules-body-color: #3a3a5c;
+  }
 }
 
 * {
@@ -101,13 +152,13 @@ body {
 }
 
 .conn-status.online {
-  background: rgba(46, 213, 115, 0.15);
+  background: var(--rgba-green-15);
   color: var(--accent-green);
   border: 1px solid rgba(46, 213, 115, 0.3);
 }
 
 .conn-status.offline {
-  background: rgba(255, 71, 87, 0.15);
+  background: var(--rgba-red-15);
   color: var(--accent-red);
   border: 1px solid rgba(255, 71, 87, 0.3);
 }
@@ -304,13 +355,13 @@ body {
 }
 
 .btn-danger {
-  background: rgba(255, 71, 87, 0.18);
+  background: var(--rgba-red-18);
   color: var(--accent-red);
-  border: 1px solid rgba(255, 71, 87, 0.4);
+  border: 1px solid var(--rgba-red-04);
 }
 
 .btn-danger:hover {
-  background: rgba(255, 71, 87, 0.3);
+  background: var(--rgba-red-03);
 }
 
 .login-actions {
@@ -448,7 +499,7 @@ body {
 .hud-badge.my-turn {
   background: var(--accent-green);
   color: #0b2214;
-  box-shadow: 0 0 16px rgba(46, 213, 115, 0.4);
+  box-shadow: 0 0 16px var(--rgba-green-40);
 }
 
 .hud-badge.opponent-turn {
@@ -458,7 +509,7 @@ body {
 
 .hud-badge.finished {
   background: var(--accent-gold);
-  color: #2b1d02;
+  color: var(--badge-finished-bg);
 }
 
 .hud-game-actions {
@@ -496,16 +547,16 @@ body {
 
 .hud-status-banner.my-turn {
   border-left-color: var(--accent-green);
-  background: rgba(46, 213, 115, 0.08);
+  background: var(--rgba-green-08);
 }
 
 .hud-status-banner.opponent-turn {
-  border-left-color: #576574;
+  border-left-color: var(--opponent-turn-color);
 }
 
 .hud-status-banner.finished {
   border-left-color: var(--accent-gold);
-  background: rgba(255, 165, 2, 0.1);
+  background: var(--rgba-gold-10);
 }
 
 /* Game Arena Layout: Player Cards + SVG Board */
@@ -701,7 +752,7 @@ body {
 }
 
 .move-log-list li:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--zebra-stripe);
 }
 
 .move-log-list .log-system {
@@ -751,8 +802,8 @@ body {
 }
 
 .chat-me .chat-bubble {
-  background: #253966;
-  border-color: #3b5998;
+  background: var(--chat-bubble-me);
+  border-color: var(--chat-bubble-me-border);
 }
 
 .chat-form {
@@ -785,7 +836,7 @@ body {
    Interactive Pieces, Highlights & Animations
    ========================================================================== */
 .board-point-group:hover .grid-socket {
-  fill: #3b4255;
+  fill: var(--hover-socket);
   stroke: var(--accent-gold);
 }
 
@@ -929,7 +980,7 @@ body {
   padding: 24px;
   overflow-y: auto;
   font-size: 0.92rem;
-  color: #d2dae6;
+  color: var(--rules-body-color);
   display: flex;
   flex-direction: column;
   gap: 18px;

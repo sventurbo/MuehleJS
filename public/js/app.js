@@ -606,3 +606,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.app = new MuehleApp();
 });
 
+// React to system theme changes at runtime
+if (window.matchMedia) {
+  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const handleThemeChange = () => {
+    document.documentElement.classList.toggle('dark-theme', darkModeQuery.matches);
+  };
+  darkModeQuery.addEventListener('change', handleThemeChange);
+  handleThemeChange();
+}
+
