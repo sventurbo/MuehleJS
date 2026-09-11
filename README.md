@@ -32,13 +32,13 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-  - 28 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking und Socket-Integration.
+   - 70 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking und Socket-Integration.
 
 ---
 
 ## 🚀 Schnellanleitung (Installation & Start)
 
-Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung (Version >= 18).
+Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung (Version >= 24).
 
 ### 1. Abhängigkeiten installieren
 ```bash
@@ -90,6 +90,14 @@ Getestet werden:
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
 
+### WCAG 2.1 AA Kontrastprüfung
+
+Das Projekt enthält einen automatisierten Kontrast-Checker, der sicherstellt, dass alle Farbkombinationen die WCAG 2.1 AA Anforderungen erfüllen:
+```bash
+npm run contrast-check
+```
+Dieser prüft alle Farbpaare in den Dark- und Light-Themes des Stylesheets.
+
 ---
 
 ## 📁 Projektstruktur
@@ -98,6 +106,9 @@ Getestet werden:
 Web-Spiel/
 ├── package.json              # Projektkonfiguration, Abhängigkeiten & Scripts
 ├── server.js                 # Express HTTP-Server & Socket.io Event-Orchestrierung (IPv6 & IPv4)
+├── scripts/
+│   ├── contrast.js           # WCAG 2.1 Kontrastberechnung (relative Luminance, Kontrastverhältnis)
+│   └── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
 ├── lib/
 │   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
 │   └── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
@@ -109,7 +120,11 @@ Web-Spiel/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
 │       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld, Interaktionen & visuelle Hervorhebungen
 │       └── app.js            # Client-Zustand, Socket.io-Client, HUD & Benutzeraktionen
+├── .github/
+│   └── workflows/
+│       └── node.js.yml       # CI-Pipeline (Node.js 24.x, npm ci && npm test && npm run contrast-check)
 ├── tests/
+│   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
 │   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
 │   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch
 │   └── Integration.test.js   # End-to-End WebSocket-Integrationstests
