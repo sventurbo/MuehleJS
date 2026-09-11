@@ -3,6 +3,8 @@ const express = require('express');
 const { Server } = require('socket.io');
 const { io: Client } = require('socket.io-client');
 const { GameManager } = require('../lib/GameManager');
+const fs = require('fs');
+const path = require('path');
 
 describe('Full Server & Socket.io Integration Flow', () => {
   let httpServer;
@@ -101,6 +103,25 @@ describe('Full Server & Socket.io Integration Flow', () => {
     });
 
     client2.disconnect();
+  });
+});
+
+describe('Game Over Modal UI (Issue #8)', () => {
+  let htmlContent;
+
+  beforeAll(() => {
+    htmlContent = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  });
+
+  test('Button "Erneut Spielen" label exists and old label is removed', () => {
+    expect(htmlContent).toContain('>Erneut Spielen<');
+    expect(htmlContent).not.toContain('Erneut an Start gehen');
+  });
+
+  test('Button "Erneut Spielen" does not contain icon emoji', () => {
+    const btnMatch = htmlContent.match(/id="btn-play-again"[^>]*>([\s\S]*?)<\/button>/);
+    expect(btnMatch).toBeTruthy();
+    expect(btnMatch[1]).not.toContain('🔄');
   });
 });
 
