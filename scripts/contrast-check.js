@@ -72,7 +72,6 @@ function runContrastCheck(cssContent) {
       const fgColor = resolveColor(fgValue, themeVars);
       const bgColor = resolveColor(bgValue, themeVars);
       if (!fgColor || !bgColor) continue;
-      if (test.fgVar === 'badge-finished-bg') continue;
       const ratio = contrastRatio(fgColor, bgColor);
       const passed = ratio >= test.aaThreshold;
       results.push({
@@ -101,7 +100,6 @@ const header = ['Test', 'Theme', 'FG', 'BG', 'Ratio', 'Status'].map((h, i) => {
 }).join(' ');
 console.log(header);
 console.log('─'.repeat(90));
-console.log('─'.repeat(100));
 
 let passCount = 0;
 let failCount = 0;
@@ -109,10 +107,10 @@ for (const r of results) {
   const status = r.passed ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m';
   const theme = r.theme === 'Dunkel' ? '\x1b[90mDunkel\x1b[0m' : '\x1b[94mHell\x1b[0m';
   const row = [r.description.substring(0, 38), r.theme, r.fgColor, r.bgColor, `${r.ratio}:1`, status].map((v, i) => {
-  const widths = [40, 8, 10, 10, 10, 6];
-  return String(v).padEnd(widths[i]);
-}).join(' ');
-console.log(row);
+    const widths = [40, 8, 10, 10, 10, 6];
+    return String(v).padEnd(widths[i]);
+  }).join(' ');
+  console.log(row);
   if (r.passed) passCount++; else failCount++;
 }
 

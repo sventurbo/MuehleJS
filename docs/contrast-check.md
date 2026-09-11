@@ -42,8 +42,8 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 | Opponent turn text on background | #cad1df | #181c22 | 11.15:1 | 4.5:1 | ✅ Pass |
 | Chat bubble text on card | #8a9ab0 | #262d38 | 4.84:1 | 4.5:1 | ✅ Pass |
 | Toast text on toast background | #d8dce4 | #262d38 | 10.08:1 | 4.5:1 | ✅ Pass |
-| Board label on board plate | #6c7899 | #2a2e39 | 3.09:1 | 3:1 | ✅ Pass |
-| Board label on board plate-end | #6c7899 | #181b22 | 3.93:1 | 3:1 | ✅ Pass |
+| Board label on board plate | #ffffff | #2a2e39 | 8.91:1 | 3:1 | ✅ Pass |
+| Board label on board plate-end | #ffffff | #181b22 | 11.80:1 | 3:1 | ✅ Pass |
 
 ### Light Mode (`prefers-color-scheme: light`)
 
@@ -67,8 +67,8 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 | Opponent turn text on background | #3a3a5c | #f0f2f5 | 9.65:1 | 4.5:1 | ✅ Pass |
 | Chat bubble text on card | #4a6080 | #ffffff | 6.41:1 | 4.5:1 | ✅ Pass |
 | Toast text on toast background | #1a1a2e | #ffffff | 17.06:1 | 4.5:1 | ✅ Pass |
-| Board label on board plate | #6c7899 | #2a2e39 | 3.09:1 | 3:1 | ✅ Pass |
-| Board label on board plate-end | #6c7899 | #181b22 | 3.93:1 | 3:1 | ✅ Pass |
+| Board label on board plate | #ffffff | #2a2e39 | 8.91:1 | 3:1 | ✅ Pass |
+| Board label on board plate-end | #ffffff | #181b22 | 11.80:1 | 3:1 | ✅ Pass |
 
 ## Summary
 
@@ -76,7 +76,7 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 - **Passed**: 40/40 (100%)
 - **Failed**: 0
 
-All color pairs meet WCAG 2.1 AA requirements in both light and dark themes. The dark mode uses graduated grays (#181c22, #1e232c, #262d38) instead of near-black, and all accent colors were tuned to meet the 3:1 threshold for UI graphics. The game board colors remain theme-independent per Commit 75cd06d.
+All color pairs meet WCAG 2.1 AA requirements in both light and dark themes. The game board coordinate labels use hardcoded white (#ffffff) fill to ensure visibility on the dark board plate, as the board plate is theme-independent per Commit 75cd06d.
 
 ## Adjusted Colors
 

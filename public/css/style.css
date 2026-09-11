@@ -54,7 +54,7 @@
   --board-line: #5a647d;
   --board-socket: #1b1e28;
   --board-socket-stroke: #5a647d;
-  --board-label: #6c7899;
+  --board-label: #ffffff;
   --board-plate-stroke: #3a4052;
   --board-plate-inner: #252a36;
 }
@@ -106,7 +106,7 @@
     --board-line: #5a647d;
     --board-socket: #1b1e28;
     --board-socket-stroke: #5a647d;
-    --board-label: #6c7899;
+    --board-label: #ffffff;
     --board-plate-stroke: #3a4052;
     --board-plate-inner: #252a36;
   }
