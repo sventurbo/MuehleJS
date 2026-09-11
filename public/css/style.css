@@ -42,8 +42,8 @@
   --opponent-turn-bg: #2a313c;
   --pip-inactive: #6a7080;
   --pip-black-active: #1e2530;
-  --chat-bubble-me: #8a9ab0;
-  --chat-bubble-me-border: #8a9ab0;
+    --chat-bubble-me: #2d3a50;
+    --chat-bubble-me-border: #2d3a50;
   --opponent-turn-color: #cad1df;
   --badge-finished-bg: #2b1d02;
   --rules-body-color: #d2dae6;
@@ -94,8 +94,8 @@
     --opponent-turn-bg: #e8ecf0;
     --pip-inactive: #606874;
     --pip-black-active: #2a3240;
-    --chat-bubble-me: #4a6080;
-    --chat-bubble-me-border: #4a6080;
+    --chat-bubble-me: #c8d0dc;
+    --chat-bubble-me-border: #c8d0dc;
     --opponent-turn-color: #3a3a5c;
     --badge-finished-bg: #f5e6cc;
     --rules-body-color: #3a3a5c;
