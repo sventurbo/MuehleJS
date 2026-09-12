@@ -19,9 +19,11 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Spieler melden sich über die Login-Seite an.
   - Sobald ein zweiter Spieler beitritt, werden beide sofort gepaart und das Spiel startet in einem isolierten Raum.
   - Beliebig viele parallele Partien gleichzeitig möglich.
-- **Robustes Fehlermanagement**:
+- **Robustes Fehlermanagement & Sicherheit**:
   - Bei Verbindungsabbruch eines Spielers wird die Partie sauber terminiert und der verbleibende Spieler benachrichtigt.
   - Der Server stürzt unter keinen Umständen ab (`try/catch`-Guards, globale Exception-Handler).
+  - **DoS-Schutz**: In-Memory Sliding-Window Rate Limiter schützt Socket.io- und HTTP-Events vor Spam und Flooding.
+  - **Eingabesäuberung**: Alle Client-Inputs werden serverseitig bereinigt (HTML-Sanitization).
 - **Dual-Stack Netzwerkunterstützung (IPv6 & IPv4)**:
   - Primär auf **IPv6** (`::`) gebunden – ideal für moderne Server- und Cloud-Umgebungen.
   - Unterstützt gleichzeitig **IPv4** (über IPv4-mapped Dual-Stack oder dedizierten sekundären Fallback-Listener auf `0.0.0.0`).
@@ -32,7 +34,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 70 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking und Socket-Integration.
+   - 72 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration und Sicherheit/DoS-Schutz.
 
 ---
 
@@ -80,7 +82,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden:
+Getestet werden (72 Tests in 5 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -89,6 +91,7 @@ Getestet werden:
 - Matchmaking-Warteschlange und Sitzungsisolation.
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
+- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting, Eingabesäuberung).
 
 ### WCAG 2.1 AA Kontrastprüfung
 
@@ -106,12 +109,14 @@ Dieser prüft alle Farbpaare in den Dark- und Light-Themes des Stylesheets.
 Web-Spiel/
 ├── package.json              # Projektkonfiguration, Abhängigkeiten & Scripts
 ├── server.js                 # Express HTTP-Server & Socket.io Event-Orchestrierung (IPv6 & IPv4)
+├── Systemmodel.md            # Umfassendes Systemmodell (Architektur, Domänenmodell, State Machines)
 ├── scripts/
 │   ├── contrast.js           # WCAG 2.1 Kontrastberechnung (relative Luminance, Kontrastverhältnis)
 │   └── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
 ├── lib/
 │   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
-│   └── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
+│   ├── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
+│   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)
 │   ├── css/
@@ -120,14 +125,19 @@ Web-Spiel/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
 │       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld, Interaktionen & visuelle Hervorhebungen
 │       └── app.js            # Client-Zustand, Socket.io-Client, HUD & Benutzeraktionen
+├── docs/
+│   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation
 ├── .github/
 │   └── workflows/
 │       └── node.js.yml       # CI-Pipeline (Node.js 24.x, npm ci && npm test && npm run contrast-check)
 ├── tests/
-│   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
-│   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
-│   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch
-│   └── Integration.test.js   # End-to-End WebSocket-Integrationstests
+│   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung (40 Tests)
+│   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle (389 Tests)
+│   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch (108 Tests)
+│   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests (127 Tests)
+│   └── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
+├── .gitignore                # Git-Ignore (node_modules, .DS_Store, coverage, .env)
+├── package-lock.json         # Abhängigkeits-Lockfile
 └── README.md                 # Diese Dokumentation
 ```
 
