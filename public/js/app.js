@@ -4,46 +4,10 @@
  * Connects Socket.io, orchestrates UI views, board interaction, and chat.
  */
 
-// Adjacency connections for client-side move highlighting
-const CLIENT_ADJACENCY = {
-  'a7': ['d7', 'a4'],
-  'd7': ['a7', 'g7', 'd6'],
-  'g7': ['d7', 'g4'],
-  'a4': ['a7', 'a1', 'b4'],
-  'g4': ['g7', 'g1', 'f4'],
-  'a1': ['a4', 'd1'],
-  'd1': ['a1', 'g1', 'd2'],
-  'g1': ['d1', 'g4'],
-
-  'b6': ['d6', 'b4'],
-  'd6': ['b6', 'f6', 'd7', 'd5'],
-  'f6': ['d6', 'f4'],
-  'b4': ['b6', 'b2', 'a4', 'c4'],
-  'f4': ['f6', 'f2', 'e4', 'g4'],
-  'b2': ['b4', 'd2'],
-  'd2': ['b2', 'f2', 'd1', 'd3'],
-  'f2': ['d2', 'f4'],
-
-  'c5': ['d5', 'c4'],
-  'd5': ['c5', 'e5', 'd6'],
-  'e5': ['d5', 'e4'],
-  'c4': ['c5', 'c3', 'b4'],
-  'e4': ['e5', 'e3', 'f4'],
-  'c3': ['c4', 'd3'],
-  'd3': ['c3', 'e3', 'd2'],
-  'e3': ['d3', 'e4']
-};
-
-const ALL_POINTS = Object.keys(CLIENT_ADJACENCY);
-
-// Mills list for client-side mill check
-const CLIENT_MILLS = [
-  ['a7', 'd7', 'g7'], ['b6', 'd6', 'f6'], ['c5', 'd5', 'e5'],
-  ['c3', 'd3', 'e3'], ['b2', 'd2', 'f2'], ['a1', 'd1', 'g1'],
-  ['a7', 'a4', 'a1'], ['b6', 'b4', 'b2'], ['c5', 'c4', 'c3'],
-  ['e5', 'e4', 'e3'], ['f6', 'f4', 'f2'], ['g7', 'g4', 'g1'],
-  ['d7', 'd6', 'd5'], ['g4', 'f4', 'e4'], ['d1', 'd2', 'd3'], ['a4', 'b4', 'c4']
-];
+// Board geometry and capture rules live in gameRules.js so that the markers the
+// renderer draws and the checks in _onPointClick are computed by the same code.
+const RULES = window.MuehleRules;
+const CLIENT_MILLS = RULES.MILLS;
 
 class MuehleApp {
   constructor() {
@@ -56,13 +20,24 @@ class MuehleApp {
 
     this.selectedPoint = null;
     this.validDestinations = [];
-    this.removablePoints = [];
 
     this.boardRenderer = null;
 
     this._cacheDom();
     this._bindEvents();
     this._initSocket();
+  }
+
+  /**
+   * The opponent stones this client may capture right now.
+   *
+   * Derived from the current server state on every read instead of being cached
+   * in a field: the renderer and _onPointClick therefore always see the same
+   * set, and no branch can leave a stale one behind (which used to draw capture
+   * rings the click handler then refused).
+   */
+  get removablePoints() {
+    return RULES.getCaptureTargets(this.gameState, this.myColor);
   }
 
   _cacheDom() {
@@ -248,7 +223,6 @@ class MuehleApp {
 
       this.selectedPoint = null;
       this.validDestinations = [];
-      this.removablePoints = [];
 
       this.chatMessages.innerHTML = '';
       this.moveLogList.innerHTML = '';
@@ -270,7 +244,6 @@ class MuehleApp {
       if (prevState && prevState.turn !== this.gameState.turn) {
         this.selectedPoint = null;
         this.validDestinations = [];
-        this.removablePoints = [];
       }
 
       // Audio feedback & animations
@@ -398,10 +371,8 @@ _handleLogin() {
 
       if (this.gameState.awaitingRemoval) {
         this.hudInstructionText.innerHTML = '<strong>Mühle geschlossen!</strong> Klicke auf einen gegnerischen Stein, um ihn zu schlagen.';
-        this.removablePoints = this._calculateRemovablePoints(this.myColor);
       } else if (this.gameState.phase === 'SETTING') {
         this.hudInstructionText.textContent = `Setzphase: Platziere einen Stein auf ein freies Feld (${this.gameState.unplacedPieces[this.myColor]} übrig).`;
-        this.removablePoints = [];
       } else if (this.gameState.phase === 'MOVING') {
         const canJump = this.gameState.piecesOnBoard[this.myColor] === 3;
         if (canJump) {
@@ -409,7 +380,6 @@ _handleLogin() {
         } else {
           this.hudInstructionText.textContent = 'Zugphase: Wähle einen deiner Steine aus und ziehe auf ein benachbartes freies Feld.';
         }
-        this.removablePoints = [];
       }
     } else {
       this.hudTurnBadge.textContent = 'Gegner ist am Zug';
@@ -423,7 +393,6 @@ _handleLogin() {
       } else {
         this.hudInstructionText.textContent = 'Gegner überlegt seinen nächsten Zug...';
       }
-      this.removablePoints = [];
     }
 
     // Phase label
@@ -436,13 +405,13 @@ _handleLogin() {
       this.hudPhaseText.textContent = 'Partie Beendet';
     }
 
-    // Re-render board SVG
+    // Re-render board SVG. The renderer derives the capture markers from the
+    // same state and the same rule helper as `this.removablePoints`.
     this.boardRenderer.render(
       this.gameState,
       this.myColor,
       this.selectedPoint,
-      this.validDestinations,
-      this.removablePoints
+      this.validDestinations
     );
   }
 
@@ -486,27 +455,6 @@ _handleLogin() {
       pipsHtml += `<span class="pip pip-${colorClass} ${active ? 'active' : 'inactive'}"></span>`;
     }
     container.innerHTML = pipsHtml;
-  }
-
-  /**
-   * Calculates removable opponent stones for client visual feedback.
-   */
-  _calculateRemovablePoints(player) {
-    const opponent = player === 'W' ? 'B' : 'W';
-    const board = this.gameState.board;
-    const opponentPoints = ALL_POINTS.filter(pt => board[pt] === opponent);
-
-    // Helper: is opponent stone in a mill?
-    const isOpponentMill = (pt) => {
-      const mills = CLIENT_MILLS.filter(m => m.includes(pt));
-      return mills.some(mill => mill.every(p => board[p] === opponent));
-    };
-
-    const allInMills = opponentPoints.every(pt => isOpponentMill(pt));
-    if (allInMills) {
-      return opponentPoints;
-    }
-    return opponentPoints.filter(pt => !isOpponentMill(pt));
   }
 
   /**
@@ -554,11 +502,7 @@ _handleLogin() {
           // Select piece and show destinations
           this.selectedPoint = point;
           const canJump = this.gameState.piecesOnBoard[this.myColor] === 3;
-          if (canJump) {
-            this.validDestinations = ALL_POINTS.filter(pt => board[pt] === null);
-          } else {
-            this.validDestinations = (CLIENT_ADJACENCY[point] || []).filter(pt => board[pt] === null);
-          }
+          this.validDestinations = RULES.getValidDestinations(board, point, this.myColor, canJump);
         }
         this._updateGameUI();
         return;

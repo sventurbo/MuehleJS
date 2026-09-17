@@ -44,7 +44,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 96 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz und das responsive Mobile-Layout.
+   - 114 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich und das responsive Mobile-Layout.
 
 ---
 
@@ -92,10 +92,11 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (96 Tests in 6 Test-Dateien):
+Getestet werden (114 Tests in 7 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
+- Übereinstimmung der Client-Regeln (`public/js/gameRules.js`) mit der Server-Engine.
 - Sieg durch Steinedezimierung (< 3 Steine).
 - Sieg durch Einsperren des Gegners (keine legalen Züge).
 - Matchmaking-Warteschlange und Sitzungsisolation.
@@ -134,6 +135,7 @@ Web-Spiel/
 │   │   └── style.css         # Design-System (Tokens, Light/Dark-Theme), Layout & Animationen
 │   └── js/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
+│       ├── gameRules.js      # Geteilte Brettgeometrie & Schlag-Regeln (einzige Quelle für Schlag-Markierungen)
 │       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen & Hervorhebungen
 │       └── app.js            # Client-Zustand, Socket.io-Client, HUD & Benutzeraktionen
 ├── docs/
@@ -144,6 +146,7 @@ Web-Spiel/
 ├── tests/
 │   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung (40 Tests)
 │   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle (389 Tests)
+│   ├── GameRules.test.js     # Abgleich der Client-Regeln mit der Server-Engine (18 Tests)
 │   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch (108 Tests)
 │   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests (127 Tests)
 │   ├── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
