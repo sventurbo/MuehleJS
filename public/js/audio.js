@@ -22,6 +22,30 @@ class SoundController {
     }
   }
 
+  /**
+   * Mobile Safari (and Chrome's autoplay policy) only let an AudioContext
+   * start from inside a real user gesture. The first game sound is triggered
+   * by a socket event instead, so app.js calls this on the first tap/click to
+   * create and resume the context while a gesture is still on the stack.
+   */
+  unlock() {
+    this._init();
+    if (!this.ctx) return;
+    try {
+      // A silent blip finishes the unlock on older iOS versions.
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.01);
+    } catch (e) {
+      // Nothing to do — sound simply stays off on this device.
+    }
+  }
+
   isMuted() {
     return this.muted;
   }

@@ -70,7 +70,7 @@ Das Gesamtsystem gliedert sich in modulare, voneinander entkoppelte Subsysteme a
 graph LR
     subgraph Frontend["Frontend (Vanilla Web Stack)"]
         HTML["index.html (SPA Screens)"]
-        CSS["style.css (Layout >= 1024x768 & SVG-Styles)"]
+        CSS["style.css (Responsive Layout 320px - Desktop & SVG-Styles)"]
         APP["app.js (Client Controller & Socket Handler)"]
         BR["boardRenderer.js (SVG Renderer & Hitboxen)"]
         AU["audio.js (Web Audio API Synthesizer)"]
