@@ -110,12 +110,19 @@ class MuehleApp {
     this.btnSurrender = document.getElementById('btn-surrender');
     this.btnSoundToggle = document.getElementById('btn-sound-toggle');
     this.btnRulesGame = document.getElementById('btn-rules-game');
+    this.btnRulesHeader = document.getElementById('btn-rules-header');
     this.btnCloseRules = document.getElementById('btn-close-rules');
 
     // Chat
     this.chatMessages = document.getElementById('chat-messages');
     this.chatInput = document.getElementById('chat-input');
     this.chatForm = document.getElementById('chat-form');
+
+    // Dock tabs (only visible on small screens, where log and chat share a slot)
+    this.dockTabs = Array.from(document.querySelectorAll('[data-dock-tab]'));
+    this.dockPanels = Array.from(document.querySelectorAll('[data-dock-panel]'));
+    this.chatUnreadDot = document.getElementById('chat-unread-dot');
+    this.activeDockTab = 'log';
 
     // Move Log
     this.moveLogList = document.getElementById('move-log-list');
@@ -166,9 +173,27 @@ class MuehleApp {
     // Rules modal
     this.btnRulesLogin.addEventListener('click', () => this._showRulesModal(true));
     this.btnRulesGame.addEventListener('click', () => this._showRulesModal(true));
+    this.btnRulesHeader.addEventListener('click', () => this._showRulesModal(true));
     this.btnCloseRules.addEventListener('click', () => this._showRulesModal(false));
     this.modalRules.addEventListener('click', (e) => {
       if (e.target === this.modalRules) this._showRulesModal(false);
+    });
+
+    // Audio has to be unlocked from a user gesture on iOS; the first game
+    // sound is fired by a socket event, which would be too late.
+    const unlockAudio = () => {
+      window.soundController.unlock();
+      document.removeEventListener('pointerdown', unlockAudio);
+      document.removeEventListener('touchend', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
+    };
+    document.addEventListener('pointerdown', unlockAudio, { passive: true });
+    document.addEventListener('touchend', unlockAudio, { passive: true });
+    document.addEventListener('keydown', unlockAudio);
+
+    // Dock tabs: log / chat on phones
+    this.dockTabs.forEach(tab => {
+      tab.addEventListener('click', () => this._activateDockTab(tab.dataset.dockTab));
     });
 
     // Chat form
@@ -179,6 +204,7 @@ class MuehleApp {
         this.socket.emit('chatMessage', { text });
         this.chatInput.value = '';
       }
+      this.chatInput.focus();
     });
 
     // Game over actions
@@ -226,6 +252,7 @@ class MuehleApp {
 
       this.chatMessages.innerHTML = '';
       this.moveLogList.innerHTML = '';
+      this._activateDockTab('log');
 
       this._switchScreen('game');
       this._addSystemLog(`Spiel gestartet! Du spielst als ${this.myColor === 'W' ? 'Weiß' : 'Schwarz'}.`);
@@ -312,6 +339,7 @@ _handleLogin() {
    }
 
   _switchScreen(screenName) {
+    window.scrollTo(0, 0);
     Object.keys(this.screens).forEach(key => {
       if (key === screenName) {
         this.screens[key].classList.remove('hidden');
@@ -416,6 +444,39 @@ _handleLogin() {
       this.validDestinations,
       this.removablePoints
     );
+  }
+
+  /**
+   * Switches the small-screen dock between move log and chat.
+   * On desktop both panels are visible, so this only tracks which one is
+   * "current" for the unread marker.
+   */
+  _activateDockTab(name) {
+    if (!name) return;
+    this.activeDockTab = name;
+
+    this.dockTabs.forEach(tab => {
+      const isActive = tab.dataset.dockTab === name;
+      tab.classList.toggle('is-active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    this.dockPanels.forEach(panel => {
+      panel.classList.toggle('is-active', panel.dataset.dockPanel === name);
+    });
+
+    if (name === 'chat') {
+      if (this.chatUnreadDot) this.chatUnreadDot.classList.add('hidden');
+      this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+  }
+
+  /**
+   * True while the dock tab bar is on screen (phone-sized viewports).
+   */
+  _isDockTabbed() {
+    const tabs = document.querySelector('.dock-tabs');
+    return !!tabs && tabs.offsetParent !== null;
   }
 
   _renderPips(container, count, colorClass) {
@@ -538,10 +599,12 @@ _handleLogin() {
 
     this.gameOverReason.textContent = winReason || 'Spiel beendet';
     this.modalGameOver.classList.remove('hidden');
+    this._syncModalScrollLock();
   }
 
   _hideGameOverModal() {
     this.modalGameOver.classList.add('hidden');
+    this._syncModalScrollLock();
   }
 
   _showRulesModal(show) {
@@ -550,6 +613,17 @@ _handleLogin() {
     } else {
       this.modalRules.classList.add('hidden');
     }
+    this._syncModalScrollLock();
+  }
+
+  /**
+   * Freezes the page behind an open modal so touch scrolling stays inside the
+   * dialog instead of moving the board around underneath it.
+   */
+  _syncModalScrollLock() {
+    const anyOpen = !this.modalRules.classList.contains('hidden') ||
+      !this.modalGameOver.classList.contains('hidden');
+    document.body.classList.toggle('modal-open', anyOpen);
   }
 
   _addChatMessage(msg) {
@@ -564,6 +638,11 @@ _handleLogin() {
     `;
     this.chatMessages.appendChild(item);
     this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+
+    // Phone layout: mark the hidden chat tab when the opponent writes.
+    if (!isMe && this.chatUnreadDot && this._isDockTabbed() && this.activeDockTab !== 'chat') {
+      this.chatUnreadDot.classList.remove('hidden');
+    }
   }
 
   _addMoveLog(text) {

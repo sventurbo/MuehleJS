@@ -2,8 +2,16 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mühle">
   <title>Mühle / Nine Men's Morris – Multiplayer Web-Spiel</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%230a0a0c%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23f2f2f7%22%20stroke-width%3D%221.8%22%3E%3Crect%20x%3D%225%22%20y%3D%225%22%20width%3D%2222%22%20height%3D%2222%22%20rx%3D%223%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2211%22%20width%3D%2210%22%20height%3D%2210%22%20rx%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M16%205v6M16%2021v6M5%2016h6M21%2016h6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -67,7 +75,7 @@
           <div class="login-form-box">
             <label for="username-input" class="form-label">Dein Spielername</label>
             <div class="input-group">
-              <input type="text" id="username-input" class="text-input" placeholder="z.B. MeisterStratege" maxlength="12" autofocus autocomplete="off">
+              <input type="text" id="username-input" class="text-input" placeholder="z.B. MeisterStratege" maxlength="12" autofocus autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go">
               <button id="btn-find-game" class="btn btn-primary">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="11" cy="11" r="7"/>
@@ -132,19 +140,19 @@
           </div>
           <div id="hud-turn-badge" class="hud-badge my-turn">Du bist am Zug</div>
           <div class="hud-game-actions">
-            <button id="btn-rules-game" class="btn-tool" title="Regeln">
+            <button id="btn-rules-game" class="btn-tool" title="Regeln" aria-label="Spielregeln">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 6.8C10 5.3 7.6 4.7 5 4.7v13c2.6 0 5 .6 7 2.1 2-1.5 4.4-2.1 7-2.1v-13c-2.6 0-5 .6-7 2.1z"/>
                 <path d="M12 6.8v13"/>
               </svg>
-              Regeln
+              <span class="btn-tool-label">Regeln</span>
             </button>
-            <button id="btn-surrender" class="btn-tool btn-danger" title="Partie aufgeben">
+            <button id="btn-surrender" class="btn-tool btn-danger" title="Partie aufgeben" aria-label="Partie aufgeben">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5.5 21V3.5"/>
                 <path d="M5.5 4h12.5l-2.6 4.2 2.6 4.3H5.5z"/>
               </svg>
-              Aufgeben
+              <span class="btn-tool-label">Aufgeben</span>
             </button>
           </div>
         </div>
@@ -168,13 +176,13 @@
 
             <div class="player-stats">
               <div class="stat-item">
-                <span class="stat-label">Noch zu setzen</span>
+                <span class="stat-label"><span class="label-long">Noch zu setzen</span><span class="label-short">Vorrat</span></span>
                 <span id="player-w-pieces-left" class="stat-val">9</span>
               </div>
               <div class="pips-container" id="player-w-pips"></div>
 
               <div class="stat-item">
-                <span class="stat-label">Geschlagene Steine</span>
+                <span class="stat-label"><span class="label-long">Geschlagene Steine</span><span class="label-short">Geschlagen</span></span>
                 <span id="player-w-captured" class="stat-val highlight-stat">0</span>
               </div>
             </div>
@@ -197,13 +205,13 @@
 
             <div class="player-stats">
               <div class="stat-item">
-                <span class="stat-label">Noch zu setzen</span>
+                <span class="stat-label"><span class="label-long">Noch zu setzen</span><span class="label-short">Vorrat</span></span>
                 <span id="player-b-pieces-left" class="stat-val">9</span>
               </div>
               <div class="pips-container" id="player-b-pips"></div>
 
               <div class="stat-item">
-                <span class="stat-label">Geschlagene Steine</span>
+                <span class="stat-label"><span class="label-long">Geschlagene Steine</span><span class="label-short">Geschlagen</span></span>
                 <span id="player-b-captured" class="stat-val highlight-stat">0</span>
               </div>
             </div>
@@ -212,8 +220,30 @@
 
         <!-- Bottom Game Drawer: Move Log & Chat -->
         <section class="game-bottom-dock">
+          <!-- Tab bar: only rendered on small screens, where the two panels share one slot -->
+          <div class="dock-tabs" role="tablist" aria-label="Protokoll und Chat">
+            <button type="button" id="dock-tab-log" class="dock-tab is-active" role="tab" aria-selected="true" aria-controls="dock-panel-log" data-dock-tab="log">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 6.5h11"/>
+                <path d="M9 12h11"/>
+                <path d="M9 17.5h11"/>
+                <path d="M4.5 6.5h.01" stroke-width="2"/>
+                <path d="M4.5 12h.01" stroke-width="2"/>
+                <path d="M4.5 17.5h.01" stroke-width="2"/>
+              </svg>
+              Zugprotokoll
+            </button>
+            <button type="button" id="dock-tab-chat" class="dock-tab" role="tab" aria-selected="false" aria-controls="dock-panel-chat" data-dock-tab="chat">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20.5 11.8a7.5 7.5 0 0 1-7.5 7.5H9.2L4 21.8l1.4-4.1a7.5 7.5 0 0 1 6.1-11.9h1.5a7.5 7.5 0 0 1 7.5 6z"/>
+              </svg>
+              Chat
+              <span id="chat-unread-dot" class="tab-unread-dot hidden" aria-hidden="true"></span>
+            </button>
+          </div>
+
           <!-- Move History Log -->
-          <div class="dock-panel move-log-panel">
+          <div class="dock-panel move-log-panel is-active" id="dock-panel-log" role="tabpanel" aria-labelledby="dock-tab-log" data-dock-panel="log">
             <div class="panel-header">
               <h4>
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -231,7 +261,7 @@
           </div>
 
           <!-- Live Chat Panel -->
-          <div class="dock-panel chat-panel">
+          <div class="dock-panel chat-panel" id="dock-panel-chat" role="tabpanel" aria-labelledby="dock-tab-chat" data-dock-panel="chat">
             <div class="panel-header">
               <h4>
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -242,7 +272,7 @@
             </div>
             <div id="chat-messages" class="chat-messages"></div>
             <form id="chat-form" class="chat-form">
-              <input type="text" id="chat-input" placeholder="Nachricht an Mitspieler..." maxlength="120" autocomplete="off">
+              <input type="text" id="chat-input" placeholder="Nachricht an Mitspieler..." maxlength="120" autocomplete="off" autocapitalize="sentences" enterkeyhint="send">
               <button type="submit" class="btn-chat-send" aria-label="Nachricht senden" title="Senden">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 19.5V5"/>
@@ -324,11 +354,5 @@
   <script src="js/audio.js"></script>
   <script src="js/boardRenderer.js"></script>
   <script src="js/app.js"></script>
-  <script>
-    // Link header rules button to modal
-    document.getElementById('btn-rules-header').addEventListener('click', () => {
-      document.getElementById('modal-rules').classList.remove('hidden');
-    });
-  </script>
 </body>
 </html>

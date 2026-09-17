@@ -39,6 +39,12 @@ const POINT_COORDS = {
   'c4': { x: 220, y: 300 }
 };
 
+/* Radius of the invisible tap/click target around each intersection, in SVG
+   user units. Neighbouring points are 80 units apart, so 36 still leaves the
+   targets disjoint while giving a fingertip roughly 44 CSS px on a phone. */
+const HIT_RADIUS_POINTER = 28;
+const HIT_RADIUS_TOUCH = 36;
+
 const BOARD_LINES = [
   // Outer square
   ['a7', 'd7'], ['d7', 'g7'], ['g7', 'g4'], ['g4', 'g1'],
@@ -67,6 +73,7 @@ class BoardRenderer {
     this.validDestinations = [];
     this.removablePoints = [];
     this.lastMillPoints = [];
+    this.hitRadius = BoardRenderer.hitRadius();
 
     this._initSvg();
   }
@@ -168,8 +175,8 @@ class BoardRenderer {
       // Group for this point, translated to the exact intersection coordinates
       elementsHtml += `<g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">`;
 
-      // 1. Transparent wide hit area for easy clicking
-      elementsHtml += `<circle cx="0" cy="0" r="28" fill="transparent" class="hit-area" />`;
+      // 1. Transparent wide hit area for easy clicking / tapping
+      elementsHtml += `<circle cx="0" cy="0" r="${this.hitRadius}" fill="transparent" class="hit-area" />`;
 
       // 2. Valid destination: a calm concentric ring plus a solid centre dot
       if (isValidDest) {
@@ -230,6 +237,16 @@ class BoardRenderer {
         }
       });
     });
+  }
+
+  /**
+   * Coarse pointers (fingers) need a larger target than a mouse cursor.
+   */
+  static hitRadius() {
+    const coarse = typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: coarse)').matches;
+    return coarse ? HIT_RADIUS_TOUCH : HIT_RADIUS_POINTER;
   }
 
   /**
