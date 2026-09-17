@@ -109,7 +109,6 @@ class MuehleApp {
     // Controls
     this.btnSurrender = document.getElementById('btn-surrender');
     this.btnSoundToggle = document.getElementById('btn-sound-toggle');
-    this.soundIcon = document.getElementById('sound-icon');
     this.btnRulesGame = document.getElementById('btn-rules-game');
     this.btnCloseRules = document.getElementById('btn-close-rules');
 
@@ -159,10 +158,10 @@ class MuehleApp {
     // Sound toggle
     this.btnSoundToggle.addEventListener('click', () => {
       const isMuted = window.soundController.toggleMute();
-      this.soundIcon.textContent = isMuted ? '🔇' : '🔊';
+      this.btnSoundToggle.classList.toggle('is-muted', isMuted);
       this.btnSoundToggle.title = isMuted ? 'Ton aktivieren' : 'Ton stummschalten';
     });
-    this.soundIcon.textContent = window.soundController.isMuted() ? '🔇' : '🔊';
+    this.btnSoundToggle.classList.toggle('is-muted', window.soundController.isMuted());
 
     // Rules modal
     this.btnRulesLogin.addEventListener('click', () => this._showRulesModal(true));
@@ -254,7 +253,7 @@ class MuehleApp {
           this._addMoveLog(`${lastAction.player === 'W' ? 'Weiß' : 'Schwarz'} setzt auf ${lastAction.point}`);
         } else if (lastAction.action === 'move') {
           window.soundController.playMove();
-          this._addMoveLog(`${lastAction.player === 'W' ? 'Weiß' : 'Schwarz'} zieht ${lastAction.from} ➔ ${lastAction.to}`);
+          this._addMoveLog(`${lastAction.player === 'W' ? 'Weiß' : 'Schwarz'} zieht ${lastAction.from} → ${lastAction.to}`);
         } else if (lastAction.action === 'remove') {
           window.soundController.playRemove();
           this._addMoveLog(`${lastAction.player === 'W' ? 'Weiß' : 'Schwarz'} schlägt Stein auf ${lastAction.point}`);
@@ -262,7 +261,7 @@ class MuehleApp {
 
         if (lastAction.millFormed) {
           window.soundController.playMill();
-          this._addSystemLog(`⭐ Mühle geschlossen von ${this.gameState.turn === 'W' ? 'Weiß' : 'Schwarz'}!`);
+          this._addSystemLog(`Mühle geschlossen von ${this.gameState.turn === 'W' ? 'Weiß' : 'Schwarz'}!`);
           if (this.gameState.millTriggerPoint) {
             // Find which mill was closed
             const formedMill = CLIENT_MILLS.find(m =>
@@ -325,10 +324,10 @@ _handleLogin() {
   _updateConnStatus(online) {
     if (this.connStatusIndicator) {
       if (online) {
-        this.connStatusIndicator.textContent = '● Online';
+        this.connStatusIndicator.textContent = 'Online';
         this.connStatusIndicator.className = 'conn-status online';
       } else {
-        this.connStatusIndicator.textContent = '● Getrennt';
+        this.connStatusIndicator.textContent = 'Getrennt';
         this.connStatusIndicator.className = 'conn-status offline';
       }
     }
@@ -370,7 +369,7 @@ _handleLogin() {
       this.hudStatusBanner.className = 'hud-status-banner my-turn';
 
       if (this.gameState.awaitingRemoval) {
-        this.hudInstructionText.innerHTML = '⭐ <strong>Mühle geschlossen!</strong> Klicke auf einen gegnerischen Stein, um ihn zu schlagen.';
+        this.hudInstructionText.innerHTML = '<strong>Mühle geschlossen!</strong> Klicke auf einen gegnerischen Stein, um ihn zu schlagen.';
         this.removablePoints = this._calculateRemovablePoints(this.myColor);
       } else if (this.gameState.phase === 'SETTING') {
         this.hudInstructionText.textContent = `Setzphase: Platziere einen Stein auf ein freies Feld (${this.gameState.unplacedPieces[this.myColor]} übrig).`;
@@ -527,7 +526,7 @@ _handleLogin() {
     const isWin = winner === this.myColor;
     if (isWin) {
       window.soundController.playWin();
-      this.gameOverTitle.textContent = '🎉 Sieg! Herzlichen Glückwunsch!';
+      this.gameOverTitle.textContent = 'Sieg! Herzlichen Glückwunsch!';
       this.gameOverTitle.className = 'game-over-title win';
       this.gameOverWinnerName.textContent = `Gewinner: ${winnerName} (${winner === 'W' ? 'Weiß' : 'Schwarz'})`;
     } else {
@@ -558,7 +557,7 @@ _handleLogin() {
     const isMe = msg.sender === this.myName;
     item.className = `chat-msg ${isMe ? 'chat-me' : 'chat-other'}`;
 
-    const colorBadge = msg.color === 'W' ? '⚪' : '⚫';
+    const colorBadge = `<span class="chat-stone chat-stone-${msg.color === 'W' ? 'w' : 'b'}" aria-hidden="true"></span>`;
     item.innerHTML = `
       <div class="chat-meta">${colorBadge} <strong>${this._escapeHtml(msg.sender)}</strong></div>
       <div class="chat-bubble">${this._escapeHtml(msg.text)}</div>
