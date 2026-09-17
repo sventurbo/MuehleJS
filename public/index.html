@@ -12,25 +12,38 @@
     <header class="app-header">
       <div class="header-brand">
         <div class="brand-icon">
-          <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
-            <rect x="2" y="2" width="28" height="28" stroke="#ffa502" stroke-width="2.5" rx="3"/>
-            <rect x="7" y="7" width="18" height="18" stroke="#ffa502" stroke-width="2" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="7" stroke="#ffa502" stroke-width="2"/>
-            <line x1="16" y1="25" x2="16" y2="30" stroke="#ffa502" stroke-width="2"/>
-            <line x1="2" y1="16" x2="7" y2="16" stroke="#ffa502" stroke-width="2"/>
-            <line x1="25" y1="16" x2="30" y2="16" stroke="#ffa502" stroke-width="2"/>
+          <svg viewBox="0 0 32 32" width="24" height="24" fill="none" aria-hidden="true">
+            <rect x="2.5" y="2.5" width="27" height="27" stroke="currentColor" stroke-width="1.5" rx="4"/>
+            <rect x="8" y="8" width="16" height="16" stroke="currentColor" stroke-width="1.5" rx="2.5"/>
+            <line x1="16" y1="2.5" x2="16" y2="8" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="16" y1="24" x2="16" y2="29.5" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="2.5" y1="16" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="24" y1="16" x2="29.5" y2="16" stroke="currentColor" stroke-width="1.5"/>
           </svg>
         </div>
-        <h1 class="brand-title">MÜHLE <span>Online</span></h1>
+        <h1 class="brand-title">Mühle <span>Online</span></h1>
       </div>
 
       <div class="header-controls">
-        <span id="conn-status-indicator" class="conn-status online">● Online</span>
-        <button id="btn-sound-toggle" class="btn-icon" title="Ton umschalten">
-          <span id="sound-icon">🔊</span>
+        <span id="conn-status-indicator" class="conn-status online">Online</span>
+        <button id="btn-sound-toggle" class="btn-icon btn-sound" title="Ton umschalten" aria-label="Ton umschalten">
+          <svg class="icon icon-sound-on" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11 5 6.5 9H3v6h3.5L11 19V5z"/>
+            <path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/>
+            <path d="M18 7a7 7 0 0 1 0 10"/>
+          </svg>
+          <svg class="icon icon-sound-off" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11 5 6.5 9H3v6h3.5L11 19V5z"/>
+            <path d="M16 10l5 4"/>
+            <path d="M21 10l-5 4"/>
+          </svg>
         </button>
-        <button id="btn-rules-header" class="btn-icon btn-rules-trigger" title="Spielregeln">
-          <span>❓</span>
+        <button id="btn-rules-header" class="btn-icon btn-rules-trigger" title="Spielregeln" aria-label="Spielregeln">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M9.3 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.1-2.7 3.9"/>
+            <path d="M12 17.3h.01" stroke-width="2"/>
+          </svg>
         </button>
       </div>
     </header>
@@ -48,24 +61,41 @@
               <div class="preview-stone preview-b"></div>
             </div>
             <h2>Willkommen bei Mühle Online</h2>
-            <p class="subtitle">Das klassische Strategiespiel für zwei Spieler im Browser. Tritt gegen einen Mitspieler an!</p>
+            <p class="subtitle">Das klassische Strategiespiel für zwei Spieler im Browser. Tritt gegen einen Mitspieler an.</p>
           </div>
 
           <div class="login-form-box">
             <label for="username-input" class="form-label">Dein Spielername</label>
             <div class="input-group">
               <input type="text" id="username-input" class="text-input" placeholder="z.B. MeisterStratege" maxlength="12" autofocus autocomplete="off">
-              <button id="btn-find-game" class="btn btn-primary">Spieler suchen ⚔️</button>
+              <button id="btn-find-game" class="btn btn-primary">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7"/>
+                  <path d="M16.5 16.5 21 21"/>
+                </svg>
+                Spieler suchen
+              </button>
             </div>
             <p class="form-hint">Sobald sich ein zweiter Spieler anmeldet, startet die Partie automatisch.</p>
           </div>
 
           <div class="login-actions">
-            <button id="btn-rules-login" class="btn btn-secondary">📖 Spielregeln anzeigen</button>
+            <button id="btn-rules-login" class="btn btn-secondary">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 6.8C10 5.3 7.6 4.7 5 4.7v13c2.6 0 5 .6 7 2.1 2-1.5 4.4-2.1 7-2.1v-13c-2.6 0-5 .6-7 2.1z"/>
+                <path d="M12 6.8v13"/>
+              </svg>
+              Spielregeln anzeigen
+            </button>
           </div>
 
           <div class="network-badge">
-            <span>🌐 Server läuft mit Dual-Stack IPv6 &amp; IPv4</span>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M3 12h18"/>
+              <path d="M12 3c2.5 2.4 4 5.6 4 9s-1.5 6.6-4 9c-2.5-2.4-4-5.6-4-9s1.5-6.6 4-9z"/>
+            </svg>
+            <span>Server läuft mit Dual-Stack IPv6 &amp; IPv4</span>
           </div>
         </div>
       </section>
@@ -77,9 +107,16 @@
             <div class="radar-ring r1"></div>
             <div class="radar-ring r2"></div>
             <div class="radar-ring r3"></div>
-            <div class="radar-center">⚔️</div>
+            <div class="radar-center">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 20v-1a3.5 3.5 0 0 0-3.5-3.5H6.5A3.5 3.5 0 0 0 3 19v1"/>
+                <circle cx="8.75" cy="8" r="3.5"/>
+                <path d="M16.5 4.8a3.5 3.5 0 0 1 0 6.4"/>
+                <path d="M21 20v-1a3.5 3.5 0 0 0-2.6-3.4"/>
+              </svg>
+            </div>
           </div>
-          <h2>Gegner wird gesucht...</h2>
+          <h2>Gegner wird gesucht</h2>
           <p id="queue-status-text" class="queue-status">Warte auf einen weiteren Mitspieler...</p>
           <p class="queue-subtext">Die Partie startet sofort, wenn ein zweiter Spieler beitritt.</p>
           <button id="btn-cancel-queue" class="btn btn-secondary">Abbrechen</button>
@@ -95,8 +132,20 @@
           </div>
           <div id="hud-turn-badge" class="hud-badge my-turn">Du bist am Zug</div>
           <div class="hud-game-actions">
-            <button id="btn-rules-game" class="btn-tool" title="Regeln">📖 Regeln</button>
-            <button id="btn-surrender" class="btn-tool btn-danger" title="Partie aufgeben">🏳️ Aufgeben</button>
+            <button id="btn-rules-game" class="btn-tool" title="Regeln">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 6.8C10 5.3 7.6 4.7 5 4.7v13c2.6 0 5 .6 7 2.1 2-1.5 4.4-2.1 7-2.1v-13c-2.6 0-5 .6-7 2.1z"/>
+                <path d="M12 6.8v13"/>
+              </svg>
+              Regeln
+            </button>
+            <button id="btn-surrender" class="btn-tool btn-danger" title="Partie aufgeben">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5.5 21V3.5"/>
+                <path d="M5.5 4h12.5l-2.6 4.2 2.6 4.3H5.5z"/>
+              </svg>
+              Aufgeben
+            </button>
           </div>
         </div>
 
@@ -110,7 +159,7 @@
           <!-- Left: Player White Profile -->
           <aside class="player-panel" id="player-w-card">
             <div class="player-header">
-              <div class="stone-avatar avatar-w">⚪</div>
+              <div class="stone-avatar avatar-w" aria-hidden="true"></div>
               <div class="player-meta">
                 <h3 id="player-w-name" class="player-name">Spieler 1</h3>
                 <span class="color-tag">Weiß (Zieht zuerst)</span>
@@ -119,13 +168,13 @@
 
             <div class="player-stats">
               <div class="stat-item">
-                <span class="stat-label">Noch zu setzen:</span>
+                <span class="stat-label">Noch zu setzen</span>
                 <span id="player-w-pieces-left" class="stat-val">9</span>
               </div>
               <div class="pips-container" id="player-w-pips"></div>
 
               <div class="stat-item">
-                <span class="stat-label">Geschlagene Steine:</span>
+                <span class="stat-label">Geschlagene Steine</span>
                 <span id="player-w-captured" class="stat-val highlight-stat">0</span>
               </div>
             </div>
@@ -139,7 +188,7 @@
           <!-- Right: Player Black Profile -->
           <aside class="player-panel" id="player-b-card">
             <div class="player-header">
-              <div class="stone-avatar avatar-b">⚫</div>
+              <div class="stone-avatar avatar-b" aria-hidden="true"></div>
               <div class="player-meta">
                 <h3 id="player-b-name" class="player-name">Spieler 2</h3>
                 <span class="color-tag">Schwarz</span>
@@ -148,13 +197,13 @@
 
             <div class="player-stats">
               <div class="stat-item">
-                <span class="stat-label">Noch zu setzen:</span>
+                <span class="stat-label">Noch zu setzen</span>
                 <span id="player-b-pieces-left" class="stat-val">9</span>
               </div>
               <div class="pips-container" id="player-b-pips"></div>
 
               <div class="stat-item">
-                <span class="stat-label">Geschlagene Steine:</span>
+                <span class="stat-label">Geschlagene Steine</span>
                 <span id="player-b-captured" class="stat-val highlight-stat">0</span>
               </div>
             </div>
@@ -166,7 +215,17 @@
           <!-- Move History Log -->
           <div class="dock-panel move-log-panel">
             <div class="panel-header">
-              <h4>📜 Zugprotokoll</h4>
+              <h4>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6.5h11"/>
+                  <path d="M9 12h11"/>
+                  <path d="M9 17.5h11"/>
+                  <path d="M4.5 6.5h.01" stroke-width="2"/>
+                  <path d="M4.5 12h.01" stroke-width="2"/>
+                  <path d="M4.5 17.5h.01" stroke-width="2"/>
+                </svg>
+                Zugprotokoll
+              </h4>
             </div>
             <ul id="move-log-list" class="move-log-list"></ul>
           </div>
@@ -174,12 +233,22 @@
           <!-- Live Chat Panel -->
           <div class="dock-panel chat-panel">
             <div class="panel-header">
-              <h4>💬 Spiel-Chat</h4>
+              <h4>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20.5 11.8a7.5 7.5 0 0 1-7.5 7.5H9.2L4 21.8l1.4-4.1a7.5 7.5 0 0 1 6.1-11.9h1.5a7.5 7.5 0 0 1 7.5 6z"/>
+                </svg>
+                Spiel-Chat
+              </h4>
             </div>
             <div id="chat-messages" class="chat-messages"></div>
             <form id="chat-form" class="chat-form">
               <input type="text" id="chat-input" placeholder="Nachricht an Mitspieler..." maxlength="120" autocomplete="off">
-              <button type="submit" class="btn-chat-send">Senden</button>
+              <button type="submit" class="btn-chat-send" aria-label="Nachricht senden" title="Senden">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 19.5V5"/>
+                  <path d="M5.5 11.5 12 5l6.5 6.5"/>
+                </svg>
+              </button>
             </form>
           </div>
         </section>
@@ -205,7 +274,12 @@
       <div class="modal-card rules-card">
         <div class="rules-header">
           <h2>Offizielle Mühle-Regeln</h2>
-          <button id="btn-close-rules" class="btn-close-modal">✕</button>
+          <button id="btn-close-rules" class="btn-close-modal" aria-label="Regeln schließen" title="Schließen">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.5 6.5l11 11"/>
+              <path d="M17.5 6.5l-11 11"/>
+            </svg>
+          </button>
         </div>
         <div class="rules-body">
           <section class="rule-section">
@@ -258,4 +332,3 @@
   </script>
 </body>
 </html>
-

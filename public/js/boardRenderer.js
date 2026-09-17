@@ -2,6 +2,9 @@
  * boardRenderer.js
  * Crisp SVG board renderer for Mühle.
  * Manages coordinates, pieces, selection highlights, valid move markers, and mill effects.
+ *
+ * Colours live in css/style.css. Gradient stops are addressed by class so the
+ * board follows the active light/dark theme instead of hardcoding hex values.
  */
 
 const POINT_COORDS = {
@@ -71,46 +74,28 @@ class BoardRenderer {
   _initSvg() {
     this.container.innerHTML = `
       <svg viewBox="0 0 600 600" class="muehle-svg" preserveAspectRatio="xMidYMid meet">
+        <title>Mühle-Spielbrett mit 24 Feldern</title>
         <defs>
-          <!-- Board Wood/Slate Gradient -->
-          <radialGradient id="boardGrad" cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stop-color="#2a2e39" />
-            <stop offset="100%" stop-color="#181b22" />
+          <!-- Board surface: a very subtle vignette, themed via CSS -->
+          <radialGradient id="boardGrad" cx="50%" cy="50%" r="75%">
+            <stop offset="0%" class="plate-stop-start" />
+            <stop offset="100%" class="plate-stop-end" />
           </radialGradient>
 
-          <!-- White Piece Realistic Gradient & Shadow -->
-          <radialGradient id="whitePieceGrad" cx="35%" cy="30%" r="65%">
-            <stop offset="0%" stop-color="#ffffff" />
-            <stop offset="40%" stop-color="#ecebf0" />
-            <stop offset="85%" stop-color="#c9c8d3" />
-            <stop offset="100%" stop-color="#a2a0b1" />
+          <!-- Stone gradients, themed via CSS -->
+          <radialGradient id="whitePieceGrad" cx="34%" cy="28%" r="78%">
+            <stop offset="0%" class="stone-w-stop-hi" />
+            <stop offset="100%" class="stone-w-stop-lo" />
           </radialGradient>
 
-          <!-- Black Piece Realistic Gradient & Shadow -->
-          <radialGradient id="blackPieceGrad" cx="35%" cy="30%" r="65%">
-            <stop offset="0%" stop-color="#4e5565" />
-            <stop offset="40%" stop-color="#2a2e3a" />
-            <stop offset="85%" stop-color="#15171d" />
-            <stop offset="100%" stop-color="#090a0d" />
+          <radialGradient id="blackPieceGrad" cx="34%" cy="28%" r="78%">
+            <stop offset="0%" class="stone-b-stop-hi" />
+            <stop offset="100%" class="stone-b-stop-lo" />
           </radialGradient>
 
-          <!-- Drop Shadow for Pieces -->
-          <filter id="pieceShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="2" dy="5" stdDeviation="4" flood-color="#000000" flood-opacity="0.6"/>
-          </filter>
-
-          <!-- Glow for Mill -->
+          <!-- Soft glow for the mill beam -->
           <filter id="goldGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
-            <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-
-          <!-- Glow for Valid Move Targets -->
-          <filter id="cyanGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
             <feMerge>
               <feMergeNode in="blur"/>
               <feMergeNode in="SourceGraphic"/>
@@ -119,15 +104,15 @@ class BoardRenderer {
         </defs>
 
         <!-- Board Surface Plate -->
-        <rect x="15" y="15" width="570" height="570" rx="24" class="board-plate" fill="url(#boardGrad)" stroke-width="4"/>
-        <rect x="25" y="25" width="550" height="550" rx="18" fill="none" stroke="#252a36" stroke-width="1.5"/>
+        <rect x="12" y="12" width="576" height="576" rx="28" class="board-plate" fill="url(#boardGrad)" stroke-width="1"/>
+        <rect x="26" y="26" width="548" height="548" rx="20" fill="none" class="board-plate-inner" stroke-width="1"/>
 
         <!-- Grid Lines Group -->
         <g id="grid-lines" class="grid-lines">
           ${BOARD_LINES.map(([p1, p2]) => {
             const c1 = POINT_COORDS[p1];
             const c2 = POINT_COORDS[p2];
-            return `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" class="board-line" stroke-width="5" stroke-linecap="round"/>`;
+            return `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" class="board-line" stroke-width="3.5" stroke-linecap="round"/>`;
           }).join('')}
         </g>
 
@@ -137,12 +122,12 @@ class BoardRenderer {
         <!-- Board Intersection Points (Base sockets) -->
         <g id="grid-nodes">
           ${Object.entries(POINT_COORDS).map(([pt, c]) => `
-            <circle cx="${c.x}" cy="${c.y}" r="9" class="grid-socket" stroke-width="2.5" />
+            <circle cx="${c.x}" cy="${c.y}" r="6" class="grid-socket" stroke-width="1.5" />
           `).join('')}
         </g>
 
         <!-- Coordinate Labels (subtle) -->
-        <g id="grid-labels" class="grid-labels" font-size="10" text-anchor="middle" dominant-baseline="central">
+        <g id="grid-labels" class="grid-labels" font-size="9" text-anchor="middle" dominant-baseline="central">
           ${Object.entries(POINT_COORDS).map(([pt, c]) => {
             const dy = (c.y < 300) ? -18 : (c.y > 300 ? 18 : 0);
             const dx = (c.y === 300) ? (c.x < 300 ? -18 : 18) : 0;
@@ -186,36 +171,25 @@ class BoardRenderer {
       // 1. Transparent wide hit area for easy clicking
       elementsHtml += `<circle cx="0" cy="0" r="28" fill="transparent" class="hit-area" />`;
 
-      // 2. Highlight for valid destination (concentric, perfectly centered pulsing indicator)
+      // 2. Valid destination: a calm concentric ring plus a solid centre dot
       if (isValidDest) {
         elementsHtml += `
-          <circle cx="0" cy="0" r="18" fill="rgba(46, 213, 115, 0.22)" stroke="#2ed573" stroke-width="2.5" stroke-dasharray="5,3" class="dest-indicator" filter="url(#cyanGlow)">
-            <animate attributeName="r" values="14;21;14" dur="1.3s" repeatCount="indefinite" />
-            <animate attributeName="stroke-opacity" values="0.4;1;0.4" dur="1.3s" repeatCount="indefinite" />
-            <animate attributeName="fill-opacity" values="0.15;0.35;0.15" dur="1.3s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="0" cy="0" r="6" fill="#2ed573" class="dest-dot">
-            <animate attributeName="r" values="5;7;5" dur="1.3s" repeatCount="indefinite" />
-          </circle>
+          <circle cx="0" cy="0" r="16" class="dest-indicator" stroke-width="1.5" />
+          <circle cx="0" cy="0" r="5" class="dest-dot" />
         `;
       }
 
-      // 3. Highlight for selected stone (concentric animated dashed ring)
+      // 3. Selected stone: a single solid accent ring
       if (isSelected) {
         elementsHtml += `
-          <circle cx="0" cy="0" r="26" fill="none" stroke="#ffa502" stroke-width="3" stroke-dasharray="6,4" class="selection-ring">
-            <animate attributeName="stroke-dashoffset" values="0;40" dur="2s" repeatCount="indefinite" />
-          </circle>
+          <circle cx="0" cy="0" r="27" fill="none" class="selection-ring" stroke-width="2" />
         `;
       }
 
-      // 4. Highlight for removable opponent piece (concentric pulsing target)
+      // 4. Removable opponent piece: a tinted target ring
       if (isRemovable) {
         elementsHtml += `
-          <circle cx="0" cy="0" r="26" fill="rgba(255, 71, 87, 0.25)" stroke="#ff4757" stroke-width="3" stroke-dasharray="5,3" class="removal-target">
-            <animate attributeName="r" values="24;28;24" dur="1.2s" repeatCount="indefinite" />
-            <animate attributeName="stroke-opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite" />
-          </circle>
+          <circle cx="0" cy="0" r="26" class="removal-target" stroke-width="2" />
         `;
       }
 
@@ -223,8 +197,6 @@ class BoardRenderer {
       if (piece) {
         const isWhite = piece === 'W';
         const fillGrad = isWhite ? 'url(#whitePieceGrad)' : 'url(#blackPieceGrad)';
-        const rimColor = isWhite ? '#ffffff' : '#495266';
-        const innerRim = isWhite ? '#d0cee0' : '#1d212b';
 
         let pieceClasses = `game-piece ${isWhite ? 'piece-white' : 'piece-black'}`;
         if (isMyTurn && isMyPiece && gameState.phase === 'MOVING' && !gameState.awaitingRemoval) {
@@ -236,11 +208,10 @@ class BoardRenderer {
 
         elementsHtml += `
           <g class="${pieceClasses}">
-            <!-- Stone Body -->
-            <circle cx="0" cy="0" r="21" fill="${fillGrad}" stroke="${rimColor}" stroke-width="2" filter="url(#pieceShadow)"/>
-            <!-- Stone Embossed Rings -->
-            <circle cx="0" cy="0" r="14" fill="none" stroke="${innerRim}" stroke-width="1.5" stroke-opacity="0.7"/>
-            <circle cx="0" cy="0" r="7" fill="none" stroke="${innerRim}" stroke-width="1.5" stroke-opacity="0.5"/>
+            <!-- Stone body -->
+            <circle cx="0" cy="0" r="21" class="stone-body" fill="${fillGrad}" stroke-width="1"/>
+            <!-- Single specular highlight -->
+            <ellipse cx="-5.5" cy="-7.5" rx="7.5" ry="4.5" class="stone-gloss" transform="rotate(-30 -5.5 -7.5)"/>
           </g>
         `;
       }
@@ -275,11 +246,11 @@ class BoardRenderer {
 
     this.millGlowLayer.innerHTML = `
       <line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}"
-            stroke="#ffa502" stroke-width="8" stroke-linecap="round"
+            stroke-width="6" stroke-linecap="round"
             filter="url(#goldGlow)" class="mill-gold-beam" />
     `;
 
-    // Remove glow after 2 seconds
+    // Remove glow after the fade-out animation has finished
     setTimeout(() => {
       this.millGlowLayer.innerHTML = '';
     }, 2500);
@@ -288,4 +259,3 @@ class BoardRenderer {
 
 window.BoardRenderer = BoardRenderer;
 window.POINT_COORDS = POINT_COORDS;
-

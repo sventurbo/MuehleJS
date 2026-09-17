@@ -27,9 +27,13 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
 - **Dual-Stack Netzwerkunterstützung (IPv6 & IPv4)**:
   - Primär auf **IPv6** (`::`) gebunden – ideal für moderne Server- und Cloud-Umgebungen.
   - Unterstützt gleichzeitig **IPv4** (über IPv4-mapped Dual-Stack oder dedizierten sekundären Fallback-Listener auf `0.0.0.0`).
-- **Modernes, responsives UI**:
-  - Vektorbasiertes, gestochen scharfes **SVG-Spielfeld** mit dynamischen Animationen (drehende Auswahlringe, pulsierende Zielmarker, goldener Mühle-Strahl).
-  - Optimiert für Desktop ab **1024 × 768 Pixeln** sowie skalierbar auf größere Bildschirme.
+- **Minimalistisches, responsives UI**:
+  - Durchgängiges Design-System: neutrale Flächen, ein einziger Akzentfarbton (Blau), Haarlinien-Ränder, 4pt-Abstandsraster und translucent Materials (`backdrop-filter`) statt farbiger Glow-Effekte.
+  - Vektorbasiertes, gestochen scharfes **SVG-Spielfeld**; Auswahlring, Zielmarker und Mühle-Strahl sind ruhige, statische bzw. einmalig eingeblendete Marker.
+  - Vollständiges **Light- und Dark-Theme** über `prefers-color-scheme`; das Spielbrett folgt dem Theme (helles Brett im Light-Mode, dunkles im Dark-Mode).
+  - Alle Icons sind **Inline-SVG** in `currentColor` – keine Emoji, keine Icon-Fonts, keine externen Assets.
+  - Optimiert für Desktop ab **1024 × 768 Pixeln**: die komplette Spielfläche passt ohne Scrollen ins Fenster und skaliert auf größere Bildschirme.
+  - Respektiert `prefers-reduced-motion`.
   - Cross-Browser-kompatibel (aktuelle Versionen von **Chrome, Firefox, Safari**).
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
@@ -120,10 +124,10 @@ Web-Spiel/
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)
 │   ├── css/
-│   │   └── style.css         # Responsives Design (ab 1024x768), Vektor- und Partikelanimationen
+│   │   └── style.css         # Design-System (Tokens, Light/Dark-Theme), Layout & Animationen
 │   └── js/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
-│       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld, Interaktionen & visuelle Hervorhebungen
+│       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen & Hervorhebungen
 │       └── app.js            # Client-Zustand, Socket.io-Client, HUD & Benutzeraktionen
 ├── docs/
 │   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation
