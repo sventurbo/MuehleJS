@@ -146,11 +146,16 @@ class BoardRenderer {
 
   /**
    * Updates the board display with the given game state.
+   *
+   * The capture targets are derived from `gameState` here rather than passed in,
+   * so a `.removal-target` ring can never outlive the state it was computed
+   * from: the click handler in app.js asks the same function with the same
+   * state and therefore always accepts what the board shows.
    */
-  render(gameState, playerColor, selectedPoint = null, validDestinations = [], removablePoints = []) {
+  render(gameState, playerColor, selectedPoint = null, validDestinations = []) {
     this.selectedPoint = selectedPoint;
     this.validDestinations = validDestinations;
-    this.removablePoints = removablePoints;
+    this.removablePoints = window.MuehleRules.getCaptureTargets(gameState, playerColor);
 
     const board = gameState.board;
     const isMyTurn = gameState.turn === playerColor && !gameState.winner;
