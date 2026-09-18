@@ -1,0 +1,172 @@
+/* ==========================================================================
+   Design tokens
+   The single source of truth for colour, surface, typography, spacing, radii,
+   elevation and motion. The dark theme lives on :root, the light theme only
+   overrides what actually changes.
+
+   NOTE: scripts/contrast-check.js parses the :root block below and the light
+   override verbatim. Keep both blocks' shape and keep every colour a literal
+   hex/rgb/rgba value — var() indirection is not resolvable by that checker.
+   ========================================================================== */
+
+:root {
+  /* ── Surfaces ── */
+  --bg-main: #0a0a0c;
+  --bg-surface: #16161a;
+  --bg-card: #1f1f24;
+  --input-bg: #121216;
+  --border-color: #2e2e35;
+  /* ── Text ── */
+  --text-main: #f2f2f7;
+  --text-muted: #9a9aa4;
+  --rules-body-color: #d4d4dc;
+  --opponent-turn-color: #c7c7d1;
+  /* ── Accents: blue is the only brand accent, green/red are state only.
+     --accent-cyan is unused by the design but kept because contrast-check.js
+     asserts it by name; dropping it would silently weaken that gate. ── */
+  --accent-blue: #2f6fe0;
+  --accent-green: #30d158;
+  --accent-red: #ff453a;
+  --accent-gold: #ff9f0a;
+  --accent-cyan: #64d2ff;
+  /* ── Controls ── */
+  --btn-secondary-bg: #26262c;
+  --btn-secondary-hover: #30303a;
+  --btn-icon-hover: #26262c;
+  --btn-tool-hover: #26262c;
+  --opponent-turn-bg: #26262c;
+  --badge-my-turn-color: #06230f;
+  --badge-finished-bg: #2a1a02;
+  --pip-inactive: #6c6c78;
+  --pip-black-active: #4a4a55;
+  --chat-bubble-me: #2b3a52;
+  --chat-bubble-me-border: #2b3a52;
+  --hover-socket: #33333c;
+  /* ── Stones: identical in both themes, they are objects and not chrome ── */
+  --white-stone-color: #ffffff;
+  --stone-w-hi: #ffffff;
+  --stone-w-lo: #dcdce4;
+  --stone-w-rim: #ffffff;
+  --stone-b-hi: #54545f;
+  --stone-b-lo: #15151a;
+  --stone-b-rim: #3a3a44;
+  /* ── Board: follows the theme ── */
+  --board-plate: #26262c;
+  --board-plate-end: #141418;
+  --board-plate-inner: #2e2e36;
+  --board-plate-stroke: #31313a;
+  --board-line: #55555f;
+  --board-socket: #17171b;
+  --board-socket-stroke: #4a4a55;
+  --board-label: #ffffff;
+  /* ── Tints & materials (pre-baked alpha, never var() indirection) ── */
+  --hairline: rgba(255, 255, 255, 0.09);
+  --material-bg: rgba(22, 22, 26, 0.72);
+  --scrim: rgba(0, 0, 0, 0.45);
+  --zebra-stripe: rgba(255, 255, 255, 0.025);
+  --tint-blue: rgba(47, 111, 224, 0.14);
+  --tint-blue-ring: rgba(47, 111, 224, 0.3);
+  --tint-green: rgba(48, 209, 88, 0.12);
+  --tint-green-strong: rgba(48, 209, 88, 0.22);
+  --tint-red: rgba(255, 69, 58, 0.14);
+  --tint-red-strong: rgba(255, 69, 58, 0.26);
+  --tint-gold: rgba(255, 159, 10, 0.12);
+  --piece-shadow: rgba(0, 0, 0, 0.55);
+  --gloss-white: rgba(255, 255, 255, 0.3);
+  --gloss-black: rgba(255, 255, 255, 0.14);
+  /* ── Typography ── */
+  --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --tracking-tight: -0.021em;
+  --tracking-body: -0.01em;
+  /* ── 4pt spacing grid ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  /* ── Radii ── */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-pill: 980px;
+  /* ── Elevation: never coloured ── */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 2px 4px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.6);
+  /* ── Motion ── */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-4: 420ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-main: #f2f2f7;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --input-bg: #f2f2f7;
+    --border-color: #d8d8de;
+    --text-main: #1c1c1e;
+    --text-muted: #5c5c66;
+    --rules-body-color: #3a3a40;
+    --opponent-turn-color: #3a3a40;
+    --accent-blue: #0b62d6;
+    --accent-green: #12813f;
+    --accent-red: #c9221c;
+    --accent-gold: #9a5b00;
+    --accent-cyan: #0d6a86;
+    --btn-secondary-bg: #e8e8ed;
+    --btn-secondary-hover: #dcdce2;
+    --btn-icon-hover: #e8e8ed;
+    --btn-tool-hover: #e8e8ed;
+    --opponent-turn-bg: #e8e8ed;
+    --badge-my-turn-color: #ffffff;
+    --badge-finished-bg: #ffffff;
+    --pip-inactive: #83838d;
+    --pip-black-active: #3a3a42;
+    --chat-bubble-me: #d4dcea;
+    --chat-bubble-me-border: #d4dcea;
+    --hover-socket: #e0e0e6;
+    --white-stone-color: #ffffff;
+    --stone-w-hi: #ffffff;
+    --stone-w-lo: #dcdce4;
+    --stone-w-rim: #b8b8c2;
+    --stone-b-hi: #54545f;
+    --stone-b-lo: #15151a;
+    --stone-b-rim: #3a3a44;
+    --board-plate: #ffffff;
+    --board-plate-end: #e9e9ef;
+    --board-plate-inner: #eeeef3;
+    --board-plate-stroke: #dcdce2;
+    --board-line: #b8b8c0;
+    --board-socket: #e4e4ea;
+    --board-socket-stroke: #c2c2ca;
+    --board-label: #3a3a40;
+    --hairline: rgba(0, 0, 0, 0.09);
+    --material-bg: rgba(255, 255, 255, 0.72);
+    --scrim: rgba(0, 0, 0, 0.32);
+    --zebra-stripe: rgba(0, 0, 0, 0.025);
+    --tint-blue: rgba(11, 98, 214, 0.1);
+    --tint-blue-ring: rgba(11, 98, 214, 0.24);
+    --tint-green: rgba(18, 129, 63, 0.1);
+    --tint-green-strong: rgba(18, 129, 63, 0.2);
+    --tint-red: rgba(201, 34, 28, 0.1);
+    --tint-red-strong: rgba(201, 34, 28, 0.22);
+    --tint-gold: rgba(154, 91, 0, 0.1);
+    --piece-shadow: rgba(0, 0, 0, 0.22);
+    --gloss-white: rgba(255, 255, 255, 0.45);
+    --gloss-black: rgba(255, 255, 255, 0.16);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.07);
+    --shadow-3: 0 2px 4px rgba(0, 0, 0, 0.06), 0 24px 60px rgba(0, 0, 0, 0.14);
+  }
+}

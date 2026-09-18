@@ -1,0 +1,64 @@
+/* ==========================================================================
+   Controls: buttons & inputs
+   ========================================================================== */
+.btn {
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: var(--tracking-body);
+  min-height: 44px;
+  padding: 0 var(--sp-5);
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--accent-blue);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background: var(--btn-secondary-bg);
+  color: var(--text-main);
+}
+
+.text-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  letter-spacing: var(--tracking-body);
+  outline: none;
+  transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+
+.text-input::placeholder {
+  color: var(--text-muted);
+}
+
+.text-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 4px var(--tint-blue-ring);
+}

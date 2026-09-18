@@ -1,0 +1,143 @@
+/* ==========================================================================
+   Board internals (SVG emitted by boardRenderer.js)
+   ========================================================================== */
+
+/* Gradient stops are styled here so the board follows the active theme. */
+.plate-stop-start { stop-color: var(--board-plate); }
+.plate-stop-end { stop-color: var(--board-plate-end); }
+.stone-w-stop-hi { stop-color: var(--stone-w-hi); }
+.stone-w-stop-lo { stop-color: var(--stone-w-lo); }
+.stone-b-stop-hi { stop-color: var(--stone-b-hi); }
+.stone-b-stop-lo { stop-color: var(--stone-b-lo); }
+
+.board-plate {
+  stroke: var(--board-plate-stroke);
+}
+
+.board-plate-inner {
+  stroke: var(--board-plate-inner);
+}
+
+.board-line {
+  stroke: var(--board-line);
+}
+
+.grid-socket {
+  fill: var(--board-socket);
+  stroke: var(--board-socket-stroke);
+  transition: fill var(--dur-2) var(--ease-out), stroke var(--dur-2) var(--ease-out);
+}
+
+.grid-label {
+  fill: var(--board-label);
+  opacity: 0.45;
+}
+
+/* Touch devices get the same socket feedback on press instead of on hover. */
+.board-point-group:active .grid-socket {
+  fill: var(--hover-socket);
+  stroke: var(--accent-blue);
+}
+
+/* Valid destination: a calm ring plus a solid centre dot. */
+.dest-indicator {
+  fill: var(--tint-blue);
+  stroke: var(--accent-blue);
+  stroke-opacity: 0.55;
+}
+
+.dest-dot {
+  fill: var(--accent-blue);
+}
+
+/* Currently selected stone */
+.selection-ring {
+  stroke: var(--accent-blue);
+}
+
+/* Opponent stone that may be captured */
+.removal-target {
+  fill: var(--tint-red);
+  stroke: var(--accent-red);
+}
+
+.game-piece {
+  filter: drop-shadow(0 2px 3px var(--piece-shadow));
+  /* Scale around the stone's own centre, not the origin of the SVG canvas. */
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: filter var(--dur-2) var(--ease-out);
+}
+
+.piece-white .stone-body { stroke: var(--stone-w-rim); }
+.piece-black .stone-body { stroke: var(--stone-b-rim); }
+
+.piece-white .stone-gloss { fill: var(--gloss-white); }
+.piece-black .stone-gloss { fill: var(--gloss-black); }
+
+.piece-selectable {
+  cursor: pointer;
+}
+
+.piece-removable {
+  cursor: pointer;
+  filter: drop-shadow(0 2px 3px var(--piece-shadow)) drop-shadow(0 0 6px var(--tint-red-strong));
+}
+
+/* Stone motion. boardRenderer.js keeps a stone's node while it stays on its
+   point, so each of these runs exactly once: when the stone appears, travels
+   or leaves. The renderer drops the class again when the animation ends. */
+
+/* Placed: drops onto the point with a slight overshoot. */
+.piece-entering {
+  animation: pieceEnter var(--dur-3) var(--ease-out);
+}
+
+/* Moved: glides in from its old point (offset set inline by the renderer),
+   lifted off the board on the way. */
+.piece-arriving {
+  animation:
+    pieceTravel var(--dur-4) var(--ease-in-out),
+    pieceLift var(--dur-4) var(--ease-in-out);
+}
+
+/* Captured: shrinks and fades, then the renderer removes the node. */
+.piece-leaving {
+  pointer-events: none;
+  animation: pieceLeave var(--dur-3) var(--ease-in) forwards;
+}
+
+@keyframes pieceEnter {
+  0% { opacity: 0; scale: 0.4; }
+  60% { opacity: 1; scale: 1.08; }
+  100% { opacity: 1; scale: 1; }
+}
+
+@keyframes pieceTravel {
+  from { translate: var(--travel-x) var(--travel-y); }
+  to { translate: 0 0; }
+}
+
+@keyframes pieceLift {
+  50% {
+    scale: 1.1;
+    filter: drop-shadow(0 10px 8px var(--piece-shadow));
+  }
+}
+
+@keyframes pieceLeave {
+  to { opacity: 0; scale: 0.5; }
+}
+
+/* Mill: a single gold beam that fades in and out once. */
+.mill-gold-beam {
+  stroke: var(--accent-gold);
+  animation: millBeam 2.5s var(--ease-out) forwards;
+}
+
+@keyframes millBeam {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}

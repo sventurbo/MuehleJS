@@ -1,0 +1,491 @@
+/* ==========================================================================
+   Adaptations
+   Everything that reacts to the device rather than to the app state, imported
+   last because these rules override the modules above.
+
+   Desktop keeps the three-column arena; tablets stack it; phones (<= 700px)
+   get a touch-first layout where the board is the largest element on screen.
+   Below that: coarse pointers, hover capability and reduced motion.
+   ========================================================================== */
+
+/* ── Tablets and small laptops: both player panels share one row above the
+      board, so the board stays as close to the top of the screen as possible ── */
+@media (max-width: 1023px) {
+  .game-arena {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "player-w player-b"
+      "board board";
+    justify-content: center;
+    gap: var(--sp-3);
+  }
+  #player-w-card {
+    grid-area: player-w;
+  }
+  #player-b-card {
+    grid-area: player-b;
+  }
+  .player-panel {
+    width: auto;
+    max-width: none;
+  }
+  .board-wrapper {
+    grid-area: board;
+    width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+  .game-bottom-dock {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .dock-panel {
+    height: 148px;
+  }
+}
+
+/* ── Phones: board first, everything else condensed. Landscape phones are
+      wider than 700px but just as cramped, so they get the same treatment. ── */
+@media (max-width: 700px),
+       (orientation: landscape) and (max-height: 560px) and (max-width: 1023px) {
+  /* Header */
+  .app-header {
+    position: static;
+    height: auto;
+    min-height: 48px;
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(var(--sp-4), env(safe-area-inset-left));
+    padding-right: max(var(--sp-4), env(safe-area-inset-right));
+  }
+  .brand-title {
+    font-size: 1rem;
+  }
+  .header-controls {
+    gap: var(--sp-1);
+  }
+  .conn-status {
+    margin-right: 0;
+  }
+
+  /* Login */
+  #screen-login {
+    padding: var(--sp-4);
+    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+  }
+  .login-card {
+    padding: var(--sp-8) var(--sp-5) var(--sp-6);
+    border-radius: var(--radius-lg);
+  }
+  .login-hero h2 {
+    font-size: 1.375rem;
+  }
+  .login-hero .subtitle {
+    margin-bottom: var(--sp-6);
+  }
+  .preview-stone {
+    width: 28px;
+    height: 28px;
+  }
+  /* The name field and the search button each get their own full-width row —
+     side by side they left the input too narrow to type a name into. */
+  .input-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-3);
+  }
+  .input-group .btn {
+    width: 100%;
+  }
+  .text-input,
+  .chat-form input {
+    /* 16px keeps iOS Safari from zooming the page in on focus. */
+    font-size: 1rem;
+  }
+  .text-input {
+    min-height: 48px;
+  }
+
+  /* Queue */
+  #screen-queue {
+    padding: var(--sp-4);
+    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+  }
+  .queue-card {
+    padding: var(--sp-8) var(--sp-5);
+    border-radius: var(--radius-lg);
+  }
+  .queue-card .btn {
+    width: 100%;
+  }
+
+  /* Game screen */
+  #screen-game {
+    padding-top: var(--sp-2);
+    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+    padding-left: max(var(--sp-3), env(safe-area-inset-left));
+    padding-right: max(var(--sp-3), env(safe-area-inset-right));
+  }
+
+  .game-hud-top {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-2);
+  }
+  .hud-phase-box {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .phase-name {
+    font-size: 0.75rem;
+    padding: 4px var(--sp-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The tinted instruction banner already carries the turn state, so the
+     duplicate badge is dropped to save a row on small screens. */
+  .hud-badge {
+    display: none;
+  }
+  .hud-game-actions {
+    margin-left: auto;
+    flex: none;
+  }
+  .hud-status-banner {
+    font-size: 0.8125rem;
+    padding: var(--sp-2) var(--sp-3);
+    margin-bottom: var(--sp-2);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Arena: both player panels share one compact row above the board. */
+  .game-arena {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "player-w player-b"
+      "board board";
+    align-items: stretch;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-3);
+  }
+  #player-w-card {
+    grid-area: player-w;
+  }
+  #player-b-card {
+    grid-area: player-b;
+  }
+  .board-wrapper {
+    grid-area: board;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .player-panel {
+    width: auto;
+    max-width: none;
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--radius-md);
+  }
+  .player-header {
+    gap: var(--sp-2);
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+  }
+  .stone-avatar {
+    width: 24px;
+    height: 24px;
+  }
+  .player-name {
+    font-size: 0.8125rem;
+    max-width: 100%;
+  }
+  .color-tag {
+    font-size: 0.6875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .player-stats {
+    gap: 2px;
+  }
+  .stat-item {
+    font-size: 0.6875rem;
+    gap: var(--sp-1);
+  }
+  .stat-val {
+    font-size: 0.9375rem;
+  }
+  .label-long {
+    display: none;
+  }
+  .label-short {
+    display: inline;
+  }
+  .pips-container {
+    gap: 2px;
+    padding: 3px 0;
+  }
+  .pip {
+    height: 5px;
+  }
+
+  /* Dock: log and chat share one slot behind a tab bar. */
+  .game-bottom-dock {
+    display: block;
+  }
+  .dock-tabs {
+    display: flex;
+  }
+  .dock-panel {
+    display: none;
+    height: clamp(150px, 26vh, 220px);
+  }
+  .dock-panel.is-active {
+    display: flex;
+  }
+  /* The tab already names the panel. */
+  .panel-header {
+    display: none;
+  }
+  .chat-msg {
+    max-width: 88%;
+  }
+  .chat-form {
+    padding: var(--sp-2);
+  }
+  .chat-form input {
+    min-height: 40px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Modals become near-full-height sheets */
+  .modal-backdrop {
+    padding: var(--sp-4);
+    padding-top: max(var(--sp-4), env(safe-area-inset-top));
+    padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
+  }
+  .modal-card {
+    border-radius: var(--radius-lg);
+  }
+  .game-over-box {
+    padding: var(--sp-8) var(--sp-5);
+  }
+  .game-over-title {
+    font-size: 1.3125rem;
+  }
+  .rules-card {
+    max-height: 88vh;
+    max-height: 88dvh;
+  }
+  .rules-header {
+    padding: var(--sp-4);
+  }
+  .rules-header h2 {
+    font-size: 1.0625rem;
+  }
+  .rules-body {
+    padding: var(--sp-4);
+    gap: var(--sp-5);
+    font-size: 0.875rem;
+  }
+
+  /* Toasts span the width so long messages stay readable */
+  .toast-container {
+    left: var(--sp-3);
+    right: var(--sp-3);
+    bottom: calc(var(--sp-3) + env(safe-area-inset-bottom));
+    align-items: stretch;
+  }
+  .toast {
+    max-width: none;
+  }
+}
+
+/* ── Narrow phones (<= 360px, e.g. iPhone SE 1st gen): trim the last pixels ── */
+@media (max-width: 360px) {
+  .conn-status {
+    /* Only the state dot remains; the label would crowd the brand out. */
+    font-size: 0;
+    gap: 0;
+    padding: 4px;
+  }
+  .brand-title span {
+    display: none;
+  }
+  .btn-tool {
+    padding: 0 var(--sp-2);
+  }
+  .btn-tool .btn-tool-label {
+    display: none;
+  }
+  .login-card,
+  .queue-card {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+  .color-tag {
+    display: none;
+  }
+}
+
+/* ── Phones in landscape: player panels flank the board, which is sized by
+      the short edge so as much of it as possible stays on screen ── */
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 1023px) {
+  /* Centring would push the top of a tall card out of reach when it overflows. */
+  #screen-login,
+  #screen-queue {
+    justify-content: flex-start;
+  }
+  .login-card,
+  .queue-card {
+    margin: var(--sp-4) 0;
+  }
+  .app-header {
+    min-height: 44px;
+  }
+  /* Vertical room is the scarce resource: the instruction banner and the HUD
+     share one row so the board starts as high up as possible. */
+  #screen-game {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "banner hud"
+      "arena arena"
+      "dock dock";
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .game-hud-top {
+    grid-area: hud;
+    flex-wrap: nowrap;
+    margin-bottom: 0;
+  }
+  .hud-status-banner {
+    grid-area: banner;
+    margin-bottom: 0;
+  }
+  .game-arena {
+    grid-area: arena;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "player-w board player-b";
+    align-items: center;
+    gap: var(--sp-3);
+    margin-bottom: 0;
+  }
+  .game-bottom-dock {
+    grid-area: dock;
+  }
+  .board-wrapper {
+    width: min(46vw, calc(100dvh - 120px));
+    max-width: none;
+    margin: 0 auto;
+  }
+  .dock-panel {
+    height: 132px;
+  }
+  .rules-card {
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+}
+
+/* ── Touch pointers: every control reaches the 44px comfortable target ── */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 48px;
+  }
+  .btn-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .btn-tool {
+    min-height: 40px;
+  }
+  .dock-tab {
+    min-height: 44px;
+  }
+  .btn-chat-send {
+    width: 36px;
+    height: 36px;
+  }
+  .btn-close-modal {
+    width: 36px;
+    height: 36px;
+  }
+  .text-input {
+    min-height: 48px;
+  }
+}
+
+/* ── Hover affordances: only for devices with a real pointer. On touch, :hover
+      sticks to the last tapped element until something else is tapped ── */
+@media (hover: hover) and (pointer: fine) {
+  .btn-icon:hover {
+    background: var(--btn-icon-hover);
+    color: var(--text-main);
+  }
+
+  .btn-primary:hover {
+    background: var(--accent-blue);
+    filter: brightness(1.1);
+  }
+
+  .btn-secondary:hover {
+    background: var(--btn-secondary-hover);
+  }
+
+  .btn-tool:hover {
+    background: var(--btn-tool-hover);
+  }
+
+  .btn-tool.btn-danger:hover {
+    background: var(--tint-red);
+  }
+
+  .dock-tab:hover {
+    color: var(--text-main);
+  }
+
+  .btn-chat-send:hover {
+    filter: brightness(1.1);
+  }
+
+  .btn-close-modal:hover {
+    background: var(--btn-secondary-hover);
+    color: var(--text-main);
+  }
+
+  .board-point-group:hover .grid-socket {
+    fill: var(--hover-socket);
+    stroke: var(--accent-blue);
+  }
+
+  .piece-selectable:hover {
+    filter: drop-shadow(0 2px 3px var(--piece-shadow)) drop-shadow(0 0 5px var(--tint-blue-ring));
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .radar-ring {
+    opacity: 0.3;
+    width: 112px;
+    height: 112px;
+  }
+  /* A near-zero fade would leave the beam at its final opacity of 0 (the
+     animation outranks a plain `opacity`), so it shows without one and the
+     renderer's timer removes it. */
+  .mill-gold-beam {
+    animation: none;
+  }
+}

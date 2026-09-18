@@ -11,9 +11,10 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadStylesheet } = require('../scripts/css-bundle');
 
 const publicDir = path.join(__dirname, '..', 'public');
-const css = fs.readFileSync(path.join(publicDir, 'css', 'style.css'), 'utf8');
+const css = loadStylesheet();
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
 
 /** Returns the declarations of the first rule whose selector is exactly `selector`. */

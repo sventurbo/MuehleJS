@@ -1,0 +1,134 @@
+/* ==========================================================================
+   App shell
+   The chrome that outlives every screen: the top bar with its connection
+   status and sound toggle, and the switcher that shows one screen at a time.
+   ========================================================================== */
+
+/* ── Header: status, sound toggle ── */
+.app-header {
+  position: sticky;
+  top: 0;
+  height: 52px;
+  background: var(--material-bg);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-6);
+  padding-left: max(var(--sp-6), env(safe-area-inset-left));
+  padding-right: max(var(--sp-6), env(safe-area-inset-right));
+  z-index: 10;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.brand-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-main);
+}
+
+.brand-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.brand-title span {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.9375rem;
+  letter-spacing: var(--tracking-body);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Connection status: a quiet dot plus a label, no badge while healthy. */
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  padding: 4px 6px;
+  margin-right: var(--sp-1);
+  border-radius: var(--radius-pill);
+  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+}
+
+.conn-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.conn-status.online {
+  color: var(--text-muted);
+}
+
+.conn-status.online::before {
+  background: var(--accent-green);
+}
+
+.conn-status.offline {
+  color: var(--accent-red);
+  background: var(--tint-red);
+  padding: 4px 10px;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+
+.btn-icon:active {
+  transform: scale(0.92);
+}
+
+/* Sound toggle holds both glyphs; app.js flips the .is-muted class. */
+.btn-sound .icon-sound-off { display: none; }
+.btn-sound.is-muted .icon-sound-on { display: none; }
+.btn-sound.is-muted .icon-sound-off { display: block; }
+
+/* ── Screen switcher ── */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.hidden {
+  display: none !important;
+}
