@@ -23,10 +23,8 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Bei Verbindungsabbruch eines Spielers wird die Partie sauber terminiert und der verbleibende Spieler benachrichtigt.
   - Der Server stürzt unter keinen Umständen ab (`try/catch`-Guards, globale Exception-Handler).
   - **DoS-Schutz**: In-Memory Sliding-Window Rate Limiter schützt Socket.io- und HTTP-Events vor Spam und Flooding.
-    Das Login-Kontingent pro Adresse zählt dabei auf den Adressblock statt auf die einzelne Adresse: IPv4 (auch in der
-    IPv4-mapped Form `::ffff:a.b.c.d`) auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix. Ein IPv6-Client
-    verfügt üblicherweise über mindestens ein ganzes `/64` und könnte sonst pro Verbindung eine frische Absenderadresse
-    wählen, ohne je an sein Kontingent zu stoßen.
+    - Anmeldeversuche werden pro Verbindung und pro Client-Adresse gezählt. `X-Forwarded-For` zählt nur hinter einem per `TRUST_PROXY` freigegebenen Reverse Proxy (siehe [Betrieb hinter einem Reverse Proxy](#4-betrieb-hinter-einem-reverse-proxy-optional)).
+    - Gezählt wird dabei auf den Adressblock: IPv4 (auch als IPv4-mapped `::ffff:a.b.c.d`) auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix. Ein IPv6-Client verfügt üblicherweise über mindestens ein ganzes `/64` und könnte sonst pro Verbindung eine frische Adresse wählen, ohne je an sein Budget zu stoßen.
   - **Eingabesäuberung**: Alle Client-Inputs werden serverseitig bereinigt (HTML-Sanitization).
 - **Dual-Stack Netzwerkunterstützung (IPv6 & IPv4)**:
   - Primär auf **IPv6** (`::`) gebunden – ideal für moderne Server- und Cloud-Umgebungen.
@@ -49,7 +47,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 174 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
+   - 181 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
 
 ---
 
@@ -90,22 +88,28 @@ Anschließend ist das Spiel erreichbar unter:
 
 ### 4. Betrieb hinter einem Reverse Proxy (optional)
 
-Steht der Server hinter einem Reverse Proxy (nginx, Caddy, Traefik …), ist die Peer-Adresse jeder Verbindung die des Proxys – ohne weitere Konfiguration teilen sich also alle Spieler ein einziges Rate-Limit-Kontingent. Die echte Client-Adresse steht in diesem Fall im Header `X-Forwarded-For`.
+Anmeldeversuche werden nicht nur pro Verbindung, sondern auch pro Client-Adresse begrenzt. Als Adresse gilt standardmäßig die, von der die Verbindung tatsächlich kommt. Den Header `X-Forwarded-For` ignoriert der Server, denn jeder Client kann ihn selbst setzen und sich so für jede Verbindung eine neue Adresse ausdenken.
 
-Diesen Header kann jeder Client aber auch selbst setzen. Er wird deshalb **nur** ausgewertet, wenn die Gegenstelle als vertrauenswürdiger Proxy konfiguriert ist; ohne Konfiguration zählt ausschließlich die nicht fälschbare Peer-Adresse:
+Läuft der Server hinter einem Reverse Proxy (z. B. nginx, Caddy, Traefik), kommen dagegen alle Verbindungen vom Proxy, und alle Spieler teilen sich ein gemeinsames Budget. Für diesen Fall legt die Umgebungsvariable `TRUST_PROXY` fest, welchen Proxys der Server den Header glaubt:
+
+| Wert | Bedeutung |
+|---|---|
+| nicht gesetzt, `false` oder `0` | Standard: `X-Forwarded-For` wird ignoriert. |
+| Adressen oder Netze, kommagetrennt (z. B. `127.0.0.1` oder `10.0.0.0/8,fd00::/8`) | Nur Verbindungen von diesen Proxys dürfen die Client-Adresse nennen. Zusätzlich gibt es die Kurzformen `loopback`, `linklocal` und `uniquelocal`. |
+| Anzahl `n` (z. B. `1`) | Die `n` Hops direkt vor dem Server gelten als Proxys, egal von welcher Adresse sie kommen. |
 
 ```bash
-# Nur der lokale Reverse Proxy darf X-Forwarded-For setzen
 TRUST_PROXY=loopback npm start
-
-# Mehrere Einträge: einzelne Adressen, CIDR-Bereiche und die Kurznamen
-# loopback, linklocal und uniquelocal sind erlaubt
-TRUST_PROXY="loopback, 10.0.0.0/8, 2001:db8::/32" npm start
 ```
+*(Beispiel für einen nginx auf demselben Rechner.)*
 
-Die `X-Forwarded-For`-Kette wird dabei von rechts nach links gelesen und beim ersten Eintrag beendet, der kein vertrauenswürdiger Proxy ist – das ist der Client. `TRUST_PROXY=true` vertraut jedem Hop und ist nur sinnvoll, wenn der Port ausschließlich vom Proxy erreichbar ist.
+Der Server liest die Kette in `X-Forwarded-For` von rechts nach links: Jeder Eintrag eines vertrauten Proxys wird übersprungen, der erste andere ist der Client. Bei `TRUST_PROXY=10.0.0.1`, einer Verbindung von `10.0.0.1` und `X-Forwarded-For: 198.51.100.1, 203.0.113.7` zählt also `203.0.113.7`; `198.51.100.1` hat der Client selbst mitgeschickt und wird verworfen. Kommt eine Verbindung nicht von einem vertrauten Proxy, bleibt der Header unbeachtet.
 
-Für das Rate Limiting zählt anschließend nicht die einzelne Adresse, sondern ihr Block: IPv4 und IPv4-mapped IPv6 (`::ffff:a.b.c.d`) werden auf die reine IPv4-Adresse abgebildet, natives IPv6 auf sein `/64`-Präfix (z. B. `2001:db8:1:2::/64`). Ein Client, dem ohnehin ein ganzes Präfix gehört, kann sein Kontingent so nicht durch eine neue Adresse pro Verbindung umgehen.
+- `TRUST_PROXY=true` wird abgelehnt: Dann wäre jeder Hop vertrauenswürdig und es zählte der linke Eintrag, den der Client selbst schreibt. Auch ungültige Adressen brechen den Start mit einer Fehlermeldung ab.
+- Der Proxy muss die Adresse, von der er angesprochen wird, an den Header anhängen oder ihn damit überschreiben (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
+- Mit einer Anzahl statt Adressen darf der Node-Port nicht direkt erreichbar sein, sonst umgeht ein Client den Proxy und füllt den Header selbst. Eine Adressliste ist in diesem Punkt robuster.
+
+Die so ermittelte Adresse zählt anschließend nicht für sich allein, sondern für ihren Block: IPv4 und IPv4-mapped IPv6 (`::ffff:a.b.c.d`) werden auf die reine IPv4-Adresse abgebildet, natives IPv6 auf sein `/64`-Präfix (z. B. `2001:db8:1:2::/64`). Ein IPv6-Client verfügt in der Regel über mindestens ein ganzes `/64`; ohne diese Zusammenfassung stünden ihm pro Verbindung eine frische Adresse und damit beliebig viele Budgets zur Verfügung.
 
 ---
 
@@ -116,7 +120,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (174 Tests in 8 Test-Dateien):
+Getestet werden (181 Tests in 8 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -127,7 +131,7 @@ Getestet werden (174 Tests in 8 Test-Dateien):
 - Matchmaking-Warteschlange und Sitzungsisolation.
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
-- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Schlüssel und Proxy-Vertrauen, Eingabesäuberung).
+- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
 
 ### WCAG 2.1 AA Kontrastprüfung
@@ -153,8 +157,8 @@ Web-Spiel/
 ├── lib/
 │   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
 │   ├── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
-│   ├── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
-│   └── clientAddress.js      # Client-Adresse (X-Forwarded-For nur von vertrauten Proxys) & Rate-Limit-Schlüssel (/64)
+│   ├── clientAddress.js      # Client-Adresse & Budget-Schlüssel fürs Rate-Limiting (X-Forwarded-For nur von vertrauten Proxys, IPv6 pro /64)
+│   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)
 │   ├── css/
