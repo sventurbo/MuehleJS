@@ -139,13 +139,6 @@ class BoardRenderer {
         <!-- Active Mill Glowing Lines Group -->
         <g id="mill-glow-lines"></g>
 
-        <!-- Board Intersection Points (Base sockets) -->
-        <g id="grid-nodes">
-          ${Object.entries(POINT_COORDS).map(([pt, c]) => `
-            <circle cx="${c.x}" cy="${c.y}" r="6" class="grid-socket" stroke-width="1.5" />
-          `).join('')}
-        </g>
-
         <!-- Coordinate Labels (subtle) -->
         <g id="grid-labels" class="grid-labels" font-size="9" text-anchor="middle" dominant-baseline="central">
           ${Object.entries(POINT_COORDS).map(([pt, c]) => {
@@ -161,6 +154,8 @@ class BoardRenderer {
             <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">
               <!-- Transparent wide hit area for easy clicking / tapping -->
               <circle cx="0" cy="0" r="${this.hitRadius}" fill="transparent" class="hit-area" />
+              <!-- Base socket, inside the group so hover/press feedback can reach it -->
+              <circle cx="0" cy="0" r="6" class="grid-socket" stroke-width="1.5" />
               <!-- Destination, selection and capture markers; the stone follows -->
               <g class="point-markers"></g>
             </g>
@@ -189,6 +184,10 @@ class BoardRenderer {
         this.onPointClick(pt);
       }
     });
+
+    // iOS Safari only applies :active to elements that have a touch listener;
+    // the socket press feedback in style.css depends on it.
+    this.interactiveLayer.addEventListener('touchstart', () => {}, { passive: true });
   }
 
   /**
