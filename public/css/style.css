@@ -2079,7 +2079,10 @@ body.modal-open {
     width: 112px;
     height: 112px;
   }
+  /* A near-zero fade would leave the beam at its final opacity of 0 (the
+     animation outranks a plain `opacity`), so it shows without one and the
+     renderer's timer removes it. */
   .mill-gold-beam {
-    opacity: 1;
+    animation: none;
   }
 }
