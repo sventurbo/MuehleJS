@@ -30,6 +30,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
 - **Minimalistisches, responsives UI**:
   - Durchgängiges Design-System: neutrale Flächen, ein einziger Akzentfarbton (Blau), Haarlinien-Ränder, 4pt-Abstandsraster und translucent Materials (`backdrop-filter`) statt farbiger Glow-Effekte.
   - Vektorbasiertes, gestochen scharfes **SVG-Spielfeld**; Auswahlring, Zielmarker und Mühle-Strahl sind ruhige, statische bzw. einmalig eingeblendete Marker.
+  - **Animierte Steine**: ein gesetzter Stein springt kurz auf, ein gezogener gleitet leicht angehoben vom Start- zum Zielfeld (auch beim Springen), ein geschlagener blendet aus. Der Renderer patcht das Brett, statt es neu aufzubauen – Steine, die liegen bleiben, behalten ihren SVG-Knoten.
   - Vollständiges **Light- und Dark-Theme** über `prefers-color-scheme`; das Spielbrett folgt dem Theme (helles Brett im Light-Mode, dunkles im Dark-Mode).
   - Alle Icons sind **Inline-SVG** in `currentColor` – keine Emoji, keine Icon-Fonts, keine externen Assets.
   - Optimiert für Desktop ab **1024 × 768 Pixeln**: die komplette Spielfläche passt ohne Scrollen ins Fenster und skaliert auf größere Bildschirme.
@@ -39,12 +40,12 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
     - Querformat: Spielerkarten flankieren das Brett, dessen Größe sich an der kurzen Bildschirmkante orientiert.
     - iOS-Feinheiten: `viewport-fit=cover` + `env(safe-area-inset-*)` für Notch und Home-Indicator, `100dvh` gegen die einklappende Safari-Leiste, 16 px Eingabefelder (kein Auto-Zoom), entsperrter Web-Audio-Kontext beim ersten Tap.
     - Touch-Bedienung: Tippziele ab 44 px, vergrößerte Trefferflächen auf dem Spielbrett, Druck- statt Hover-Feedback (Hover-Stile gelten nur für echte Zeigegeräte).
-  - Respektiert `prefers-reduced-motion`.
+  - Respektiert `prefers-reduced-motion` (gilt auch für die Stein-Animationen).
   - Cross-Browser-kompatibel (aktuelle Versionen von **Chrome, Firefox, Safari** – Desktop wie auch **iOS Safari** und **Chrome für Android**).
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 114 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich und das responsive Mobile-Layout.
+   - 152 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
 
 ---
 
@@ -92,11 +93,12 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (114 Tests in 7 Test-Dateien):
+Getestet werden (152 Tests in 8 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
 - Übereinstimmung der Client-Regeln (`public/js/gameRules.js`) mit der Server-Engine.
+- Brett-Diff für die Stein-Animationen: jede Aktion zufällig gespielter Partien wird als genau das Setzen, Ziehen oder Schlagen erkannt.
 - Sieg durch Steinedezimierung (< 3 Steine).
 - Sieg durch Einsperren des Gegners (keine legalen Züge).
 - Matchmaking-Warteschlange und Sitzungsisolation.
@@ -135,8 +137,8 @@ Web-Spiel/
 │   │   └── style.css         # Design-System (Tokens, Light/Dark-Theme), Layout & Animationen
 │   └── js/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
-│       ├── gameRules.js      # Geteilte Brettgeometrie & Schlag-Regeln (einzige Quelle für Schlag-Markierungen)
-│       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen & Hervorhebungen
+│       ├── gameRules.js      # Geteilte Brettgeometrie, Schlag-Regeln & Brett-Diff (einzige Quelle für Schlag-Markierungen)
+│       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen, Hervorhebungen & Stein-Animationen
 │       └── app.js            # Client-Zustand, Socket.io-Client, HUD & Benutzeraktionen
 ├── docs/
 │   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation

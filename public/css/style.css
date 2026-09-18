@@ -102,7 +102,10 @@
   --dur-1: 120ms;
   --dur-2: 200ms;
   --dur-3: 320ms;
+  --dur-4: 420ms;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
 }
 
 @media (prefers-color-scheme: light) {
@@ -1283,6 +1286,9 @@ h1, h2, h3, h4 {
 
 .game-piece {
   filter: drop-shadow(0 2px 3px var(--piece-shadow));
+  /* Scale around the stone's own centre, not the origin of the SVG canvas. */
+  transform-box: fill-box;
+  transform-origin: center;
   transition: filter var(--dur-2) var(--ease-out);
 }
 
@@ -1299,6 +1305,51 @@ h1, h2, h3, h4 {
 .piece-removable {
   cursor: pointer;
   filter: drop-shadow(0 2px 3px var(--piece-shadow)) drop-shadow(0 0 6px var(--tint-red-strong));
+}
+
+/* Stone motion. boardRenderer.js keeps a stone's node while it stays on its
+   point, so each of these runs exactly once: when the stone appears, travels
+   or leaves. The renderer drops the class again when the animation ends. */
+
+/* Placed: drops onto the point with a slight overshoot. */
+.piece-entering {
+  animation: pieceEnter var(--dur-3) var(--ease-out);
+}
+
+/* Moved: glides in from its old point (offset set inline by the renderer),
+   lifted off the board on the way. */
+.piece-arriving {
+  animation:
+    pieceTravel var(--dur-4) var(--ease-in-out),
+    pieceLift var(--dur-4) var(--ease-in-out);
+}
+
+/* Captured: shrinks and fades, then the renderer removes the node. */
+.piece-leaving {
+  pointer-events: none;
+  animation: pieceLeave var(--dur-3) var(--ease-in) forwards;
+}
+
+@keyframes pieceEnter {
+  0% { opacity: 0; scale: 0.4; }
+  60% { opacity: 1; scale: 1.08; }
+  100% { opacity: 1; scale: 1; }
+}
+
+@keyframes pieceTravel {
+  from { translate: var(--travel-x) var(--travel-y); }
+  to { translate: 0 0; }
+}
+
+@keyframes pieceLift {
+  50% {
+    scale: 1.1;
+    filter: drop-shadow(0 10px 8px var(--piece-shadow));
+  }
+}
+
+@keyframes pieceLeave {
+  to { opacity: 0; scale: 0.5; }
 }
 
 /* Mill: a single gold beam that fades in and out once. */
