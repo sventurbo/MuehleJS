@@ -1,6 +1,6 @@
 const { RateLimiter } = require('../lib/RateLimiter');
 const { GameManager, sanitizeText } = require('../lib/GameManager');
-const { compileTrustProxy, getClientAddress } = require('../lib/clientAddress');
+const { compileTrustProxy, getClientAddress, rateLimitKey } = require('../lib/clientAddress');
 const { io: serverIo, app: serverApp } = require('../server');
 
 describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
@@ -369,6 +369,88 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     test('rejects entries that are not addresses', () => {
       expect(() => compileTrustProxy('proxy.example.com')).toThrow(/TRUST_PROXY/);
       expect(() => new GameManager(ioMock, { trustProxy: '10.0.0.1/99' })).toThrow(/TRUST_PROXY/);
+    });
+  });
+
+  describe('DOS-01: the address budget is charged to the address block', () => {
+    let ioMock;
+    let gm;
+
+    beforeEach(() => {
+      ioMock = { to: jest.fn().mockReturnValue({ emit: jest.fn() }) };
+      gm = new GameManager(ioMock);
+    });
+
+    const makeSocket = (id, address) => ({
+      id,
+      connected: true,
+      handshake: { address, headers: {} },
+      join: jest.fn(),
+      emit: jest.fn()
+    });
+
+    const wasThrottled = (socket) => socket.emit.mock.calls.some(([event, payload]) =>
+      event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche'));
+
+    // One login per socket, so only the shared address budget can stop them.
+    const floodFrom = (addresses, prefix) => {
+      const sockets = addresses.map((address, i) => makeSocket(`${prefix}_${i}`, address));
+      sockets.forEach((socket, i) => gm.enqueuePlayer(socket, `${prefix}${i}`));
+      return sockets;
+    };
+
+    test('two addresses in one /64 share a single budget', () => {
+      const budget = gm.queueIpLimiter.max;
+      // A client owning 2001:db8:1:2::/64 picks a fresh address per connection;
+      // both ends of the block must still be counted together.
+      const addresses = Array.from({ length: budget + 1 }, (_, i) => (
+        i % 2 === 0 ? '2001:db8:1:2::1' : '2001:db8:1:2:ffff:ffff:ffff:ffff'
+      ));
+
+      const sockets = floodFrom(addresses, 'hop');
+
+      expect(sockets.slice(0, budget).some(wasThrottled)).toBe(false);
+      expect(wasThrottled(sockets[budget])).toBe(true);
+    });
+
+    test('addresses in different /64s keep their own budget', () => {
+      const budget = gm.queueIpLimiter.max;
+      floodFrom(Array.from({ length: budget }, (_, i) => `2001:db8:1:2::${(i + 1).toString(16)}`), 'blockA');
+
+      // The exhausted block stays exhausted ...
+      const sameBlock = makeSocket('blockA_extra', '2001:db8:1:2:ffff:ffff:ffff:ffff');
+      gm.enqueuePlayer(sameBlock, 'SameBlock');
+      expect(wasThrottled(sameBlock)).toBe(true);
+
+      // ... while the neighbouring /64 is untouched by it.
+      const otherBlock = makeSocket('blockB_1', '2001:db8:1:3::1');
+      gm.enqueuePlayer(otherBlock, 'OtherBlock');
+      expect(wasThrottled(otherBlock)).toBe(false);
+    });
+
+    test('an IPv4-mapped address shares the budget of the plain IPv4 address', () => {
+      const budget = gm.queueIpLimiter.max;
+      // The dual-stack listener reports the same client either way.
+      floodFrom(Array(budget).fill('::ffff:1.2.3.4'), 'mapped');
+
+      const plain = makeSocket('plain_v4', '1.2.3.4');
+      gm.enqueuePlayer(plain, 'PlainV4');
+      expect(wasThrottled(plain)).toBe(true);
+    });
+
+    test('rateLimitKey folds IPv4, IPv4-mapped IPv6 and native IPv6', () => {
+      expect(rateLimitKey('1.2.3.4')).toBe('1.2.3.4');
+      expect(rateLimitKey('::ffff:1.2.3.4')).toBe('1.2.3.4');
+      expect(rateLimitKey('2001:db8:1:2:3:4:5:6')).toBe('2001:db8:1:2::/64');
+      expect(rateLimitKey('2001:db8:1:2::abcd')).toBe('2001:db8:1:2::/64');
+      expect(rateLimitKey('2001:db8:1:3::1')).toBe('2001:db8:1:3::/64');
+    });
+
+    test('rateLimitKey passes non-IP values through unchanged', () => {
+      // Mock sockets without a handshake fall back to socket.id.
+      expect(rateLimitKey('sock_chat_1')).toBe('sock_chat_1');
+      expect(rateLimitKey('')).toBe('');
+      expect(rateLimitKey(undefined)).toBeUndefined();
     });
   });
 

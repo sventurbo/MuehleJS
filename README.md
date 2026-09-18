@@ -24,6 +24,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Der Server stürzt unter keinen Umständen ab (`try/catch`-Guards, globale Exception-Handler).
   - **DoS-Schutz**: In-Memory Sliding-Window Rate Limiter schützt Socket.io- und HTTP-Events vor Spam und Flooding.
     - Anmeldeversuche werden pro Verbindung und pro Client-Adresse gezählt. `X-Forwarded-For` zählt nur hinter einem per `TRUST_PROXY` freigegebenen Reverse Proxy (siehe [Betrieb hinter einem Reverse Proxy](#4-betrieb-hinter-einem-reverse-proxy-optional)).
+    - Gezählt wird dabei auf den Adressblock: IPv4 (auch als IPv4-mapped `::ffff:a.b.c.d`) auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix. Ein IPv6-Client verfügt üblicherweise über mindestens ein ganzes `/64` und könnte sonst pro Verbindung eine frische Adresse wählen, ohne je an sein Budget zu stoßen.
   - **Eingabesäuberung**: Alle Client-Inputs werden serverseitig bereinigt (HTML-Sanitization).
 - **Dual-Stack Netzwerkunterstützung (IPv6 & IPv4)**:
   - Primär auf **IPv6** (`::`) gebunden – ideal für moderne Server- und Cloud-Umgebungen.
@@ -46,7 +47,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 152 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
+   - 181 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
 
 ---
 
@@ -108,6 +109,8 @@ Der Server liest die Kette in `X-Forwarded-For` von rechts nach links: Jeder Ein
 - Der Proxy muss die Adresse, von der er angesprochen wird, an den Header anhängen oder ihn damit überschreiben (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
 - Mit einer Anzahl statt Adressen darf der Node-Port nicht direkt erreichbar sein, sonst umgeht ein Client den Proxy und füllt den Header selbst. Eine Adressliste ist in diesem Punkt robuster.
 
+Die so ermittelte Adresse zählt anschließend nicht für sich allein, sondern für ihren Block: IPv4 und IPv4-mapped IPv6 (`::ffff:a.b.c.d`) werden auf die reine IPv4-Adresse abgebildet, natives IPv6 auf sein `/64`-Präfix (z. B. `2001:db8:1:2::/64`). Ein IPv6-Client verfügt in der Regel über mindestens ein ganzes `/64`; ohne diese Zusammenfassung stünden ihm pro Verbindung eine frische Adresse und damit beliebig viele Budgets zur Verfügung.
+
 ---
 
 ## 🧪 Tests ausführen
@@ -117,7 +120,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (152 Tests in 8 Test-Dateien):
+Getestet werden (181 Tests in 8 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -128,7 +131,7 @@ Getestet werden (152 Tests in 8 Test-Dateien):
 - Matchmaking-Warteschlange und Sitzungsisolation.
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
-- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting, Eingabesäuberung).
+- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
 
 ### WCAG 2.1 AA Kontrastprüfung
@@ -154,7 +157,7 @@ Web-Spiel/
 ├── lib/
 │   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
 │   ├── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
-│   ├── clientAddress.js      # Client-Adresse für das Rate-Limiting (X-Forwarded-For nur von vertrauten Proxys)
+│   ├── clientAddress.js      # Client-Adresse & Budget-Schlüssel fürs Rate-Limiting (X-Forwarded-For nur von vertrauten Proxys, IPv6 pro /64)
 │   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)

@@ -100,6 +100,7 @@ graph LR
 - **`lib/GameManager.js`**: Verwaltet die Matchmaking-Warteschlange, Socket-zu-Spieler-Mappings (`socketMap`), Räume (`games`) und koordiniert Event-Aufrufe.
 - **`lib/MuehleGame.js`**: Rein deterministische, autoritative Mühle-Regel-Engine. Verwaltet das Brett (24 Punkte), 32 Adjazenzkanten, 16 Mühlenlinien und validiert Setzen, Ziehen, Springen sowie Sieg-/Verlustbedingungen.
 - **`lib/RateLimiter.js`**: In-Memory Sliding-Window Token-Bucket-Filter zum Schutz vor Chat-Floods (CH-05), Queue-Flooding (DOS-01) und Aktions-Spam.
+- **`lib/clientAddress.js`**: Ermittelt die Adresse, unter der ein Client limitiert wird. `X-Forwarded-For` wird nur ausgewertet, wenn die Gegenstelle als vertrauenswürdiger Proxy konfiguriert ist (`TRUST_PROXY`); anschließend wird die Adresse auf ihren Block reduziert (IPv4 und IPv4-mapped IPv6 auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix), damit ein Client mit eigenem Präfix sein Kontingent nicht durch Adresswechsel umgehen kann.
 
 #### Clientseitige Module
 - **`public/js/app.js`**: Haupt-Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over), UI-Aktualisierung und Toast-Nachrichten.
