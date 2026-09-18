@@ -1,5 +1,6 @@
 const { RateLimiter } = require('../lib/RateLimiter');
 const { GameManager, sanitizeText } = require('../lib/GameManager');
+const { compileTrustProxy, getClientAddress } = require('../lib/clientAddress');
 const { io: serverIo, app: serverApp } = require('../server');
 
 describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
@@ -269,6 +270,105 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       expect(liveSocket1.emit).toHaveBeenCalledWith('gameStart', expect.any(Object));
       expect(liveSocket2.emit).toHaveBeenCalledWith('gameStart', expect.any(Object));
       expect(gm.games.size).toBe(1);
+    });
+  });
+
+  describe('DOS-01: X-Forwarded-For only counts behind a trusted proxy', () => {
+    let ioMock;
+
+    beforeEach(() => {
+      ioMock = { to: jest.fn().mockReturnValue({ emit: jest.fn() }) };
+    });
+
+    const makeSocket = (id, address, forwardedFor) => ({
+      id,
+      connected: true,
+      handshake: {
+        address,
+        headers: forwardedFor === undefined ? {} : { 'x-forwarded-for': forwardedFor }
+      },
+      join: jest.fn(),
+      emit: jest.fn()
+    });
+
+    const wasThrottled = (socket) => socket.emit.mock.calls.some(([event, payload]) =>
+      event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche'));
+
+    // More than any per-address budget, so the limit must trip if the key holds.
+    const FLOOD = 30;
+
+    test('ignores a spoofed header when no proxy is trusted', () => {
+      const socket = makeSocket('s1', '203.0.113.7', '198.51.100.1');
+      expect(getClientAddress(socket, compileTrustProxy(undefined))).toBe('203.0.113.7');
+    });
+
+    test('a forged header per connection no longer escapes the address limit', () => {
+      const gm = new GameManager(ioMock);
+      const sockets = [];
+      for (let i = 0; i < FLOOD; i++) {
+        const socket = makeSocket(`forger_${i}`, '203.0.113.7', `198.51.100.${i}`);
+        sockets.push(socket);
+        gm.enqueuePlayer(socket, `Forger${i}`);
+      }
+      expect(sockets.some(wasThrottled)).toBe(true);
+    });
+
+    test('uses the client entry of the chain, not the raw header', () => {
+      // The client forged 198.51.100.1; the trusted proxy appended its real address.
+      const socket = makeSocket('s1', '10.0.0.1', '198.51.100.1, 203.0.113.7');
+      expect(getClientAddress(socket, compileTrustProxy('10.0.0.1'))).toBe('203.0.113.7');
+    });
+
+    test('skips every trusted proxy in a longer chain', () => {
+      const socket = makeSocket('s1', '10.0.0.2', '198.51.100.1, 203.0.113.7, 10.0.0.1');
+      expect(getClientAddress(socket, compileTrustProxy('10.0.0.1, 10.0.0.2'))).toBe('203.0.113.7');
+      expect(getClientAddress(socket, compileTrustProxy('10.0.0.0/8'))).toBe('203.0.113.7');
+    });
+
+    test('a hop count trusts that many proxies closest to the server', () => {
+      const socket = makeSocket('s1', '10.0.0.2', '198.51.100.1, 203.0.113.7, 10.0.0.1');
+      expect(getClientAddress(socket, compileTrustProxy('1'))).toBe('10.0.0.1');
+      expect(getClientAddress(socket, compileTrustProxy('2'))).toBe('203.0.113.7');
+    });
+
+    test('ignores the header on a connection that does not come from a trusted proxy', () => {
+      const socket = makeSocket('s1', '203.0.113.7', '198.51.100.1');
+      expect(getClientAddress(socket, compileTrustProxy('10.0.0.1'))).toBe('203.0.113.7');
+    });
+
+    test('recognises a proxy by its IPv4-mapped address on the dual-stack socket', () => {
+      const socket = makeSocket('s1', '::ffff:127.0.0.1', '203.0.113.7');
+      expect(getClientAddress(socket, compileTrustProxy('loopback'))).toBe('203.0.113.7');
+    });
+
+    test('clients behind one trusted proxy get separate budgets', () => {
+      const gm = new GameManager(ioMock, { trustProxy: '10.0.0.1' });
+      const flooder = [];
+      for (let i = 0; i < FLOOD; i++) {
+        const socket = makeSocket(`flood_${i}`, '10.0.0.1', `198.51.100.${i}, 203.0.113.7`);
+        flooder.push(socket);
+        gm.enqueuePlayer(socket, `Flood${i}`);
+      }
+      expect(flooder.some(wasThrottled)).toBe(true);
+
+      const other = makeSocket('other', '10.0.0.1', '203.0.113.8');
+      gm.enqueuePlayer(other, 'Bob');
+      expect(wasThrottled(other)).toBe(false);
+    });
+
+    test('an unset or disabled setting trusts no proxy', () => {
+      for (const value of [undefined, '', '  ', 'false', 'FALSE', '0']) {
+        expect(compileTrustProxy(value)).toBeNull();
+      }
+    });
+
+    test('rejects TRUST_PROXY=true, which would let the client choose its address', () => {
+      expect(() => compileTrustProxy('true')).toThrow(/TRUST_PROXY/);
+    });
+
+    test('rejects entries that are not addresses', () => {
+      expect(() => compileTrustProxy('proxy.example.com')).toThrow(/TRUST_PROXY/);
+      expect(() => new GameManager(ioMock, { trustProxy: '10.0.0.1/99' })).toThrow(/TRUST_PROXY/);
     });
   });
 
