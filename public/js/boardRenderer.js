@@ -53,6 +53,11 @@ const HIT_RADIUS_TOUCH = 36;
    the board is hidden, so the node is dropped after this long regardless. */
 const LEAVE_FALLBACK_MS = 1000;
 
+/* A mill beam removes itself when its 2.5 s `millBeam` fade ends. The fallback
+   covers a hidden board and reduced motion, where the beam is shown without
+   any animation, so it must outlast the fade. */
+const MILL_BEAM_FALLBACK_MS = 3000;
+
 const BOARD_LINES = [
   // Outer square
   ['a7', 'd7'], ['d7', 'g7'], ['g7', 'g4'], ['g4', 'g1'],
@@ -251,7 +256,8 @@ class BoardRenderer {
    * Brings the stones on screen in line with `gameState.board`, touching only
    * the points that changed: a placed stone pops in, a moved stone travels from
    * its old point, a captured stone fades out. A new game starts from a clean
-   * board instead of animating the previous game's stones away.
+   * board instead of animating the previous game's stones away, and without
+   * the last game's mill beam.
    */
   _syncPieces(gameState) {
     const board = gameState.board;
@@ -260,6 +266,7 @@ class BoardRenderer {
     if (!sameGame) {
       this.interactiveLayer.querySelectorAll('.game-piece').forEach(el => el.remove());
       this.pieces.clear();
+      this.millGlowLayer.innerHTML = '';
       this.gameId = gameState.gameId;
     }
 
@@ -352,7 +359,10 @@ class BoardRenderer {
   }
 
   /**
-   * Highlights mill lines when a mill is active or formed.
+   * Lays a gold beam over a freshly closed mill; without a mill it clears
+   * every beam. Each beam is its own node and removes only itself, so a mill
+   * closed while another is still glowing gets its full fade instead of being
+   * wiped by the earlier beam's timer.
    */
   highlightMill(millPoints) {
     if (!millPoints || millPoints.length < 3) {
@@ -363,16 +373,14 @@ class BoardRenderer {
     const c1 = POINT_COORDS[millPoints[0]];
     const c2 = POINT_COORDS[millPoints[2]];
 
-    this.millGlowLayer.innerHTML = `
+    this.millGlowLayer.insertAdjacentHTML('beforeend', `
       <line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}"
             stroke-width="6" stroke-linecap="round"
             filter="url(#goldGlow)" class="mill-gold-beam" />
-    `;
-
-    // Remove glow after the fade-out animation has finished
-    setTimeout(() => {
-      this.millGlowLayer.innerHTML = '';
-    }, 2500);
+    `);
+    const beam = this.millGlowLayer.lastElementChild;
+    beam.addEventListener('animationend', () => beam.remove(), { once: true });
+    setTimeout(() => beam.remove(), MILL_BEAM_FALLBACK_MS);
   }
 }
 

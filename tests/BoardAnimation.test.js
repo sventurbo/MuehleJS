@@ -100,3 +100,31 @@ describe('Stone animations', () => {
     expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*animation-duration:\s*0\.001ms !important/);
   });
 });
+
+describe('Mill beam', () => {
+  test('each beam removes only itself, so a second mill keeps its full fade', () => {
+    expect(boardJs).toContain("beam.addEventListener('animationend', () => beam.remove(), { once: true })");
+    expect(boardJs).toMatch(/setTimeout\(\(\) => beam\.remove\(\), MILL_BEAM_FALLBACK_MS\)/);
+  });
+
+  test('no timer clears the whole mill layer', () => {
+    const timers = boardJs.match(/setTimeout\([^;]*;/g) || [];
+    timers.forEach(call => expect(call).not.toContain('millGlowLayer'));
+  });
+
+  test('the fallback outlasts the fade it backs up', () => {
+    const [, value, unit] = ruleBody('.mill-gold-beam').match(/millBeam\s+([\d.]+)(m?s)/);
+    const fadeMs = parseFloat(value) * (unit === 's' ? 1000 : 1);
+    const fallbackMs = Number(boardJs.match(/const MILL_BEAM_FALLBACK_MS = (\d+);/)[1]);
+    expect(fallbackMs).toBeGreaterThan(fadeMs);
+  });
+
+  test('a new game drops the previous game\'s beam', () => {
+    expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.innerHTML = ''/);
+  });
+
+  test('reduced motion shows the beam without a fade instead of one that ends at opacity 0', () => {
+    const reduced = mediaBlock('@media (prefers-reduced-motion: reduce)');
+    expect(reduced).toMatch(/\.mill-gold-beam\s*\{[^}]*animation:\s*none/);
+  });
+});
