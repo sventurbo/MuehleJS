@@ -23,6 +23,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Bei Verbindungsabbruch eines Spielers wird die Partie sauber terminiert und der verbleibende Spieler benachrichtigt.
   - Der Server stürzt unter keinen Umständen ab (`try/catch`-Guards, globale Exception-Handler).
   - **DoS-Schutz**: In-Memory Sliding-Window Rate Limiter schützt Socket.io- und HTTP-Events vor Spam und Flooding.
+    - Anmeldeversuche werden pro Verbindung und pro Client-Adresse gezählt. `X-Forwarded-For` zählt nur hinter einem per `TRUST_PROXY` freigegebenen Reverse Proxy (siehe [Betrieb hinter einem Reverse Proxy](#4-betrieb-hinter-einem-reverse-proxy-optional)).
   - **Eingabesäuberung**: Alle Client-Inputs werden serverseitig bereinigt (HTML-Sanitization).
 - **Dual-Stack Netzwerkunterstützung (IPv6 & IPv4)**:
   - Primär auf **IPv6** (`::`) gebunden – ideal für moderne Server- und Cloud-Umgebungen.
@@ -84,6 +85,29 @@ Anschließend ist das Spiel erreichbar unter:
 - **IPv6:** `http://[::1]:<port>` (bzw. über die öffentliche IPv6-Adresse des Servers)
 - **IPv4:** `http://127.0.0.1:<port>` (bzw. über die IPv4-Adresse des Servers)
 
+### 4. Betrieb hinter einem Reverse Proxy (optional)
+
+Anmeldeversuche werden nicht nur pro Verbindung, sondern auch pro Client-Adresse begrenzt. Als Adresse gilt standardmäßig die, von der die Verbindung tatsächlich kommt. Den Header `X-Forwarded-For` ignoriert der Server, denn jeder Client kann ihn selbst setzen und sich so für jede Verbindung eine neue Adresse ausdenken.
+
+Läuft der Server hinter einem Reverse Proxy (z. B. nginx, Caddy, Traefik), kommen dagegen alle Verbindungen vom Proxy, und alle Spieler teilen sich ein gemeinsames Budget. Für diesen Fall legt die Umgebungsvariable `TRUST_PROXY` fest, welchen Proxys der Server den Header glaubt:
+
+| Wert | Bedeutung |
+|---|---|
+| nicht gesetzt, `false` oder `0` | Standard: `X-Forwarded-For` wird ignoriert. |
+| Adressen oder Netze, kommagetrennt (z. B. `127.0.0.1` oder `10.0.0.0/8,fd00::/8`) | Nur Verbindungen von diesen Proxys dürfen die Client-Adresse nennen. Zusätzlich gibt es die Kurzformen `loopback`, `linklocal` und `uniquelocal`. |
+| Anzahl `n` (z. B. `1`) | Die `n` Hops direkt vor dem Server gelten als Proxys, egal von welcher Adresse sie kommen. |
+
+```bash
+TRUST_PROXY=loopback npm start
+```
+*(Beispiel für einen nginx auf demselben Rechner.)*
+
+Der Server liest die Kette in `X-Forwarded-For` von rechts nach links: Jeder Eintrag eines vertrauten Proxys wird übersprungen, der erste andere ist der Client. Bei `TRUST_PROXY=10.0.0.1`, einer Verbindung von `10.0.0.1` und `X-Forwarded-For: 198.51.100.1, 203.0.113.7` zählt also `203.0.113.7`; `198.51.100.1` hat der Client selbst mitgeschickt und wird verworfen. Kommt eine Verbindung nicht von einem vertrauten Proxy, bleibt der Header unbeachtet.
+
+- `TRUST_PROXY=true` wird abgelehnt: Dann wäre jeder Hop vertrauenswürdig und es zählte der linke Eintrag, den der Client selbst schreibt. Auch ungültige Adressen brechen den Start mit einer Fehlermeldung ab.
+- Der Proxy muss die Adresse, von der er angesprochen wird, an den Header anhängen oder ihn damit überschreiben (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
+- Mit einer Anzahl statt Adressen darf der Node-Port nicht direkt erreichbar sein, sonst umgeht ein Client den Proxy und füllt den Header selbst. Eine Adressliste ist in diesem Punkt robuster.
+
 ---
 
 ## 🧪 Tests ausführen
@@ -130,6 +154,7 @@ Web-Spiel/
 ├── lib/
 │   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
 │   ├── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
+│   ├── clientAddress.js      # Client-Adresse für das Rate-Limiting (X-Forwarded-For nur von vertrauten Proxys)
 │   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)

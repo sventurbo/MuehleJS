@@ -46,7 +46,10 @@ const io = new Server(primaryServer, {
   pingInterval: 5000
 });
 
-const gameManager = new GameManager(io);
+// TRUST_PROXY names the reverse proxies whose X-Forwarded-For may identify the
+// client (see README). Unset, the header is ignored and the connection's own
+// address counts, since any client can write the header itself.
+const gameManager = new GameManager(io, { trustProxy: process.env.TRUST_PROXY });
 
 // Socket.io event orchestration
 io.on('connection', (socket) => {
