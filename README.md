@@ -23,6 +23,10 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Bei Verbindungsabbruch eines Spielers wird die Partie sauber terminiert und der verbleibende Spieler benachrichtigt.
   - Der Server stürzt unter keinen Umständen ab (`try/catch`-Guards, globale Exception-Handler).
   - **DoS-Schutz**: In-Memory Sliding-Window Rate Limiter schützt Socket.io- und HTTP-Events vor Spam und Flooding.
+    Das Login-Kontingent pro Adresse zählt dabei auf den Adressblock statt auf die einzelne Adresse: IPv4 (auch in der
+    IPv4-mapped Form `::ffff:a.b.c.d`) auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix. Ein IPv6-Client
+    verfügt üblicherweise über mindestens ein ganzes `/64` und könnte sonst pro Verbindung eine frische Absenderadresse
+    wählen, ohne je an sein Kontingent zu stoßen.
   - **Eingabesäuberung**: Alle Client-Inputs werden serverseitig bereinigt (HTML-Sanitization).
 - **Dual-Stack Netzwerkunterstützung (IPv6 & IPv4)**:
   - Primär auf **IPv6** (`::`) gebunden – ideal für moderne Server- und Cloud-Umgebungen.
@@ -45,7 +49,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 152 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
+   - 174 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
 
 ---
 
@@ -84,6 +88,25 @@ Anschließend ist das Spiel erreichbar unter:
 - **IPv6:** `http://[::1]:<port>` (bzw. über die öffentliche IPv6-Adresse des Servers)
 - **IPv4:** `http://127.0.0.1:<port>` (bzw. über die IPv4-Adresse des Servers)
 
+### 4. Betrieb hinter einem Reverse Proxy (optional)
+
+Steht der Server hinter einem Reverse Proxy (nginx, Caddy, Traefik …), ist die Peer-Adresse jeder Verbindung die des Proxys – ohne weitere Konfiguration teilen sich also alle Spieler ein einziges Rate-Limit-Kontingent. Die echte Client-Adresse steht in diesem Fall im Header `X-Forwarded-For`.
+
+Diesen Header kann jeder Client aber auch selbst setzen. Er wird deshalb **nur** ausgewertet, wenn die Gegenstelle als vertrauenswürdiger Proxy konfiguriert ist; ohne Konfiguration zählt ausschließlich die nicht fälschbare Peer-Adresse:
+
+```bash
+# Nur der lokale Reverse Proxy darf X-Forwarded-For setzen
+TRUST_PROXY=loopback npm start
+
+# Mehrere Einträge: einzelne Adressen, CIDR-Bereiche und die Kurznamen
+# loopback, linklocal und uniquelocal sind erlaubt
+TRUST_PROXY="loopback, 10.0.0.0/8, 2001:db8::/32" npm start
+```
+
+Die `X-Forwarded-For`-Kette wird dabei von rechts nach links gelesen und beim ersten Eintrag beendet, der kein vertrauenswürdiger Proxy ist – das ist der Client. `TRUST_PROXY=true` vertraut jedem Hop und ist nur sinnvoll, wenn der Port ausschließlich vom Proxy erreichbar ist.
+
+Für das Rate Limiting zählt anschließend nicht die einzelne Adresse, sondern ihr Block: IPv4 und IPv4-mapped IPv6 (`::ffff:a.b.c.d`) werden auf die reine IPv4-Adresse abgebildet, natives IPv6 auf sein `/64`-Präfix (z. B. `2001:db8:1:2::/64`). Ein Client, dem ohnehin ein ganzes Präfix gehört, kann sein Kontingent so nicht durch eine neue Adresse pro Verbindung umgehen.
+
 ---
 
 ## 🧪 Tests ausführen
@@ -93,7 +116,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (152 Tests in 8 Test-Dateien):
+Getestet werden (174 Tests in 8 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -104,7 +127,7 @@ Getestet werden (152 Tests in 8 Test-Dateien):
 - Matchmaking-Warteschlange und Sitzungsisolation.
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
-- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting, Eingabesäuberung).
+- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Schlüssel und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
 
 ### WCAG 2.1 AA Kontrastprüfung
@@ -130,7 +153,8 @@ Web-Spiel/
 ├── lib/
 │   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
 │   ├── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
-│   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
+│   ├── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
+│   └── clientAddress.js      # Client-Adresse (X-Forwarded-For nur von vertrauten Proxys) & Rate-Limit-Schlüssel (/64)
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)
 │   ├── css/

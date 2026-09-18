@@ -1,5 +1,6 @@
 const { RateLimiter } = require('../lib/RateLimiter');
 const { GameManager, sanitizeText } = require('../lib/GameManager');
+const { parseTrustProxy, getClientAddress, rateLimitKey } = require('../lib/clientAddress');
 const { io: serverIo, app: serverApp } = require('../server');
 
 describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
@@ -227,6 +228,111 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
 
         expect(sockets.slice(0, budget).some(wasThrottled)).toBe(false);
         expect(wasThrottled(sockets[budget])).toBe(true);
+      });
+    });
+
+    describe('address budgets are counted per block, not per address', () => {
+      const mockSocket = (id, address) => ({
+        id,
+        connected: true,
+        handshake: { address, headers: {} },
+        join: jest.fn(),
+        emit: jest.fn()
+      });
+
+      const wasThrottled = (socket) => socket.emit.mock.calls.some(
+        ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
+      );
+
+      // One login per socket, so only the shared address budget can stop them.
+      const floodFrom = (addresses, prefix) => {
+        const sockets = addresses.map((address, i) => mockSocket(`${prefix}_${i}`, address));
+        sockets.forEach((socket, i) => gm.enqueuePlayer(socket, `${prefix}${i}`));
+        return sockets;
+      };
+
+      test('two addresses in one /64 share a single budget', () => {
+        const budget = gm.queueIpLimiter.max;
+        // A client owning 2001:db8:1:2::/64 picks a fresh address per connection;
+        // both ends of the block must still be counted together.
+        const addresses = Array.from({ length: budget + 1 }, (_, i) => (
+          i % 2 === 0 ? '2001:db8:1:2::1' : '2001:db8:1:2:ffff:ffff:ffff:ffff'
+        ));
+
+        const sockets = floodFrom(addresses, 'hop');
+
+        expect(sockets.slice(0, budget).some(wasThrottled)).toBe(false);
+        expect(wasThrottled(sockets[budget])).toBe(true);
+      });
+
+      test('addresses in different /64s keep their own budget', () => {
+        const budget = gm.queueIpLimiter.max;
+        floodFrom(Array.from({ length: budget }, (_, i) => `2001:db8:1:2::${(i + 1).toString(16)}`), 'blockA');
+
+        // The exhausted block stays exhausted ...
+        const sameBlock = mockSocket('blockA_extra', '2001:db8:1:2:ffff:ffff:ffff:ffff');
+        gm.enqueuePlayer(sameBlock, 'SameBlock');
+        expect(wasThrottled(sameBlock)).toBe(true);
+
+        // ... while the neighbouring /64 is untouched by it.
+        const otherBlock = mockSocket('blockB_1', '2001:db8:1:3::1');
+        gm.enqueuePlayer(otherBlock, 'OtherBlock');
+        expect(wasThrottled(otherBlock)).toBe(false);
+      });
+
+      test('an IPv4-mapped address shares the budget of the plain IPv4 address', () => {
+        const budget = gm.queueIpLimiter.max;
+        // Dual-stack listeners report the same client as ::ffff:1.2.3.4 or 1.2.3.4.
+        floodFrom(Array(budget).fill('::ffff:1.2.3.4'), 'mapped');
+
+        const plain = mockSocket('plain_v4', '1.2.3.4');
+        gm.enqueuePlayer(plain, 'PlainV4');
+        expect(wasThrottled(plain)).toBe(true);
+      });
+    });
+
+    describe('rateLimitKey', () => {
+      test('maps IPv4 and IPv4-mapped IPv6 onto the same plain IPv4 key', () => {
+        expect(rateLimitKey('1.2.3.4')).toBe('1.2.3.4');
+        expect(rateLimitKey('::ffff:1.2.3.4')).toBe('1.2.3.4');
+      });
+
+      test('folds native IPv6 onto its /64 prefix', () => {
+        expect(rateLimitKey('2001:db8:1:2:3:4:5:6')).toBe('2001:db8:1:2::/64');
+        expect(rateLimitKey('2001:db8:1:2::abcd')).toBe('2001:db8:1:2::/64');
+        expect(rateLimitKey('2001:db8:1:3::1')).toBe('2001:db8:1:3::/64');
+      });
+
+      test('passes non-IP values through unchanged', () => {
+        // Mock sockets without a handshake fall back to socket.id.
+        expect(rateLimitKey('sock_chat_1')).toBe('sock_chat_1');
+        expect(rateLimitKey('')).toBe('');
+        expect(rateLimitKey(undefined)).toBeUndefined();
+      });
+    });
+
+    describe('getClientAddress: X-Forwarded-For needs a trusted proxy', () => {
+      const proxiedSocket = {
+        id: 'proxied',
+        handshake: {
+          address: '127.0.0.1',
+          headers: { 'x-forwarded-for': '2001:db8:1:2::9, 10.0.0.5' }
+        }
+      };
+
+      test('ignores the header when no proxy is trusted', () => {
+        expect(getClientAddress(proxiedSocket, parseTrustProxy(undefined))).toBe('127.0.0.1');
+        expect(getClientAddress(proxiedSocket, parseTrustProxy('false'))).toBe('127.0.0.1');
+      });
+
+      test('stops the chain at the first untrusted hop', () => {
+        expect(getClientAddress(proxiedSocket, parseTrustProxy('loopback'))).toBe('10.0.0.5');
+        expect(getClientAddress(proxiedSocket, parseTrustProxy('loopback, uniquelocal')))
+          .toBe('2001:db8:1:2::9');
+      });
+
+      test('falls back to socket.id for sockets without a handshake', () => {
+        expect(getClientAddress({ id: 'mock_socket' }, parseTrustProxy('loopback'))).toBe('mock_socket');
       });
     });
 
