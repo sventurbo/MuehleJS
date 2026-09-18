@@ -102,6 +102,12 @@ describe('Stone animations', () => {
 });
 
 describe('Mill beam', () => {
+  test('the glow filter is sized in board units, so a straight beam is drawn at all', () => {
+    // A horizontal or vertical line has a zero-height/width bounding box; a
+    // filter region relative to it is empty and hides the element entirely.
+    expect(boardJs).toMatch(/<filter id="goldGlow" filterUnits="userSpaceOnUse"/);
+  });
+
   test('each beam removes only itself, so a second mill keeps its full fade', () => {
     expect(boardJs).toContain("beam.addEventListener('animationend', () => beam.remove(), { once: true })");
     expect(boardJs).toMatch(/setTimeout\(\(\) => beam\.remove\(\), MILL_BEAM_FALLBACK_MS\)/);

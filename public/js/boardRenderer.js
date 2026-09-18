@@ -119,7 +119,10 @@ class BoardRenderer {
           </radialGradient>
 
           <!-- Soft glow for the mill beam -->
-          <filter id="goldGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <!-- Sized in board units: a mill beam is a straight line whose
+               bounding box has zero height or width, so a region relative to
+               that box would be empty and the beam would not be drawn. -->
+          <filter id="goldGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="600" height="600">
             <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
             <feMerge>
               <feMergeNode in="blur"/>
