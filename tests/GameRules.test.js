@@ -239,4 +239,87 @@ describe('Client rule module (gameRules.js)', () => {
       expect(RULES.getValidDestinations(game.board, 'b4', 'W', false)).toEqual([]);
     });
   });
+
+  describe('diffBoards tells the renderer what changed', () => {
+    const empty = () => Object.fromEntries(POINTS.map(pt => [pt, null]));
+    const board = stones => ({ ...empty(), ...stones });
+
+    test('reports nothing for identical boards', () => {
+      const stones = board({ a7: 'W', g1: 'B' });
+      expect(RULES.diffBoards(stones, { ...stones })).toEqual({ moved: null, placed: [], removed: [] });
+    });
+
+    test('reports a placement', () => {
+      expect(RULES.diffBoards(board({ a7: 'W' }), board({ a7: 'W', d7: 'B' })))
+        .toEqual({ moved: null, placed: ['d7'], removed: [] });
+    });
+
+    test('reports a capture', () => {
+      expect(RULES.diffBoards(board({ a7: 'W', d7: 'B' }), board({ a7: 'W' })))
+        .toEqual({ moved: null, placed: [], removed: ['d7'] });
+    });
+
+    test('reports a step and a jump as a move', () => {
+      expect(RULES.diffBoards(board({ b2: 'W', a1: 'B' }), board({ b4: 'W', a1: 'B' })))
+        .toEqual({ moved: { from: 'b2', to: 'b4' }, placed: [], removed: [] });
+      expect(RULES.diffBoards(board({ g1: 'B', a7: 'W' }), board({ c5: 'B', a7: 'W' })))
+        .toEqual({ moved: { from: 'g1', to: 'c5' }, placed: [], removed: [] });
+    });
+
+    test('does not mistake a vanished and an unrelated new stone for a move', () => {
+      expect(RULES.diffBoards(board({ a7: 'W' }), board({ g1: 'B' })))
+        .toEqual({ moved: null, placed: ['g1'], removed: ['a7'] });
+      expect(RULES.diffBoards(board({ a7: 'W' }), board({ a7: 'B' })))
+        .toEqual({ moved: null, placed: ['a7'], removed: ['a7'] });
+    });
+
+    test('treats a missing previous board as empty', () => {
+      expect(RULES.diffBoards({}, board({ d5: 'W' })))
+        .toEqual({ moved: null, placed: ['d5'], removed: [] });
+    });
+
+    test('matches every action of pseudo-random engine games', () => {
+      const random = makeRandom(20260918);
+      const pick = list => list[Math.floor(random() * list.length)];
+      const mismatches = [];
+      const seen = new Set();
+
+      for (let g = 0; g < 60; g++) {
+        const game = new MuehleGame(`diff_${g}`);
+
+        for (let step = 0; step < 200 && !game.winner; step++) {
+          const player = game.turn;
+          const before = { ...game.board };
+          let result;
+
+          if (game.awaitingRemoval) {
+            result = game.removePiece(player, pick(game.getRemovablePieces(player)));
+          } else if (game.phase === 'SETTING') {
+            result = game.placePiece(player, pick(POINTS.filter(pt => game.board[pt] === null)));
+          } else {
+            const moves = Object.entries(game.getLegalMoves(player))
+              .flatMap(([from, tos]) => tos.map(to => [from, to]));
+            const [from, to] = pick(moves);
+            result = game.movePiece(player, from, to);
+          }
+          expect(result.success).toBe(true);
+
+          const expected = {
+            place: { moved: null, placed: [result.point], removed: [] },
+            move: { moved: { from: result.from, to: result.to }, placed: [], removed: [] },
+            remove: { moved: null, placed: [], removed: [result.point] }
+          }[result.action];
+          seen.add(result.action);
+
+          const actual = RULES.diffBoards(before, result.state.board);
+          if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+            mismatches.push({ game: g, step, action: result.action, expected, actual });
+          }
+        }
+      }
+
+      expect([...seen].sort()).toEqual(['move', 'place', 'remove']);
+      expect(mismatches).toEqual([]);
+    });
+  });
 });

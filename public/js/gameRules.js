@@ -134,6 +134,34 @@
     return (ADJACENCY[from] || []).filter(pt => board[pt] === null);
   }
 
+  /**
+   * What changed between two boards, so the renderer can animate exactly that.
+   *
+   * A move shows up as one stone leaving a point and a stone of the same colour
+   * arriving on another; it is reported as `moved` so it can travel instead of
+   * vanishing and reappearing. Every other difference is a plain placement or
+   * removal. Derived from the boards alone, so it cannot disagree with the
+   * state the board is being brought in line with.
+   */
+  function diffBoards(prevBoard, nextBoard) {
+    const placed = [];
+    const removed = [];
+
+    POINTS.forEach(pt => {
+      const before = (prevBoard && prevBoard[pt]) || null;
+      const after = (nextBoard && nextBoard[pt]) || null;
+      if (before === after) return;
+      if (before) removed.push(pt);
+      if (after) placed.push(pt);
+    });
+
+    if (placed.length === 1 && removed.length === 1 &&
+        prevBoard[removed[0]] === nextBoard[placed[0]]) {
+      return { moved: { from: removed[0], to: placed[0] }, placed: [], removed: [] };
+    }
+    return { moved: null, placed, removed };
+  }
+
   return {
     POINTS,
     ADJACENCY,
@@ -144,6 +172,7 @@
     areAllPiecesInMills,
     getRemovablePoints,
     getCaptureTargets,
-    getValidDestinations
+    getValidDestinations,
+    diffBoards
   };
 });

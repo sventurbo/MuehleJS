@@ -5,6 +5,10 @@
  *
  * Colours live in css/style.css. Gradient stops are addressed by class so the
  * board follows the active light/dark theme instead of hardcoding hex values.
+ *
+ * The board's DOM is built once and then patched: every stone keeps its SVG
+ * node for as long as it stays on its point. Only that lets CSS animate a stone
+ * at all — a freshly inserted node has no previous state to transition from.
  */
 
 const POINT_COORDS = {
@@ -45,6 +49,10 @@ const POINT_COORDS = {
 const HIT_RADIUS_POINTER = 28;
 const HIT_RADIUS_TOUCH = 36;
 
+/* A captured stone is removed on `animationend`. That event never fires while
+   the board is hidden, so the node is dropped after this long regardless. */
+const LEAVE_FALLBACK_MS = 1000;
+
 const BOARD_LINES = [
   // Outer square
   ['a7', 'd7'], ['d7', 'g7'], ['g7', 'g4'], ['g4', 'g1'],
@@ -74,6 +82,11 @@ class BoardRenderer {
     this.removablePoints = [];
     this.lastMillPoints = [];
     this.hitRadius = BoardRenderer.hitRadius();
+
+    // Stones currently on screen: point -> { color, el }. Stones that are still
+    // fading out after a capture are already gone from here.
+    this.pieces = new Map();
+    this.gameId = null;
 
     this._initSvg();
   }
@@ -143,12 +156,39 @@ class BoardRenderer {
         </g>
 
         <!-- Interactive Pieces and Target Markers Layer -->
-        <g id="interactive-layer"></g>
+        <g id="interactive-layer">
+          ${Object.entries(POINT_COORDS).map(([pt, c]) => `
+            <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">
+              <!-- Transparent wide hit area for easy clicking / tapping -->
+              <circle cx="0" cy="0" r="${this.hitRadius}" fill="transparent" class="hit-area" />
+              <!-- Destination, selection and capture markers; the stone follows -->
+              <g class="point-markers"></g>
+            </g>
+          `).join('')}
+        </g>
       </svg>
     `;
 
     this.interactiveLayer = this.container.querySelector('#interactive-layer');
     this.millGlowLayer = this.container.querySelector('#mill-glow-lines');
+
+    this.pointGroups = {};
+    this.markerLayers = {};
+    this.interactiveLayer.querySelectorAll('.board-point-group').forEach(group => {
+      const pt = group.getAttribute('data-point');
+      this.pointGroups[pt] = group;
+      this.markerLayers[pt] = group.querySelector('.point-markers');
+    });
+
+    // One delegated listener: the groups outlive every render, and a stone that
+    // is still fading out lets the click through to its point.
+    this.interactiveLayer.addEventListener('click', (e) => {
+      const group = e.target.closest('.board-point-group');
+      const pt = group && group.getAttribute('data-point');
+      if (pt && this.onPointClick) {
+        this.onPointClick(pt);
+      }
+    });
   }
 
   /**
@@ -164,84 +204,141 @@ class BoardRenderer {
     this.validDestinations = validDestinations;
     this.removablePoints = window.MuehleRules.getCaptureTargets(gameState, playerColor);
 
-    const board = gameState.board;
     const isMyTurn = gameState.turn === playerColor && !gameState.winner;
+    const canSelect = isMyTurn && gameState.phase === 'MOVING' && !gameState.awaitingRemoval;
 
-    // Build interactive elements
-    let elementsHtml = '';
+    this._syncPieces(gameState);
 
-    Object.entries(POINT_COORDS).forEach(([pt, c]) => {
-      const piece = board[pt];
-      const isSelected = this.selectedPoint === pt;
-      const isValidDest = this.validDestinations.includes(pt);
+    Object.keys(POINT_COORDS).forEach(pt => {
       const isRemovable = this.removablePoints.includes(pt);
-      const isMyPiece = piece === playerColor;
+      let markersHtml = '';
 
-      // Group for this point, translated to the exact intersection coordinates
-      elementsHtml += `<g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">`;
-
-      // 1. Transparent wide hit area for easy clicking / tapping
-      elementsHtml += `<circle cx="0" cy="0" r="${this.hitRadius}" fill="transparent" class="hit-area" />`;
-
-      // 2. Valid destination: a calm concentric ring plus a solid centre dot
-      if (isValidDest) {
-        elementsHtml += `
+      // 1. Valid destination: a calm concentric ring plus a solid centre dot
+      if (this.validDestinations.includes(pt)) {
+        markersHtml += `
           <circle cx="0" cy="0" r="16" class="dest-indicator" stroke-width="1.5" />
           <circle cx="0" cy="0" r="5" class="dest-dot" />
         `;
       }
 
-      // 3. Selected stone: a single solid accent ring
-      if (isSelected) {
-        elementsHtml += `
+      // 2. Selected stone: a single solid accent ring
+      if (this.selectedPoint === pt) {
+        markersHtml += `
           <circle cx="0" cy="0" r="27" fill="none" class="selection-ring" stroke-width="2" />
         `;
       }
 
-      // 4. Removable opponent piece: a tinted target ring
+      // 3. Removable opponent piece: a tinted target ring
       if (isRemovable) {
-        elementsHtml += `
+        markersHtml += `
           <circle cx="0" cy="0" r="26" class="removal-target" stroke-width="2" />
         `;
       }
 
-      // 5. Piece graphics
+      this.markerLayers[pt].innerHTML = markersHtml;
+
+      // 4. Stone state. Toggled on the existing node, never by rewriting its
+      //    class attribute, which would cut short a running entry animation.
+      const piece = this.pieces.get(pt);
       if (piece) {
-        const isWhite = piece === 'W';
-        const fillGrad = isWhite ? 'url(#whitePieceGrad)' : 'url(#blackPieceGrad)';
-
-        let pieceClasses = `game-piece ${isWhite ? 'piece-white' : 'piece-black'}`;
-        if (isMyTurn && isMyPiece && gameState.phase === 'MOVING' && !gameState.awaitingRemoval) {
-          pieceClasses += ' piece-selectable';
-        }
-        if (isRemovable) {
-          pieceClasses += ' piece-removable';
-        }
-
-        elementsHtml += `
-          <g class="${pieceClasses}">
-            <!-- Stone body -->
-            <circle cx="0" cy="0" r="21" class="stone-body" fill="${fillGrad}" stroke-width="1"/>
-            <!-- Single specular highlight -->
-            <ellipse cx="-5.5" cy="-7.5" rx="7.5" ry="4.5" class="stone-gloss" transform="rotate(-30 -5.5 -7.5)"/>
-          </g>
-        `;
+        piece.el.classList.toggle('piece-selectable', canSelect && piece.color === playerColor);
+        piece.el.classList.toggle('piece-removable', isRemovable);
       }
-
-      elementsHtml += `</g>`;
     });
+  }
 
-    this.interactiveLayer.innerHTML = elementsHtml;
+  /**
+   * Brings the stones on screen in line with `gameState.board`, touching only
+   * the points that changed: a placed stone pops in, a moved stone travels from
+   * its old point, a captured stone fades out. A new game starts from a clean
+   * board instead of animating the previous game's stones away.
+   */
+  _syncPieces(gameState) {
+    const board = gameState.board;
+    const sameGame = gameState.gameId === this.gameId;
 
-    // Attach click listeners to point groups
-    this.interactiveLayer.querySelectorAll('.board-point-group').forEach(el => {
-      el.addEventListener('click', (e) => {
-        const pt = el.getAttribute('data-point');
-        if (pt && this.onPointClick) {
-          this.onPointClick(pt);
-        }
-      });
-    });
+    if (!sameGame) {
+      this.interactiveLayer.querySelectorAll('.game-piece').forEach(el => el.remove());
+      this.pieces.clear();
+      this.gameId = gameState.gameId;
+    }
+
+    const shown = {};
+    this.pieces.forEach((piece, pt) => { shown[pt] = piece.color; });
+    const { moved, placed, removed } = window.MuehleRules.diffBoards(shown, board);
+
+    if (moved) {
+      this._removePiece(moved.from, false);
+      this._addPiece(moved.to, board[moved.to], { from: moved.from });
+    }
+    removed.forEach(pt => this._removePiece(pt, sameGame));
+    placed.forEach(pt => this._addPiece(pt, board[pt], sameGame ? { enter: true } : {}));
+  }
+
+  /**
+   * Puts a stone on `pt`. `from` makes it travel there from another point,
+   * `enter` lets it pop in; with neither it simply appears.
+   */
+  _addPiece(pt, color, { from = null, enter = false } = {}) {
+    const group = this.pointGroups[pt];
+    const isWhite = color === 'W';
+    const fillGrad = isWhite ? 'url(#whitePieceGrad)' : 'url(#blackPieceGrad)';
+
+    if (from) {
+      // Paint the travelling stone above every point it crosses on the way.
+      this.interactiveLayer.appendChild(group);
+    }
+
+    group.insertAdjacentHTML('beforeend', `
+      <g class="game-piece ${isWhite ? 'piece-white' : 'piece-black'}">
+        <!-- Stone body -->
+        <circle cx="0" cy="0" r="21" class="stone-body" fill="${fillGrad}" stroke-width="1"/>
+        <!-- Single specular highlight -->
+        <ellipse cx="-5.5" cy="-7.5" rx="7.5" ry="4.5" class="stone-gloss" transform="rotate(-30 -5.5 -7.5)"/>
+      </g>
+    `);
+    const el = group.lastElementChild;
+
+    if (from) {
+      // Start offset in local user units; the keyframes glide it back to 0.
+      el.style.setProperty('--travel-x', `${POINT_COORDS[from].x - POINT_COORDS[pt].x}px`);
+      el.style.setProperty('--travel-y', `${POINT_COORDS[from].y - POINT_COORDS[pt].y}px`);
+      BoardRenderer._playOnce(el, 'piece-arriving');
+    } else if (enter) {
+      BoardRenderer._playOnce(el, 'piece-entering');
+    }
+
+    this.pieces.set(pt, { color, el });
+  }
+
+  /**
+   * Takes the stone off `pt`, letting it fade out first when `animate` is set.
+   * It leaves `this.pieces` immediately, so the next render already treats the
+   * point as empty while the old node finishes its exit.
+   */
+  _removePiece(pt, animate) {
+    const piece = this.pieces.get(pt);
+    if (!piece) return;
+    this.pieces.delete(pt);
+
+    const { el } = piece;
+    if (!animate) {
+      el.remove();
+      return;
+    }
+    el.classList.add('piece-leaving');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), LEAVE_FALLBACK_MS);
+  }
+
+  /**
+   * Runs the animation behind `className` once. The class is dropped again
+   * afterwards so the animation cannot replay when the node is re-inserted
+   * or its screen is shown again.
+   */
+  static _playOnce(el, className) {
+    el.classList.add(className);
+    el.addEventListener('animationend', () => el.classList.remove(className), { once: true });
   }
 
   /**
