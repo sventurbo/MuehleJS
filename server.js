@@ -20,7 +20,6 @@ const PORT = parseInt(process.env.PORT || cliPort || '3000', 10);
 const app = express();
 app.disable('x-powered-by');
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
 app.use(express.json({ limit: '10kb' }));
 
 // API health and info endpoint

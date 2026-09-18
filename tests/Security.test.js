@@ -1,6 +1,6 @@
 const { RateLimiter } = require('../lib/RateLimiter');
 const { GameManager, sanitizeText } = require('../lib/GameManager');
-const { io: serverIo } = require('../server');
+const { io: serverIo, app: serverApp } = require('../server');
 
 describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
   describe('RateLimiter Unit Tests', () => {
@@ -302,6 +302,50 @@ describe('Username Validation (Issue #1)', () => {
      test('server io configuration restricts maxHttpBufferSize to <= 10 KB', () => {
        expect(serverIo.opts.maxHttpBufferSize).toBeDefined();
        expect(serverIo.opts.maxHttpBufferSize).toBeLessThanOrEqual(10240); // 10 KB
+     });
+   });
+
+   describe('DOS-03: express.json body limit (Issue #21)', () => {
+     const http = require('http');
+     let httpServer;
+     let port;
+
+     beforeAll((done) => {
+       httpServer = http.createServer(serverApp);
+       httpServer.listen(0, '127.0.0.1', () => {
+         port = httpServer.address().port;
+         done();
+       });
+     });
+
+     afterAll((done) => {
+       httpServer.close(done);
+     });
+
+     const postJson = (body) => new Promise((resolve, reject) => {
+       const req = http.request({
+         host: '127.0.0.1',
+         port,
+         path: '/api/status',
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+       }, (res) => {
+         res.resume();
+         res.on('end', () => resolve(res.statusCode));
+       });
+       req.on('error', reject);
+       req.end(body);
+     });
+
+     test('rejects JSON bodies above 10 KB with 413', async () => {
+       const body = JSON.stringify({ padding: 'x'.repeat(11 * 1024) });
+       expect(await postJson(body)).toBe(413);
+     });
+
+     test('accepts JSON bodies below 10 KB', async () => {
+       const body = JSON.stringify({ padding: 'x'.repeat(9 * 1024) });
+       // There is no POST route, so a parsed body falls through to 404.
+       expect(await postJson(body)).toBe(404);
      });
    });
  });
