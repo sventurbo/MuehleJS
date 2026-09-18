@@ -179,6 +179,7 @@ describe('MuehleGame Rule Engine', () => {
       expect(game.unplacedPieces.B).toBe(0);
       expect(game.phase).toBe('MOVING');
       expect(game.turn).toBe('W');
+      expect(game.winner).toBeNull();
     });
   });
 
@@ -349,6 +350,32 @@ describe('MuehleGame Rule Engine', () => {
       expect(game.winner).toBe('W');
       expect(game.phase).toBe('FINISHED');
       expect(game.winReason).toContain('eingesperrt');
+    });
+
+    // Regression (#23): the placement that ends the SETTING phase handed the
+    // turn to a trapped opponent without ending the game, so it hung forever.
+    test('player wins when the last placed stone traps the opponent', () => {
+      // Free after the final placement: a7, d7, g7, b6, d6, f6.
+      // Every stone next to them is Black, so White cannot move anywhere.
+      ['a4', 'g4', 'd5', 'f4', 'a1', 'g1', 'c3', 'e3']
+        .forEach(pt => { game.board[pt] = 'B'; });
+      ['c5', 'e5', 'c4', 'e4', 'd3', 'b2', 'd2', 'f2', 'd1']
+        .forEach(pt => { game.board[pt] = 'W'; });
+      game.piecesOnBoard = { W: 9, B: 8 };
+      game.unplacedPieces = { W: 0, B: 1 };
+      game.turn = 'B';
+
+      // b4 is White's last way out; the final Black stone closes it.
+      expect(game.getValidDestinations('c4', 'W')).toEqual(['b4']);
+      expect(game.getValidDestinations('b2', 'W')).toEqual(['b4']);
+
+      const res = game.placePiece('B', 'b4');
+      expect(res.success).toBe(true);
+      expect(res.millFormed).toBe(false);
+      expect(game.winner).toBe('B');
+      expect(game.phase).toBe('FINISHED');
+      expect(game.winReason).toContain('eingesperrt');
+      expect(res.state.winner).toBe('B');
     });
 
 test('forfeit gives immediate victory to opponent', () => {
