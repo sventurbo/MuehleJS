@@ -4,10 +4,38 @@
  * 100% self-contained, no external audio files required.
  */
 
+const MUTE_STORAGE_KEY = 'muehle_muted';
+
+/**
+ * Reads the stored mute preference.
+ *
+ * Safari in private mode — and any browser with site data switched off —
+ * throws on localStorage instead of handing back an empty store. Swallowing
+ * that here keeps the constructor from throwing, which would leave
+ * window.soundController undefined and take every later sound call with it.
+ * The fallback is the default: sound on, preference simply not remembered.
+ */
+function loadMuted() {
+  try {
+    return window.localStorage.getItem(MUTE_STORAGE_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Stores the mute preference; a blocked or full store just means it is not remembered. */
+function storeMuted(muted) {
+  try {
+    window.localStorage.setItem(MUTE_STORAGE_KEY, String(muted));
+  } catch (e) {
+    // Preference stays in memory for this session only.
+  }
+}
+
 class SoundController {
   constructor() {
     this.ctx = null;
-    this.muted = localStorage.getItem('muehle_muted') === 'true';
+    this.muted = loadMuted();
   }
 
   _init() {
@@ -52,7 +80,7 @@ class SoundController {
 
   toggleMute() {
     this.muted = !this.muted;
-    localStorage.setItem('muehle_muted', this.muted);
+    storeMuted(this.muted);
     return this.muted;
   }
 
