@@ -47,7 +47,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 181 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout und die Brett-Animationen.
+   - 199 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
 
 ---
 
@@ -122,7 +122,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (181 Tests in 8 Test-Dateien):
+Getestet werden (199 Tests in 10 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -135,6 +135,7 @@ Getestet werden (181 Tests in 8 Test-Dateien):
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
+- Ton-Einstellung auch bei blockiertem `localStorage` (Safari im privaten Modus, abgeschaltete Website-Daten).
 
 ### WCAG 2.1 AA Kontrastprüfung
 
@@ -217,14 +218,15 @@ Web-Spiel/
 │   └── workflows/
 │       └── node.js.yml       # CI-Pipeline (Node.js 24.x, npm ci && npm test && npm run contrast-check)
 ├── tests/
-│   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung (40 Tests)
-│   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle (389 Tests)
-│   ├── GameRules.test.js     # Abgleich der Client-Regeln mit der Server-Engine (18 Tests)
-│   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch (108 Tests)
-│   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests (127 Tests)
+│   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
+│   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
+│   ├── GameRules.test.js     # Abgleich der Client-Regeln mit der Server-Engine
+│   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch
+│   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests
 │   ├── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
 │   ├── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
 │   ├── BoardAnimation.test.js # Strukturtests für Stein-Animationen und Mühlen-Beam
+│   ├── AudioMute.test.js     # Ton-Einstellung bei blockiertem localStorage (Safari privat)
 │   └── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Kaskadenreihenfolge, Token-Zugriff des Kontrast-Checkers)
 ├── .gitignore                # Git-Ignore (node_modules, .DS_Store, coverage, .env)
 ├── .npmrc                    # engine-strict=true (erzwingt die Node-Version aus "engines")
