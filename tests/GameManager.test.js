@@ -1,4 +1,4 @@
-const { GameManager } = require('../lib/GameManager');
+const { GameManager, DEFAULT_TURN_TIMEOUT_MS } = require('../lib/GameManager');
 
 describe('GameManager Matchmaking & Session Management', () => {
   let ioMock;
@@ -198,6 +198,252 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       gameManager.handlePlacePiece(socket2, 'a7');
       expectGameNotFound(socket2);
+    });
+  });
+
+  describe('turn timer (25 s per decision, enforced server-side)', () => {
+    let manager;
+
+    /**
+     * Pairs two fresh sockets and hands back everything a timer test needs:
+     * the session, and the sockets addressed by the colour they were dealt.
+     */
+    const startGame = (gameManagerInstance, idA, idB) => {
+      const socketA = createMockSocket(idA);
+      const socketB = createMockSocket(idB);
+      gameManagerInstance.enqueuePlayer(socketA, 'Alice');
+      gameManagerInstance.enqueuePlayer(socketB, 'Bob');
+
+      const gameId = gameManagerInstance.socketMap.get(idA).gameId;
+      const session = gameManagerInstance.games.get(gameId);
+
+      return {
+        gameId,
+        session,
+        game: session.game,
+        socketOf: (color) => session.players[color].socket
+      };
+    };
+
+    const emittedTo = (event) => roomEmitMock.mock.calls.filter(call => call[0] === event);
+
+    beforeEach(() => {
+      // Fake timers have to be in place before the manager exists, so every
+      // timer it owns (turn clock and limiter cleanup) is under test control.
+      jest.useFakeTimers();
+      manager = new GameManager(ioMock);
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    test('the default is 25 seconds, and an unusable setting cannot switch it off', () => {
+      expect(DEFAULT_TURN_TIMEOUT_MS).toBe(25000);
+      expect(manager.turnTimeoutMs).toBe(25000);
+      expect(new GameManager(ioMock, { turnTimeoutMs: 'bald' }).turnTimeoutMs).toBe(25000);
+      expect(new GameManager(ioMock, { turnTimeoutMs: 0 }).turnTimeoutMs).toBe(25000);
+      expect(new GameManager(ioMock, { turnTimeoutMs: -1000 }).turnTimeoutMs).toBe(25000);
+      expect(new GameManager(ioMock, { turnTimeoutMs: '5000' }).turnTimeoutMs).toBe(5000);
+    });
+
+    test('a new game starts its clock and announces it to both players', () => {
+      const { gameId, session } = startGame(manager, 'sock_1', 'sock_2');
+
+      expect(session.turnTimer).not.toBeNull();
+      expect(session.turnDeadline).toBe(Date.now() + 25000);
+      expect(ioMock.to).toHaveBeenCalledWith(gameId);
+      expect(roomEmitMock).toHaveBeenCalledWith('turnTimer', expect.objectContaining({
+        turn: 'W',
+        durationMs: 25000,
+        remainingMs: 25000
+      }));
+    });
+
+    test('nothing happens while the 25 seconds are still running', () => {
+      const { game } = startGame(manager, 'sock_1', 'sock_2');
+
+      jest.advanceTimersByTime(24999);
+
+      expect(game.moveHistory).toHaveLength(0);
+      expect(emittedTo('turnTimeout')).toHaveLength(0);
+    });
+
+    test('after 25 seconds the server plays a legal move for the player on turn', () => {
+      const { game } = startGame(manager, 'sock_1', 'sock_2');
+      const legalBefore = game.getLegalActions('W');
+
+      jest.advanceTimersByTime(25000);
+
+      // Exactly one move was played, by the engine, for the player who timed out.
+      expect(game.moveHistory).toHaveLength(1);
+      const played = game.moveHistory[0];
+      expect(played.player).toBe('W');
+      expect(played.action).toBe('place');
+      // ... and it is one of the moves that were legal a moment earlier.
+      expect(legalBefore.some(a => a.action === 'place' && a.point === played.point)).toBe(true);
+      expect(game.board[played.point]).toBe('W');
+      expect(game.turn).toBe('B');
+    });
+
+    test('the automatic move is logged in the move history as automatic', () => {
+      const { game } = startGame(manager, 'sock_1', 'sock_2');
+
+      jest.advanceTimersByTime(25000);
+
+      expect(game.moveHistory[0]).toEqual(expect.objectContaining({
+        action: 'place',
+        player: 'W',
+        auto: true
+      }));
+    });
+
+    test('both clients are told which move was played for them', () => {
+      const { gameId, game } = startGame(manager, 'sock_1', 'sock_2');
+
+      jest.advanceTimersByTime(25000);
+
+      const point = game.moveHistory[0].point;
+      expect(ioMock.to).toHaveBeenCalledWith(gameId);
+      expect(roomEmitMock).toHaveBeenCalledWith('turnTimeout', expect.objectContaining({
+        player: 'W',
+        timeoutMs: 25000,
+        autoMove: expect.objectContaining({ action: 'place', player: 'W', point }),
+        message: expect.any(String)
+      }));
+      // The state update carries the same flag, so the move log can mark it.
+      expect(roomEmitMock).toHaveBeenCalledWith('gameStateUpdate', expect.objectContaining({
+        lastAction: expect.objectContaining({ action: 'place', auto: true })
+      }));
+    });
+
+    test('every executed move resets the clock', () => {
+      const { session, game, socketOf } = startGame(manager, 'sock_1', 'sock_2');
+
+      jest.advanceTimersByTime(20000);
+      manager.handlePlacePiece(socketOf('W'), 'a7');
+      expect(game.moveHistory).toHaveLength(1);
+      expect(session.turnDeadline).toBe(Date.now() + 25000);
+
+      // 40 s after the game started, but only 20 s after the last move: the
+      // clock was restarted, so Black still has time.
+      jest.advanceTimersByTime(20000);
+      expect(game.moveHistory).toHaveLength(1);
+
+      jest.advanceTimersByTime(5000);
+      expect(game.moveHistory).toHaveLength(2);
+      expect(game.moveHistory[1]).toEqual(expect.objectContaining({ player: 'B', auto: true }));
+    });
+
+    test('the capture after a closed mill is timed as well', () => {
+      const { game, socketOf } = startGame(manager, 'sock_1', 'sock_2');
+
+      // White closes a7-d7-g7; Black's stones stay outside any mill.
+      manager.handlePlacePiece(socketOf('W'), 'a7');
+      manager.handlePlacePiece(socketOf('B'), 'b6');
+      manager.handlePlacePiece(socketOf('W'), 'd7');
+      manager.handlePlacePiece(socketOf('B'), 'b4');
+      manager.handlePlacePiece(socketOf('W'), 'g7');
+
+      expect(game.awaitingRemoval).toBe(true);
+      const removable = game.getRemovablePieces('W');
+
+      jest.advanceTimersByTime(25000);
+
+      expect(game.awaitingRemoval).toBe(false);
+      expect(game.capturedPieces.B).toBe(1);
+      const captured = game.moveHistory[game.moveHistory.length - 1];
+      expect(captured).toEqual(expect.objectContaining({ action: 'remove', player: 'W', auto: true }));
+      expect(removable).toContain(captured.point);
+      expect(game.turn).toBe('B');
+    });
+
+    test('a game played entirely on the clock stays a legal game', () => {
+      const { game } = startGame(manager, 'sock_1', 'sock_2');
+
+      // 40 expirations carry the game well past the setting phase.
+      for (let i = 0; i < 40 && !game.winner; i++) {
+        const legalBefore = game.getLegalActions(game.turn);
+        const historyBefore = game.moveHistory.length;
+
+        jest.advanceTimersByTime(25000);
+
+        expect(game.moveHistory).toHaveLength(historyBefore + 1);
+        const played = game.moveHistory[historyBefore];
+        expect(legalBefore).toContainEqual(expect.objectContaining({
+          action: played.action,
+          ...(played.action === 'move' ? { from: played.from, to: played.to } : { point: played.point })
+        }));
+      }
+
+      // The board the engine ends up with still matches its own counters.
+      const state = game.getState();
+      ['W', 'B'].forEach(color => {
+        const onBoard = Object.values(state.board).filter(v => v === color).length;
+        expect(state.piecesOnBoard[color]).toBe(onBoard);
+      });
+    });
+
+    test('parallel games keep independent clocks', () => {
+      const first = startGame(manager, 'sock_1', 'sock_2');
+      const second = startGame(manager, 'sock_3', 'sock_4');
+      expect(first.gameId).not.toBe(second.gameId);
+
+      jest.advanceTimersByTime(20000);
+      manager.handlePlacePiece(first.socketOf('W'), 'a7');
+
+      jest.advanceTimersByTime(6000);
+
+      // Only the second game ran out of time; the first one was reset by its move.
+      expect(first.game.moveHistory).toHaveLength(1);
+      expect(first.game.moveHistory[0].auto).toBeUndefined();
+      expect(second.game.moveHistory).toHaveLength(1);
+      expect(second.game.moveHistory[0].auto).toBe(true);
+    });
+
+    test('a disconnect during the countdown stops the clock instead of firing into a dead game', () => {
+      const { session, socketOf } = startGame(manager, 'sock_1', 'sock_2');
+      const whiteId = socketOf('W').id;
+
+      manager.handlePlayerDisconnect(whiteId);
+      roomEmitMock.mockClear();
+
+      expect(session.turnTimer).toBeNull();
+      expect(manager.games.size).toBe(0);
+      expect(() => jest.advanceTimersByTime(120000)).not.toThrow();
+      expect(emittedTo('turnTimeout')).toHaveLength(0);
+    });
+
+    test('a finished game gets no new clock', () => {
+      const { session, socketOf } = startGame(manager, 'sock_1', 'sock_2');
+
+      manager.handleForfeit(socketOf('W'));
+      roomEmitMock.mockClear();
+
+      expect(session.turnTimer).toBeNull();
+      jest.advanceTimersByTime(60000);
+      expect(emittedTo('turnTimeout')).toHaveLength(0);
+      expect(emittedTo('turnTimer')).toHaveLength(0);
+    });
+
+    test('a timeout for a session the server no longer knows is a no-op', () => {
+      expect(() => manager.handleTurnTimeout('game_does_not_exist')).not.toThrow();
+      expect(manager.handleTurnTimeout('game_does_not_exist')).toEqual({
+        success: false,
+        error: expect.any(String)
+      });
+    });
+
+    test('the turn time is configurable for the whole server', () => {
+      const fastManager = new GameManager(ioMock, { turnTimeoutMs: 1000 });
+      const { game } = startGame(fastManager, 'sock_fast_1', 'sock_fast_2');
+
+      jest.advanceTimersByTime(999);
+      expect(game.moveHistory).toHaveLength(0);
+
+      jest.advanceTimersByTime(1);
+      expect(game.moveHistory).toHaveLength(1);
     });
   });
 

@@ -451,5 +451,131 @@ test('forfeit gives immediate victory to opponent', () => {
        expect(result.player).toBe('W');
      });
    });
+
+  describe('Legal actions and the automatic move (turn timer)', () => {
+    test('getLegalActions offers every free point during the setting phase', () => {
+      game.placePiece('W', 'a7');
+
+      const actions = game.getLegalActions('B');
+      expect(actions).toHaveLength(23);
+      actions.forEach(action => {
+        expect(action).toEqual({ action: 'place', player: 'B', point: expect.any(String) });
+        expect(game.board[action.point]).toBeNull();
+      });
+    });
+
+    test('getLegalActions only ever answers the player on turn', () => {
+      expect(game.turn).toBe('W');
+      expect(game.getLegalActions('B')).toEqual([]);
+    });
+
+    test('getLegalActions lists the capture targets while a mill is pending', () => {
+      game.phase = 'MOVING';
+      game.awaitingRemoval = true;
+      game.board['a7'] = 'B';
+      game.board['b6'] = 'B';
+      game.board['b4'] = 'B';
+      game.piecesOnBoard = { W: 3, B: 3 };
+
+      const actions = game.getLegalActions('W');
+      expect(actions.map(a => a.point).sort()).toEqual(['a7', 'b4', 'b6']);
+      actions.forEach(action => expect(action.action).toBe('remove'));
+    });
+
+    test('getLegalActions lists from/to pairs in the moving phase', () => {
+      game.phase = 'MOVING';
+      game.board['a7'] = 'W';
+      game.board['d7'] = 'B';
+      game.piecesOnBoard = { W: 1, B: 1 };
+
+      // a7 is adjacent to d7 (taken) and a4 (free).
+      expect(game.getLegalActions('W')).toEqual([
+        { action: 'move', player: 'W', from: 'a7', to: 'a4' }
+      ]);
+    });
+
+    test('getLegalActions is empty once the game is over', () => {
+      game.forfeit('W');
+      expect(game.getLegalActions('B')).toEqual([]);
+    });
+
+    test('makeRandomLegalMove plays one of the legal actions and marks it', () => {
+      const legal = game.getLegalActions('W');
+
+      const result = game.makeRandomLegalMove('W');
+
+      expect(result.success).toBe(true);
+      expect(result.auto).toBe(true);
+      expect(legal).toContainEqual(expect.objectContaining({ action: 'place', point: result.point }));
+      expect(game.board[result.point]).toBe('W');
+      expect(game.moveHistory).toHaveLength(1);
+      expect(game.moveHistory[0].auto).toBe(true);
+      expect(game.turn).toBe('B');
+    });
+
+    test('makeRandomLegalMove takes its choice from the injected randomness', () => {
+      const legal = game.getLegalActions('W');
+
+      // 0 picks the first legal action, and a value at the very top of the
+      // range must still stay inside the list.
+      expect(game.makeRandomLegalMove('W', () => 0).point).toBe(legal[0].point);
+      expect(new MuehleGame().makeRandomLegalMove('W', () => 0.999999999).point)
+        .toBe(legal[legal.length - 1].point);
+    });
+
+    test('makeRandomLegalMove captures a stone when a mill is pending', () => {
+      game.phase = 'MOVING';
+      game.awaitingRemoval = true;
+      game.board['a7'] = 'B';
+      game.board['b6'] = 'B';
+      game.board['b4'] = 'B';
+      game.board['d7'] = 'W';
+      game.board['g7'] = 'W';
+      game.board['d6'] = 'W';
+      game.piecesOnBoard = { W: 3, B: 3 };
+
+      const result = game.makeRandomLegalMove('W');
+
+      expect(result.success).toBe(true);
+      expect(result.action).toBe('remove');
+      expect(game.awaitingRemoval).toBe(false);
+      expect(game.capturedPieces.B).toBe(1);
+    });
+
+    test('makeRandomLegalMove refuses instead of inventing a move', () => {
+      game.forfeit('W');
+      expect(game.makeRandomLegalMove('B')).toEqual({
+        success: false,
+        error: expect.any(String)
+      });
+    });
+
+    test('a whole game played automatically never breaks a rule', () => {
+      const autoGame = new MuehleGame('auto_game');
+
+      for (let i = 0; i < 400 && !autoGame.winner; i++) {
+        const before = autoGame.getLegalActions(autoGame.turn);
+        const result = autoGame.makeRandomLegalMove(autoGame.turn);
+
+        expect(before.length).toBeGreaterThan(0);
+        expect(result.success).toBe(true);
+
+        // Counters and board never drift apart, whichever action was chosen.
+        const state = autoGame.getState();
+        ['W', 'B'].forEach(color => {
+          const onBoard = Object.values(state.board).filter(v => v === color).length;
+          expect(state.piecesOnBoard[color]).toBe(onBoard);
+          expect(state.unplacedPieces[color] + onBoard + state.capturedPieces[color]).toBe(9);
+        });
+      }
+
+      // Random play can circle forever once both sides may jump, so the run is
+      // not expected to end — what matters is that it kept producing legal
+      // moves, all of them marked as played by the server.
+      expect(autoGame.moveHistory.length).toBeGreaterThan(18);
+      autoGame.moveHistory.forEach(entry => expect(entry.auto).toBe(true));
+      expect(autoGame.phase).not.toBe('SETTING');
+    });
+  });
  });
 

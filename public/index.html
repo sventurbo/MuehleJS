@@ -139,6 +139,15 @@
             <span id="hud-phase-text" class="phase-name">Phase 1: Setzen</span>
           </div>
           <div id="hud-turn-badge" class="hud-badge my-turn">Du bist am Zug</div>
+          <!-- Countdown for the server-side turn timer. Pure display: the clock
+               that counts is the one in GameManager. -->
+          <div id="hud-turn-timer" class="hud-timer hidden" role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
+            <svg class="hud-timer-ring" viewBox="0 0 36 36" aria-hidden="true">
+              <circle class="hud-timer-track" cx="18" cy="18" r="15.5"/>
+              <circle id="hud-timer-arc" class="hud-timer-arc" cx="18" cy="18" r="15.5"/>
+            </svg>
+            <span id="hud-timer-value" class="hud-timer-value">25</span>
+          </div>
           <div class="hud-game-actions">
             <button id="btn-rules-game" class="btn-tool" title="Regeln" aria-label="Spielregeln">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">

@@ -75,15 +75,19 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('rate limits chat messages when sent in rapid succession', () => {
+      // Only chat broadcasts count: the room also carries game events (the turn
+      // timer announces itself there as soon as the game starts).
+      const chatBroadcasts = () => roomEmitMock.mock.calls.filter(call => call[0] === 'chatMessage').length;
+
       // Send 4 messages (within limit)
       for (let i = 0; i < 4; i++) {
         gm.handleChatMessage(socket1, `Msg ${i}`);
       }
-      expect(roomEmitMock).toHaveBeenCalledTimes(4);
+      expect(chatBroadcasts()).toBe(4);
 
       // 5th message exceeds limit!
       gm.handleChatMessage(socket1, 'Spam Message');
-      expect(roomEmitMock).toHaveBeenCalledTimes(4); // NOT broadcasted!
+      expect(chatBroadcasts()).toBe(4); // NOT broadcasted!
       expect(socket1.emit).toHaveBeenCalledWith('actionError', expect.objectContaining({
         message: expect.stringContaining('Zu viele Nachrichten')
       }));
