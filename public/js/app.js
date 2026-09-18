@@ -21,6 +21,12 @@ class MuehleApp {
     this.selectedPoint = null;
     this.validDestinations = [];
 
+    // Countdown for the server-side turn timer. The server owns the clock and
+    // announces it with `turnTimer`; what runs here only draws the remaining
+    // time, so a stopped or manipulated interval changes nothing about the game.
+    this.turnTimerState = null; // { turn, durationMs, endsAt }
+    this.turnTimerInterval = null;
+
     // True while the server holds something for us (a queue slot or a running
     // game). Socket.io reconnects with a fresh socket id, so anything the
     // server was holding is gone by then and the session has to be ended here.
@@ -72,6 +78,11 @@ class MuehleApp {
     this.hudPhaseText = document.getElementById('hud-phase-text');
     this.hudStatusBanner = document.getElementById('hud-status-banner');
     this.hudInstructionText = document.getElementById('hud-instruction-text');
+
+    // Turn countdown
+    this.hudTurnTimer = document.getElementById('hud-turn-timer');
+    this.hudTimerValue = document.getElementById('hud-timer-value');
+    this.hudTimerArc = document.getElementById('hud-timer-arc');
 
     // Player White HUD
     this.playerWName = document.getElementById('player-w-name');
@@ -223,6 +234,7 @@ class MuehleApp {
     this.socket.on('disconnect', (reason) => {
       this.connectionLost = true;
       this._updateConnStatus(false);
+      this._stopTurnCountdown();
       this._showToast('Verbindung zum Server unterbrochen', 'error');
     });
 
@@ -249,6 +261,7 @@ class MuehleApp {
 
       this.selectedPoint = null;
       this.validDestinations = [];
+      this._stopTurnCountdown();
 
       this.chatMessages.innerHTML = '';
       this.moveLogList.innerHTML = '';
@@ -276,15 +289,19 @@ class MuehleApp {
       if (lastAction) {
         const actor = this._colorName(lastAction.player);
 
+        // A move the server played after the turn timer expired is marked, so
+        // the protocol shows who actually decided it.
+        const autoSuffix = lastAction.auto ? ' (automatisch)' : '';
+
         if (lastAction.action === 'place') {
           window.soundController.playPlace();
-          this._addMoveLog(`${actor} setzt auf ${lastAction.point}`);
+          this._addMoveLog(`${actor} setzt auf ${lastAction.point}${autoSuffix}`);
         } else if (lastAction.action === 'move') {
           window.soundController.playMove();
-          this._addMoveLog(`${actor} zieht ${lastAction.from} → ${lastAction.to}`);
+          this._addMoveLog(`${actor} zieht ${lastAction.from} → ${lastAction.to}${autoSuffix}`);
         } else if (lastAction.action === 'remove') {
           window.soundController.playRemove();
-          this._addMoveLog(`${actor} schlägt Stein auf ${lastAction.point}`);
+          this._addMoveLog(`${actor} schlägt Stein auf ${lastAction.point}${autoSuffix}`);
         }
 
         if (lastAction.millFormed) {
@@ -306,14 +323,35 @@ class MuehleApp {
       this._updateGameUI();
     });
 
+    // The server restarts the turn clock after every accepted action and says
+    // how much time the player on turn has left.
+    this.socket.on('turnTimer', (data) => {
+      this._startTurnCountdown(data);
+    });
+
+    // The clock ran out: the server played a legal move for the player on turn.
+    this.socket.on('turnTimeout', (data) => {
+      if (!data) return;
+      const actor = this._colorName(data.player);
+      this._addSystemLog(data.message || `Zeit abgelaufen – für ${actor} wurde automatisch gezogen.`);
+      this._showToast(
+        data.player === this.myColor
+          ? 'Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen.'
+          : `Bedenkzeit von ${actor} abgelaufen – der Zug wurde automatisch ausgeführt.`,
+        'warning'
+      );
+    });
+
     this.socket.on('gameOver', (data) => {
       this.gameState = data.state;
+      this._stopTurnCountdown();
       this._updateGameUI();
       this._showGameOverModal(data.winner, data.winnerName, data.winReason);
     });
 
     this.socket.on('opponentDisconnected', (data) => {
       this.gameState = data.state;
+      this._stopTurnCountdown();
       this._updateGameUI();
       this._showGameOverModal(data.winner, data.winnerName, data.winReason);
       // The exact cause (dropped connection vs. deliberate exit) is in winReason.
@@ -341,6 +379,88 @@ _handleLogin() {
    }
 
   /**
+   * Takes over the clock the server just announced and keeps the ring updated.
+   *
+   * The remaining time is anchored on the local clock the moment the event
+   * arrives, so a skewed system time cannot shift the display.
+   */
+  _startTurnCountdown(data) {
+    if (!data) return;
+
+    const durationMs = Number(data.durationMs);
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      this._stopTurnCountdown();
+      return;
+    }
+
+    const remainingMs = Number(data.remainingMs);
+    this.turnTimerState = {
+      turn: data.turn,
+      durationMs,
+      endsAt: Date.now() + (Number.isFinite(remainingMs) ? remainingMs : durationMs)
+    };
+
+    if (!this.turnTimerInterval) {
+      this.turnTimerInterval = setInterval(() => this._renderTurnTimer(), 200);
+    }
+    this._renderTurnTimer();
+  }
+
+  /**
+   * Stops and hides the countdown (game over, lost connection, new game).
+   */
+  _stopTurnCountdown() {
+    if (this.turnTimerInterval) {
+      clearInterval(this.turnTimerInterval);
+      this.turnTimerInterval = null;
+    }
+    this.turnTimerState = null;
+    this._renderTurnTimer();
+  }
+
+  /**
+   * Draws the remaining seconds and the shrinking ring.
+   *
+   * Once it hits zero the display stays at 0 until the server has played the
+   * automatic move and announced the next turn — the client never decides that
+   * a turn is over.
+   */
+  _renderTurnTimer() {
+    if (!this.hudTurnTimer) return;
+
+    const timer = this.turnTimerState;
+    if (!timer || !this.gameState || this.gameState.winner) {
+      this.hudTurnTimer.classList.add('hidden');
+      return;
+    }
+
+    const remainingMs = Math.max(0, timer.endsAt - Date.now());
+    const seconds = Math.ceil(remainingMs / 1000);
+    const isMine = timer.turn === this.myColor;
+
+    this.hudTurnTimer.classList.remove('hidden');
+    this.hudTurnTimer.classList.toggle('is-mine', isMine);
+    this.hudTurnTimer.classList.toggle('is-urgent', remainingMs <= 5000);
+    this.hudTurnTimer.setAttribute(
+      'aria-label',
+      `${isMine ? 'Deine Bedenkzeit' : 'Bedenkzeit des Gegners'}: noch ${seconds} Sekunden`
+    );
+    this.hudTurnTimer.title = isMine
+      ? 'Deine Bedenkzeit für diesen Zug'
+      : 'Bedenkzeit des Gegners für diesen Zug';
+
+    if (this.hudTimerValue) this.hudTimerValue.textContent = String(seconds);
+
+    if (this.hudTimerArc) {
+      const radius = Number(this.hudTimerArc.getAttribute('r')) || 0;
+      const circumference = 2 * Math.PI * radius;
+      const fraction = Math.max(0, Math.min(1, remainingMs / timer.durationMs));
+      this.hudTimerArc.style.strokeDasharray = String(circumference);
+      this.hudTimerArc.style.strokeDashoffset = String(circumference * (1 - fraction));
+    }
+  }
+
+  /**
    * German label for a stone colour, used across log, HUD and modals.
    */
   _colorName(color) {
@@ -357,6 +477,7 @@ _handleLogin() {
    */
   _terminateSession(message) {
     this.sessionActive = false;
+    this._stopTurnCountdown();
     this.gameState = null;
     this.myColor = null;
     this.opponentColor = null;
@@ -461,6 +582,9 @@ _handleLogin() {
     } else {
       this.hudPhaseText.textContent = 'Partie Beendet';
     }
+
+    // Countdown: hidden once the game is over, otherwise in sync with the turn.
+    this._renderTurnTimer();
 
     // Re-render board SVG. The renderer derives the capture markers from the
     // same state and the same rule helper as `this.removablePoints`.

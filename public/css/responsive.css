@@ -144,9 +144,17 @@
     text-overflow: ellipsis;
   }
   /* The tinted instruction banner already carries the turn state, so the
-     duplicate badge is dropped to save a row on small screens. */
+     duplicate badge is dropped to save a row on small screens. The countdown
+     stays: it is the one piece of HUD information nothing else repeats. */
   .hud-badge {
     display: none;
+  }
+  .hud-timer {
+    width: 32px;
+    height: 32px;
+  }
+  .hud-timer-value {
+    font-size: 0.75rem;
   }
   .hud-game-actions {
     margin-left: auto;

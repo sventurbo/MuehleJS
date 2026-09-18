@@ -15,6 +15,11 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - **Mühlenerkennung**: Automatische Erkennung geschlossener Mühlen (3 Steine in einer Reihe).
   - **Schlag-Regel mit Mühlenschutz**: Steine in geschlossenen gegnerischen Mühlen sind geschützt, *es sei denn*, der Gegner besitzt ausschließlich Steine in Mühlen.
   - **Sieg-/Verlustprüfung**: Sieg bei Reduktion des Gegners auf weniger als 3 Steine oder wenn der Gegner keinen legalen Zug mehr ausführen kann (eingesperrt).
+- **Zug-Timer (25 Sekunden pro Zug)**:
+  - Jede Entscheidung – Setzen, Ziehen und das Schlagen nach einer Mühle – ist auf 25 Sekunden begrenzt.
+  - Die Uhr läuft ausschließlich auf dem Server; der Countdown im Browser ist reine Anzeige.
+  - Läuft die Zeit ab, führt der Server einen zufälligen **legalen** Zug für den Spieler aus, statt den Zug verfallen zu lassen. Die Partie bleibt in Bewegung und niemand verliert mehr als die freie Wahl.
+  - Details siehe [Zug-Timer](#-zug-timer-25-sekunden-pro-zug).
 - **Automatisches Matchmaking**:
   - Spieler melden sich über die Login-Seite an.
   - Sobald ein zweiter Spieler beitritt, werden beide sofort gepaart und das Spiel startet in einem isolierten Raum.
@@ -47,7 +52,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 199 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
+   - 229 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
 
 ---
 
@@ -115,6 +120,38 @@ Die so ermittelte Adresse zählt anschließend nicht für sich allein, sondern f
 
 ---
 
+## ⏱️ Zug-Timer (25 Sekunden pro Zug)
+
+Ohne Zeitlimit blockiert ein Spieler, der nicht zieht, die ganze Partie. Deshalb hat jede Entscheidung ein Zeitbudget von **25 Sekunden**:
+
+| Situation | Was die Uhr misst |
+|---|---|
+| Setzphase | Zeit bis zum Setzen eines Steins |
+| Zug- und Springphase | Zeit bis zum Ziehen eines Steins |
+| Nach einer geschlossenen Mühle | Zeit bis zur Wahl des zu schlagenden Steins |
+
+Ablauf im Detail:
+
+1. Mit dem Spielstart beginnt die Uhr für Weiß. Jede angenommene Aktion setzt sie zurück, danach läuft sie für den nächsten Zug weiter.
+2. Der Server schickt bei jedem Neustart der Uhr das Event `turnTimer` an beide Clients; diese zeigen den Countdown als schrumpfenden Ring im HUD an.
+3. Läuft die Zeit ab, wählt der Server über `MuehleGame.makeRandomLegalMove()` einen **zufälligen legalen Zug** und führt ihn aus – geprüft durch dieselbe Regel-Engine, die auch menschliche Züge validiert.
+4. Beide Clients erhalten `turnTimeout` (wer die Zeit überschritten hat und welcher Zug ausgeführt wurde) sowie das übliche `gameStateUpdate`. Im Zugprotokoll erscheint der Zug mit dem Zusatz *(automatisch)*.
+5. Anschließend läuft die Uhr für den Gegner weiter. Parallele Partien haben jeweils eine eigene Uhr; endet eine Partie oder verlässt ein Spieler sie, wird die zugehörige Uhr gestoppt.
+
+**Der Timer ist bewusst rein serverseitig implementiert.** Clients sind manipulierbar: ein Countdown im Browser kann angehalten, verlangsamt oder entfernt werden. Der Client empfängt daher nur die verbleibende Zeit und zeichnet sie; die Entscheidung, dass ein Zug abgelaufen ist, trifft ausschließlich der Server.
+
+### Zugzeit anpassen (optional)
+
+Die Umgebungsvariable `TURN_TIMEOUT_MS` setzt die Zugzeit in Millisekunden:
+
+```bash
+TURN_TIMEOUT_MS=60000 npm start   # 60 Sekunden pro Zug
+```
+
+Ohne Angabe gelten 25 000 ms. Werte, die keine positive Zahl sind (Tippfehler, leere Variable, `0`, negative Werte), fallen auf diesen Standard zurück – der Timer lässt sich über die Umgebung also nicht versehentlich abschalten.
+
+---
+
 ## 🧪 Tests ausführen
 
 Das Projekt verfügt über eine umfassende Testsuite mit Jest:
@@ -122,7 +159,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (199 Tests in 10 Test-Dateien):
+Getestet werden (229 Tests in 10 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -131,6 +168,7 @@ Getestet werden (199 Tests in 10 Test-Dateien):
 - Sieg durch Steinedezimierung (< 3 Steine).
 - Sieg durch Einsperren des Gegners (keine legalen Züge).
 - Matchmaking-Warteschlange und Sitzungsisolation.
+- Zug-Timer: Ablauf nach 25 Sekunden, Zurücksetzen bei jedem Zug, automatischer legaler Zug (auch beim Schlagen), unabhängige Uhren paralleler Partien und ein gestoppter Timer bei Verbindungsabbruch (`jest.useFakeTimers()`).
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
@@ -190,8 +228,8 @@ Web-Spiel/
 │   ├── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
 │   └── css-bundle.js         # Löst die @import-Kette von style.css auf (für Checker & Tests)
 ├── lib/
-│   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
-│   ├── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
+│   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen, legale Züge)
+│   ├── GameManager.js        # Matchmaking-Warteschlange, Verwaltung paralleler Spielräume & Zug-Timer (25 s)
 │   ├── clientAddress.js      # Client-Adresse & Budget-Schlüssel fürs Rate-Limiting (X-Forwarded-For nur von vertrauten Proxys, IPv6 pro /64)
 │   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
 ├── public/
@@ -221,7 +259,7 @@ Web-Spiel/
 │   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
 │   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
 │   ├── GameRules.test.js     # Abgleich der Client-Regeln mit der Server-Engine
-│   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch
+│   ├── GameManager.test.js   # Unit-Tests für Matchmaking, Verbindungsabbruch und den Zug-Timer
 │   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests
 │   ├── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
 │   ├── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen

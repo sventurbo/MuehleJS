@@ -15,6 +15,7 @@ Dieses Dokument beschreibt die ganzheitliche Systemarchitektur, das Domänenmode
    - 5.1 [Matchmaking & Verbindungsaufbau](#51-matchmaking--verbindungsaufbau)
    - 5.2 [Spielzug, Mühlenschluss & Schlagen](#52-spielzug-mühlenschluss--schlagen)
    - 5.3 [Verbindungsabbruch & Fehlertoleranz](#53-verbindungsabbruch--fehlertoleranz)
+   - 5.4 [Zug-Timer & automatischer Zug](#54-zug-timer--automatischer-zug)
 6. [Schnittstellenspezifikation (Socket.io-Protokoll)](#6-schnittstellenspezifikation-socketio-protokoll)
 7. [Sicherheits- & Resilienzmodell](#7-sicherheits--resilienzmodell)
 
@@ -97,13 +98,13 @@ graph LR
 
 #### Serverseitige Module
 - **`server.js`**: Initialisiert Express, serviert statische Dateien (`/public`), konfiguriert Socket.io mit Payload-Grenzen (`maxHttpBufferSize: 10KB`), bindet das Dual-Stack IPv6/IPv4-Netzwerk und fängt Ausnahmen global ab.
-- **`lib/GameManager.js`**: Verwaltet die Matchmaking-Warteschlange, Socket-zu-Spieler-Mappings (`socketMap`), Räume (`games`) und koordiniert Event-Aufrufe.
-- **`lib/MuehleGame.js`**: Rein deterministische, autoritative Mühle-Regel-Engine. Verwaltet das Brett (24 Punkte), 32 Adjazenzkanten, 16 Mühlenlinien und validiert Setzen, Ziehen, Springen sowie Sieg-/Verlustbedingungen.
+- **`lib/GameManager.js`**: Verwaltet die Matchmaking-Warteschlange, Socket-zu-Spieler-Mappings (`socketMap`), Räume (`games`) und koordiniert Event-Aufrufe. Hier liegt auch der **Zug-Timer**: pro Partie eine eigene Uhr (Standard 25 s), die bei jeder angenommenen Aktion neu startet und bei Ablauf einen automatischen legalen Zug auslöst.
+- **`lib/MuehleGame.js`**: Rein deterministische, autoritative Mühle-Regel-Engine. Verwaltet das Brett (24 Punkte), 32 Adjazenzkanten, 16 Mühlenlinien und validiert Setzen, Ziehen, Springen sowie Sieg-/Verlustbedingungen. Über `getLegalActions()` / `makeRandomLegalMove()` liefert sie außerdem die vollständige Zugmenge des Spielers am Zug — die Grundlage des automatischen Zugs bei Zeitablauf.
 - **`lib/RateLimiter.js`**: In-Memory Sliding-Window Token-Bucket-Filter zum Schutz vor Chat-Floods (CH-05), Queue-Flooding (DOS-01) und Aktions-Spam.
 - **`lib/clientAddress.js`**: Ermittelt die Adresse, unter der ein Client limitiert wird. `X-Forwarded-For` wird nur ausgewertet, wenn die Gegenstelle als vertrauenswürdiger Proxy konfiguriert ist (`TRUST_PROXY`); anschließend wird die Adresse auf ihren Block reduziert (IPv4 und IPv4-mapped IPv6 auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix), damit ein Client mit eigenem Präfix sein Kontingent nicht durch Adresswechsel umgehen kann.
 
 #### Clientseitige Module
-- **`public/js/app.js`**: Haupt-Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over), UI-Aktualisierung und Toast-Nachrichten.
+- **`public/js/app.js`**: Haupt-Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over), UI-Aktualisierung und Toast-Nachrichten. Zeichnet den Zug-Countdown aus den Server-Events `turnTimer` / `turnTimeout` — reine Anzeige ohne eigene Zeitlogik.
 - **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und zeichnet konzentrische Ziel-, Auswahl- und Schlagmarker. Das Brett wird einmal aufgebaut und danach nur gepatcht: `MuehleRules.diffBoards()` bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten.
 - **`public/js/audio.js`**: Reiner Web-Audio-API Synthesizer für Soundeffekte (Klicks, Züge, Mühlenklang, Schlag-Impact, Fanfaren).
 - **`public/css/`**: Modulares Stylesheet. `style.css` ist reines Manifest und zieht die neun Module per `@import` in Kaskadenreihenfolge herein — `tokens.css` zuerst (Design-Tokens für beide Themes), `responsive.css` zuletzt (Breakpoints, Pointer-Typ, `prefers-reduced-motion`), dazwischen die Module je Screen bzw. Komponente. Werkzeuge, die das Stylesheet als Ganzes lesen (`scripts/contrast-check.js`, die statischen CSS-Tests), gehen über `scripts/css-bundle.js`, das die `@import`-Kette auflöst.
@@ -120,6 +121,7 @@ classDiagram
         +Map games
         +number maxQueueSize
         +number maxActiveGames
+        +number turnTimeoutMs
         +RateLimiter chatLimiter
         +RateLimiter queueLimiter
         +RateLimiter queueIpLimiter
@@ -130,6 +132,7 @@ classDiagram
         +handleMovePiece(socket, from, to)
         +handleRemovePiece(socket, point)
         +handleChatMessage(socket, text)
+        +handleTurnTimeout(gameId)
         +handlePlayerDisconnect(socketId)
         +getStats()
     }
@@ -155,6 +158,9 @@ classDiagram
         +canJump(player)
         +getValidDestinations(from, player)
         +hasLegalMoves(player)
+        +getLegalMoves(player)
+        +getLegalActions(player)
+        +makeRandomLegalMove(player, random)
         +getState()
     }
 
@@ -176,6 +182,8 @@ classDiagram
     class GameSession {
         +MuehleGame game
         +Object players
+        +Timeout turnTimer
+        +number turnDeadline
     }
 
     GameManager "1" o-- "n" GameSession : verwaltet
@@ -259,6 +267,8 @@ stateDiagram-v2
 ```
 
 > **Hinweis zur Phase 3 (Springen):** Ist ein Spieler in der Phase `MOVING` auf genau 3 Steine dezimiert, gilt `canJump(player) == true`. Der Zustandsautomat verbleibt in `MOVING`, die Adjazenzprüfung wird jedoch für diesen Spieler aufgehoben (freies Springen auf beliebige freie Punkte).
+
+> **Hinweis zum Zug-Timer:** Der Ablauf der 25-Sekunden-Bedenkzeit fügt dem Automaten **keinen eigenen Zustand** hinzu. Der `GameManager` führt bei Ablauf lediglich einen der ohnehin legalen Züge aus, sodass genau dieselben Übergänge durchlaufen werden wie bei einem menschlichen Zug (siehe [5.4](#54-zug-timer--automatischer-zug)).
 
 ---
 
@@ -357,6 +367,52 @@ sequenceDiagram
 
 ---
 
+### 5.4 Zug-Timer & automatischer Zug
+
+Jede einzelne Entscheidung — Setzen, Ziehen und das Schlagen nach einer Mühle — ist auf **25 Sekunden** begrenzt (konfigurierbar über `TURN_TIMEOUT_MS`). Die Uhr gehört zur Partie, nicht zum Client: `GameManager` hält pro `GameSession` genau einen `setTimeout`, der bei jeder angenommenen Aktion über `_broadcastGameState()` neu gestellt wird.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P1 as Spieler Weiß
+    participant S as Server (GameManager & MuehleGame)
+    actor P2 as Spieler Schwarz
+
+    Note over S: _startTurnTimer(gameId)<br/>setTimeout(25 s) für Weiß
+    S-->>P1: emit("turnTimer", { turn: "W", durationMs: 25000 })
+    S-->>P2: emit("turnTimer", { turn: "W", durationMs: 25000 })
+    Note over P1,P2: Beide Clients zeichnen den Countdown-Ring
+
+    Note over P1: Weiß zieht nicht (Denkpause, AFK, Tab im Hintergrund)
+
+    Note over S: 25 s abgelaufen -> handleTurnTimeout(gameId)<br/>MuehleGame.getLegalActions("W")<br/>zufällige Auswahl -> placePiece / movePiece / removePiece<br/>moveHistory-Eintrag mit auto = true
+    S-->>P1: emit("turnTimeout", { player: "W", autoMove })
+    S-->>P2: emit("turnTimeout", { player: "W", autoMove })
+    S-->>P1: emit("gameStateUpdate", { state, lastAction: { auto: true } })
+    S-->>P2: emit("gameStateUpdate", { state, lastAction: { auto: true } })
+
+    Note over S: Zug angenommen -> Uhr neu gestellt, jetzt für Schwarz
+    S-->>P1: emit("turnTimer", { turn: "B", durationMs: 25000 })
+    S-->>P2: emit("turnTimer", { turn: "B", durationMs: 25000 })
+```
+
+**Designentscheidung — automatischer Zug statt Zugverwirkung:** Bei Ablauf wird ein zufälliger *legaler* Zug ausgeführt (Option C des Issues), nicht der Zug verwirkt. Die Partie bleibt dadurch in Bewegung, der Spielfluss des Gegners wird nicht durch Warten blockiert, und der säumige Spieler verliert nur die freie Wahl, nicht den Zug. Der automatische Zug läuft durch dieselben Methoden wie ein menschlicher (`placePiece`, `movePiece`, `removePiece`) und ist damit zwangsläufig regelkonform; er landet regulär in der `moveHistory`, markiert mit `auto: true`.
+
+**Weitere Eigenschaften:**
+
+| Aspekt | Verhalten |
+|---|---|
+| Rücksetzung | Jede angenommene Aktion (auch der automatische Zug) startet die Uhr neu. |
+| Schlagen nach Mühle | Eigene 25 Sekunden, da es eine eigene Entscheidung ist. Sonst könnte eine Partie im Zustand `awaitingRemoval` unbegrenzt blockieren. |
+| Parallele Partien | Jede `GameSession` besitzt ihre eigene Uhr; Timer laufen unabhängig voneinander. |
+| Spielende | `_broadcastGameState()` stoppt die Uhr, sobald ein Gewinner feststeht — ein beendetes Spiel bekommt keinen neuen Timer. |
+| Verbindungsabbruch | `_endSession()` / `leaveGame()` stoppen die Uhr, bevor die Session aus `games` entfernt wird. Der Callback kann also nie auf eine Partie feuern, die es nicht mehr gibt. |
+| Prozess-Lebensdauer | Alle Timer sind `unref()`-ed und halten den Node-Prozess nicht künstlich am Leben. |
+
+**Warum serverseitig:** Ein Countdown im Browser ist manipulierbar (Debugger, angehaltener Tab, verändertes Skript) und damit als Regel wertlos. Der Client erhält deshalb nur die Restzeit und zeichnet sie; die Entscheidung über den Ablauf trifft ausschließlich der Server.
+
+---
+
 ## 6. Schnittstellenspezifikation (Socket.io-Protokoll)
 
 ### Client ➔ Server Events
@@ -378,7 +434,9 @@ sequenceDiagram
 |:---|:---|:---|
 | `queueWaiting` | `{ position: number, message: string }` | Bestätigt Warteschlangenplatz |
 | `gameStart` | `{ gameId, yourColor, yourName, opponentName, state }` | Startet Spielarena und teilt Farben zu |
-| `gameStateUpdate` | `{ state: Object, lastAction: Object }` | Überträgt autoritativen Spielzustand |
+| `gameStateUpdate` | `{ state: Object, lastAction: Object }` | Überträgt autoritativen Spielzustand (`lastAction.auto === true` bei einem Zug, den die Uhr ausgelöst hat) |
+| `turnTimer` | `{ turn, awaitingRemoval, durationMs, remainingMs }` | Startet/erneuert den Countdown; wird nach jeder angenommenen Aktion gesendet |
+| `turnTimeout` | `{ player, timeoutMs, action, autoMove, message }` | Die Bedenkzeit ist abgelaufen; nennt den Spieler und den automatisch ausgeführten Zug |
 | `gameOver` | `{ winner: string, winnerName: string, winReason: string, state }` | Zeigt Spielende-Modal an |
 | `opponentDisconnected`| `{ winner, winnerName, winReason, state }` | Informiert über Verbindungsabbruch des Gegners |
 | `actionError` | `{ message: string }` | Informiert den Client über Regelverstoß oder Rate-Limit |
@@ -413,6 +471,7 @@ graph TD
 3. **Zustandsintegrität (MQ-04 & MQ-05):**
    - Das Spielbrett wird ausschließlich über die Server-Engine `MuehleGame` verändert.
    - Züge werden zwingend an die Socket-Identität gekoppelt; fremde Züge oder State-Injektionen sind strukturell unmöglich.
+   - Auch die Bedenkzeit ist Serverzustand: Der Zug-Timer läuft im `GameManager`, der Client zeigt nur die gemeldete Restzeit an. Ein manipulierter oder angehaltener Client verschafft sich damit keine zusätzliche Zeit (siehe [5.4](#54-zug-timer--automatischer-zug)).
 4. **Fehlertoleranz:**
    - Alle Socket-Handler sind in `try/catch`-Blöcken gekapselt.
    - Unhandled Rejections und unvorhergesehene Ausnahmen werden über globale Exception-Handler abgefangen, sodass der Node.js-Prozess niemals abstürzt.
