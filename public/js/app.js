@@ -21,6 +21,12 @@ class MuehleApp {
     this.selectedPoint = null;
     this.validDestinations = [];
 
+    // True while the server holds something for us (a queue slot or a running
+    // game). Socket.io reconnects with a fresh socket id, so anything the
+    // server was holding is gone by then and the session has to be ended here.
+    this.sessionActive = false;
+    this.connectionLost = false;
+
     this.boardRenderer = null;
 
     this._cacheDom();
@@ -127,6 +133,7 @@ class MuehleApp {
     // Cancel queue
     this.btnCancelQueue.addEventListener('click', () => {
       this.socket.emit('leaveGame');
+      this.sessionActive = false;
       this._switchScreen('login');
     });
 
@@ -188,9 +195,8 @@ class MuehleApp {
       this._handleLogin();
     });
     this.btnBackToLobby.addEventListener('click', () => {
-      this._hideGameOverModal();
       this.socket.emit('leaveGame');
-      this._switchScreen('login');
+      this._terminateSession(null);
     });
 
     // Setup BoardRenderer
@@ -202,19 +208,39 @@ class MuehleApp {
 
     this.socket.on('connect', () => {
       this._updateConnStatus(true);
+
+      // Reconnecting gives us a new socket id, so the server has already ended
+      // and forgotten the game we were in. Terminate it instead of leaving a
+      // board on screen that no longer accepts a single move.
+      if (this.connectionLost) {
+        this.connectionLost = false;
+        if (this.sessionActive) {
+          this._terminateSession('Die Verbindung wurde unterbrochen – die Partie wurde beendet.');
+        }
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
+      this.connectionLost = true;
       this._updateConnStatus(false);
       this._showToast('Verbindung zum Server unterbrochen', 'error');
     });
 
+    // The server no longer knows this socket's game (opponent gone, or we
+    // reconnected under a new id). Nothing is recoverable, so end the session.
+    this.socket.on('gameNotFound', (data) => {
+      if (!this.sessionActive) return;
+      this._terminateSession(data && data.message ? data.message : 'Deine Partie ist nicht mehr aktiv.');
+    });
+
     this.socket.on('queueWaiting', (data) => {
+      this.sessionActive = true;
       this.queueStatusText.textContent = data.message || 'Warte auf Mitspieler...';
       this._switchScreen('queue');
     });
 
     this.socket.on('gameStart', (data) => {
+      this.sessionActive = true;
       this.myColor = data.yourColor;
       this.myName = data.yourName;
       this.opponentName = data.opponentName;
@@ -248,25 +274,27 @@ class MuehleApp {
 
       // Audio feedback & animations
       if (lastAction) {
+        const actor = this._colorName(lastAction.player);
+
         if (lastAction.action === 'place') {
           window.soundController.playPlace();
-          this._addMoveLog(`${lastAction.player === 'W' ? 'Weiß' : 'Schwarz'} setzt auf ${lastAction.point}`);
+          this._addMoveLog(`${actor} setzt auf ${lastAction.point}`);
         } else if (lastAction.action === 'move') {
           window.soundController.playMove();
-          this._addMoveLog(`${lastAction.player === 'W' ? 'Weiß' : 'Schwarz'} zieht ${lastAction.from} → ${lastAction.to}`);
+          this._addMoveLog(`${actor} zieht ${lastAction.from} → ${lastAction.to}`);
         } else if (lastAction.action === 'remove') {
           window.soundController.playRemove();
-          this._addMoveLog(`${lastAction.player === 'W' ? 'Weiß' : 'Schwarz'} schlägt Stein auf ${lastAction.point}`);
+          this._addMoveLog(`${actor} schlägt Stein auf ${lastAction.point}`);
         }
 
         if (lastAction.millFormed) {
           window.soundController.playMill();
-          this._addSystemLog(`Mühle geschlossen von ${this.gameState.turn === 'W' ? 'Weiß' : 'Schwarz'}!`);
+          this._addSystemLog(`Mühle geschlossen von ${actor}!`);
           if (this.gameState.millTriggerPoint) {
             // Find which mill was closed
             const formedMill = CLIENT_MILLS.find(m =>
               m.includes(this.gameState.millTriggerPoint) &&
-              m.every(pt => this.gameState.board[pt] === this.gameState.turn)
+              m.every(pt => this.gameState.board[pt] === lastAction.player)
             );
             if (formedMill) {
               this.boardRenderer.highlightMill(formedMill);
@@ -288,7 +316,8 @@ class MuehleApp {
       this.gameState = data.state;
       this._updateGameUI();
       this._showGameOverModal(data.winner, data.winnerName, data.winReason);
-      this._showToast('Gegner hat die Verbindung getrennt.', 'warning');
+      // The exact cause (dropped connection vs. deliberate exit) is in winReason.
+      this._showToast(data.winReason || 'Die Partie wurde beendet.', 'warning');
     });
 
     this.socket.on('actionError', (data) => {
@@ -310,6 +339,34 @@ _handleLogin() {
      this.myName = username;
      this.socket.emit('login', { username });
    }
+
+  /**
+   * German label for a stone colour, used across log, HUD and modals.
+   */
+  _colorName(color) {
+    return color === 'W' ? 'Weiß' : 'Schwarz';
+  }
+
+  /**
+   * Ends the current session locally and returns to the lobby.
+   *
+   * Used whenever the server cannot possibly still know about us — after a
+   * reconnect, or when it answers `gameNotFound`. The requirement is that a
+   * connection error simply terminates the game; without this the client kept
+   * showing a board that silently swallowed every click.
+   */
+  _terminateSession(message) {
+    this.sessionActive = false;
+    this.gameState = null;
+    this.myColor = null;
+    this.opponentColor = null;
+    this.selectedPoint = null;
+    this.validDestinations = [];
+
+    this._hideGameOverModal();
+    this._switchScreen('login');
+    if (message) this._showToast(message, 'warning');
+  }
 
   _switchScreen(screenName) {
     window.scrollTo(0, 0);
@@ -528,6 +585,10 @@ _handleLogin() {
   }
 
   _showGameOverModal(winner, winnerName, winReason) {
+    // The server is done with this game, so a later reconnect or `gameNotFound`
+    // must not tear the result screen away before it has been read.
+    this.sessionActive = false;
+
     const isWin = winner === this.myColor;
     if (isWin) {
       window.soundController.playWin();

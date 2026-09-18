@@ -1,5 +1,5 @@
 const { RateLimiter } = require('../lib/RateLimiter');
-const { GameManager, sanitizeHtml } = require('../lib/GameManager');
+const { GameManager, sanitizeText } = require('../lib/GameManager');
 const { io: serverIo } = require('../server');
 
 describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
@@ -100,11 +100,30 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       }));
     });
 
-    test('sanitizes HTML tags in chat message (CH-01/CH-02 hardening)', () => {
+    test('forwards chat text verbatim - escaping belongs to the renderer (CH-01/CH-02)', () => {
+      // Escaping here as well produced literal "&amp;" / "&lt;b&gt;" on screen.
+      // The client renders every message through textContent / _escapeHtml, so
+      // the payload must arrive exactly as it was typed.
       gm.handleChatMessage(socket1, '<script>alert(1)</script> Hello & Welcome!');
       expect(roomEmitMock).toHaveBeenCalledWith('chatMessage', expect.objectContaining({
-        text: '&lt;script&gt;alert(1)&lt;/script&gt; Hello &amp; Welcome!'
+        text: '<script>alert(1)</script> Hello & Welcome!'
       }));
+    });
+
+    test('strips control characters from chat messages', () => {
+      const NUL = String.fromCharCode(0);
+      const BEL = String.fromCharCode(7);
+      gm.handleChatMessage(socket1, 'Hallo' + NUL + BEL + ' Welt');
+      expect(roomEmitMock).toHaveBeenCalledWith('chatMessage', expect.objectContaining({
+        text: 'Hallo Welt'
+      }));
+    });
+
+    test('drops a message that is only control characters', () => {
+      roomEmitMock.mockClear();
+      const controls = [0, 1, 2].map(c => String.fromCharCode(c)).join('');
+      gm.handleChatMessage(socket1, controls);
+      expect(roomEmitMock).not.toHaveBeenCalled();
     });
   });
 
@@ -246,6 +265,36 @@ describe('Username Validation (Issue #1)', () => {
        gm.enqueuePlayer(socket, 'Alice');
        expect(gm.waitingQueue.length).toBe(1);
        expect(gm.waitingQueue[0].username).toBe('Alice');
+     });
+   });
+
+   describe('XSS: the client is the escaping boundary', () => {
+     const fs = require('fs');
+     const path = require('path');
+     const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+
+     test('sanitizeText keeps ampersands and angle brackets intact', () => {
+       expect(sanitizeText('Tom&Jerry')).toBe('Tom&Jerry');
+       expect(sanitizeText('a < b & c > d')).toBe('a < b & c > d');
+     });
+
+     test('sanitizeText drops control characters and non-strings', () => {
+       expect(sanitizeText('Ali' + String.fromCharCode(0) + 'ce')).toBe('Alice');
+       expect(sanitizeText(null)).toBe('');
+       expect(sanitizeText(42)).toBe('');
+     });
+
+     // The server deliberately no longer escapes, so the markup the client
+     // builds by hand must run every server-supplied string through _escapeHtml.
+     test('chat markup escapes both sender and text', () => {
+       expect(appJs).toContain('this._escapeHtml(msg.sender)');
+       expect(appJs).toContain('this._escapeHtml(msg.text)');
+     });
+
+     test('player names are written with textContent, never innerHTML', () => {
+       expect(appJs).toMatch(/playerWName\.textContent\s*=/);
+       expect(appJs).toMatch(/playerBName\.textContent\s*=/);
+       expect(appJs).not.toMatch(/player[WB]Name\.innerHTML/);
      });
    });
 

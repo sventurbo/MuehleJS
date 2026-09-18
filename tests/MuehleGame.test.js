@@ -384,6 +384,45 @@ test('forfeit gives immediate victory to opponent', () => {
        expect(result.success).toBe(true);
        expect(result.point).toBe('a7');
      });
+
+     // Regression: without `player` the client logged every single move as
+     // "Schwarz", because `undefined === 'W'` is always false.
+     test('placePiece names the acting player', () => {
+       expect(game.placePiece('W', 'a7').player).toBe('W');
+       expect(game.placePiece('B', 'a1').player).toBe('B');
+     });
+
+     test('placePiece names the acting player when a mill is closed', () => {
+       game.board['a7'] = 'W';
+       game.board['d7'] = 'W';
+       game.board['a1'] = 'B';
+       game.piecesOnBoard = { W: 2, B: 1 };
+       game.unplacedPieces = { W: 7, B: 8 };
+       const result = game.placePiece('W', 'g7');
+       expect(result.millFormed).toBe(true);
+       expect(result.player).toBe('W');
+     });
+
+     test('movePiece names the acting player', () => {
+       game.phase = 'MOVING';
+       game.board['a7'] = 'W';
+       game.board['d7'] = null;
+       expect(game.movePiece('W', 'a7', 'd7').player).toBe('W');
+     });
+
+     test('removePiece names the acting player', () => {
+       game.phase = 'MOVING';
+       game.awaitingRemoval = true;
+       game.board['a7'] = 'B';
+       game.board['b6'] = 'B';
+       game.board['b4'] = 'B';
+       game.board['d7'] = 'W';
+       game.board['g7'] = 'W';
+       game.piecesOnBoard = { W: 2, B: 3 };
+       const result = game.removePiece('W', 'a7');
+       expect(result.success).toBe(true);
+       expect(result.player).toBe('W');
+     });
    });
  });
 
