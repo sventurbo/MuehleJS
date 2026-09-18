@@ -53,7 +53,9 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
 
 ## 🚀 Schnellanleitung (Installation & Start)
 
-Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung (Version >= 24).
+Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung. Die Untergrenze ist das jeweils aktive Node.js-LTS – aktuell **Node.js >= 24** („Krypton", aktives LTS seit 28.10.2025).
+
+Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc` (`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Wird eine neue Node.js-Version zum aktiven LTS (Node 26 am 28.10.2026), werden `engines`, dieser Abschnitt und die CI-Matrix in `.github/workflows/node.js.yml` gemeinsam angehoben.
 
 ### 1. Abhängigkeiten installieren
 ```bash
@@ -225,6 +227,7 @@ Web-Spiel/
 │   ├── BoardAnimation.test.js # Strukturtests für Stein-Animationen und Mühlen-Beam
 │   └── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Kaskadenreihenfolge, Token-Zugriff des Kontrast-Checkers)
 ├── .gitignore                # Git-Ignore (node_modules, .DS_Store, coverage, .env)
+├── .npmrc                    # engine-strict=true (erzwingt die Node-Version aus "engines")
 ├── package-lock.json         # Abhängigkeits-Lockfile
 └── README.md                 # Diese Dokumentation
 ```
