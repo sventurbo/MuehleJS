@@ -157,6 +157,79 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       }));
     });
 
+    describe('login budget per socket and per address (issue #22)', () => {
+      const mockSocket = (id, address) => ({
+        id,
+        connected: true,
+        handshake: { address, headers: {} },
+        join: jest.fn(),
+        emit: jest.fn()
+      });
+
+      const wasThrottled = (socket) => socket.emit.mock.calls.some(
+        ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
+      );
+
+      test('counts every login of a socket, although each one ends the previous session', () => {
+        const socket = mockSocket('hopping_socket', '10.1.0.0');
+        const budget = gm.queueLimiter.max;
+
+        // A fresh address per attempt keeps the per-address limit out of play,
+        // so only the per-socket count can stop the next login.
+        for (let i = 0; i < budget; i++) {
+          socket.handshake.address = `10.1.0.${i}`;
+          gm.enqueuePlayer(socket, `Player_${i}`);
+        }
+        expect(wasThrottled(socket)).toBe(false);
+
+        socket.handshake.address = `10.1.0.${budget}`;
+        gm.enqueuePlayer(socket, 'Player_X');
+        expect(wasThrottled(socket)).toBe(true);
+      });
+
+      test('leaving a running game does not reset the socket\'s login count', () => {
+        const socket = mockSocket('leaving_socket', '10.2.0.0');
+        const budget = gm.queueLimiter.max;
+
+        for (let i = 0; i < budget; i++) {
+          socket.handshake.address = `10.2.0.${i}`;
+          gm.enqueuePlayer(mockSocket(`opponent_${i}`, `10.3.0.${i}`), 'Opponent');
+          gm.enqueuePlayer(socket, 'Leaver');
+          expect(gm.socketMap.has(socket.id)).toBe(true);
+          gm.leaveGame(socket.id);
+        }
+        expect(wasThrottled(socket)).toBe(false);
+
+        socket.handshake.address = `10.2.0.${budget}`;
+        gm.enqueuePlayer(socket, 'Leaver');
+        expect(wasThrottled(socket)).toBe(true);
+      });
+
+      test('players sharing one address get their own budget', () => {
+        // Same WLAN behind NAT, or two tabs on one machine.
+        const tab1 = mockSocket('tab_1', '192.168.0.10');
+        const tab2 = mockSocket('tab_2', '192.168.0.10');
+
+        for (let i = 0; i < gm.queueLimiter.max; i++) {
+          gm.enqueuePlayer(tab1, 'Tab1');
+          gm.enqueuePlayer(tab2, 'Tab2');
+        }
+
+        expect(wasThrottled(tab1)).toBe(false);
+        expect(wasThrottled(tab2)).toBe(false);
+      });
+
+      test('still caps the logins of many sockets from one address', () => {
+        const budget = gm.queueIpLimiter.max;
+        const sockets = Array.from({ length: budget + 1 }, (_, i) => mockSocket(`flood_${i}`, '203.0.113.7'));
+
+        sockets.forEach((socket, i) => gm.enqueuePlayer(socket, `Flood_${i}`));
+
+        expect(sockets.slice(0, budget).some(wasThrottled)).toBe(false);
+        expect(wasThrottled(sockets[budget])).toBe(true);
+      });
+    });
+
     test('iterative queue search handles 5000 disconnected sockets without Call Stack Overflow', () => {
       // Populate queue with 5000 disconnected candidate entries
       for (let i = 0; i < 5000; i++) {

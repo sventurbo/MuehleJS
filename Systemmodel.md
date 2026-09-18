@@ -120,6 +120,7 @@ classDiagram
         +number maxActiveGames
         +RateLimiter chatLimiter
         +RateLimiter queueLimiter
+        +RateLimiter queueIpLimiter
         +RateLimiter actionLimiter
         +enqueuePlayer(socket, username)
         +dequeuePlayer(socketId)
@@ -177,7 +178,7 @@ classDiagram
 
     GameManager "1" o-- "n" GameSession : verwaltet
     GameManager "1" o-- "n" PlayerSession : mappt sockets
-    GameManager "1" o-- "3" RateLimiter : verwendet
+    GameManager "1" o-- "4" RateLimiter : verwendet
     GameSession "1" *-- "1" MuehleGame : enthält
 ```
 
@@ -404,6 +405,7 @@ graph TD
    - WebSocket-Payloads sind über `maxHttpBufferSize: 1e4` (10 KB) abgeriegelt.
    - `enqueuePlayer()` nutzt eine iterative `while`-Schleife zur Bereinigung veralteter Sockets, wodurch selbst bei 5.000 getrennten Sockets kein `RangeError: Maximum call stack size exceeded` ausgelöst wird.
    - Die Warteschlange ist auf maximal 500 Einträge, aktive Spiele auf maximal 1.000 Instanzen limitiert.
+   - Anmeldungen sind auf 5 pro 5 Sekunden je Socket und 20 pro 5 Sekunden je Adresse gedrosselt. Das Adressbudget ist bewusst größer, damit sich Spieler hinter derselben NAT-Adresse (gleiches WLAN, zwei Tabs) nicht gegenseitig ausbremsen.
 2. **Anti-Spam & Rate-Limiting (CH-05):**
    - Chatnachrichten sind auf maximal 4 Nachrichten pro 2 Sekunden gedrosselt. Bei über 10 wiederholten Verstößen wird der Socket automatisch zwangsgetrennt (`socket.disconnect(true)`).
 3. **Zustandsintegrität (MQ-04 & MQ-05):**
