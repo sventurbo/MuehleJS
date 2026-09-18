@@ -16,7 +16,7 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
   - Large text (≥ 18pt / ≥ 14pt bold) and UI graphics: ≥ 3:1
 - **Date**: 2026-09-10
 - **Script version**: `scripts/contrast-check.js` (Node.js, no external dependencies)
-- **Source**: `public/css/style.css` (`:root` and `@media (prefers-color-scheme: light)` blocks)
+- **Source**: `public/css/tokens.css` (`:root` and `@media (prefers-color-scheme: light)` blocks), reached through `scripts/css-bundle.js`, which resolves the `@import` chain of `public/css/style.css`
 
 ## Results
 

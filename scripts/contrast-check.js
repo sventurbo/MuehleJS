@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
 const { contrastRatio, resolveColor } = require('./contrast');
+const { loadStylesheet } = require('./css-bundle');
 
 // ── CSS Variable Parser ──
 
@@ -88,40 +87,50 @@ function runContrastCheck(cssContent) {
 
 // ── Main ──
 
-const cssPath = path.join(__dirname, '..', 'public', 'css', 'style.css');
-const cssContent = fs.readFileSync(cssPath, 'utf8');
-const { results, allPassed } = runContrastCheck(cssContent);
+/** The CLI report. Kept in a function so importing this module is side-effect free. */
+function main() {
+  // The tokens live in public/css/tokens.css; loadStylesheet() resolves the
+  // @import graph of style.css, so the checker finds them wherever they sit.
+  const cssContent = loadStylesheet();
+  const { results, allPassed } = runContrastCheck(cssContent);
 
-console.log('\nWCAG 2.1 AA Contrast Verification');
-console.log('═'.repeat(100));
-const header = ['Test', 'Theme', 'FG', 'BG', 'Ratio', 'Status'].map((h, i) => {
-  const widths = [40, 8, 10, 10, 10, 6];
-  return h.padEnd(widths[i]);
-}).join(' ');
-console.log(header);
-console.log('─'.repeat(90));
-
-let passCount = 0;
-let failCount = 0;
-for (const r of results) {
-  const status = r.passed ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m';
-  const theme = r.theme === 'Dunkel' ? '\x1b[90mDunkel\x1b[0m' : '\x1b[94mHell\x1b[0m';
-  const row = [r.description.substring(0, 38), r.theme, r.fgColor, r.bgColor, `${r.ratio}:1`, status].map((v, i) => {
+  console.log('\nWCAG 2.1 AA Contrast Verification');
+  console.log('═'.repeat(100));
+  const header = ['Test', 'Theme', 'FG', 'BG', 'Ratio', 'Status'].map((h, i) => {
     const widths = [40, 8, 10, 10, 10, 6];
-    return String(v).padEnd(widths[i]);
+    return h.padEnd(widths[i]);
   }).join(' ');
-  console.log(row);
-  if (r.passed) passCount++; else failCount++;
+  console.log(header);
+  console.log('─'.repeat(90));
+
+  let passCount = 0;
+  let failCount = 0;
+  for (const r of results) {
+    const status = r.passed ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m';
+    const theme = r.theme === 'Dunkel' ? '\x1b[90mDunkel\x1b[0m' : '\x1b[94mHell\x1b[0m';
+    const row = [r.description.substring(0, 38), r.theme, r.fgColor, r.bgColor, `${r.ratio}:1`, status].map((v, i) => {
+      const widths = [40, 8, 10, 10, 10, 6];
+      return String(v).padEnd(widths[i]);
+    }).join(' ');
+    console.log(row);
+    if (r.passed) passCount++; else failCount++;
+  }
+
+  console.log('─'.repeat(100));
+  console.log(`\x1b[1mResults: ${passCount} passed, ${failCount} failed, ${results.length} total\x1b[0m`);
+  console.log('\x1b[1mMinimum ratio: 4.5:1 for normal text, 3:1 for large text/UI elements\x1b[0m');
+
+  if (!allPassed) {
+    console.log('\x1b[31m\nERROR: Some color pairs fail WCAG 2.1 AA contrast requirements.\x1b[0m');
+    process.exit(1);
+  } else {
+    console.log('\x1b[32m\nSUCCESS: All color pairs meet WCAG 2.1 AA contrast requirements.\x1b[0m');
+    process.exit(0);
+  }
 }
 
-console.log('─'.repeat(100));
-console.log(`\x1b[1mResults: ${passCount} passed, ${failCount} failed, ${results.length} total\x1b[0m`);
-console.log('\x1b[1mMinimum ratio: 4.5:1 for normal text, 3:1 for large text/UI elements\x1b[0m');
+module.exports = { parseCssVariables, runContrastCheck, CONTRAST_TESTS };
 
-if (!allPassed) {
-  console.log('\x1b[31m\nERROR: Some color pairs fail WCAG 2.1 AA contrast requirements.\x1b[0m');
-  process.exit(1);
-} else {
-  console.log('\x1b[32m\nSUCCESS: All color pairs meet WCAG 2.1 AA contrast requirements.\x1b[0m');
-  process.exit(0);
+if (require.main === module) {
+  main();
 }

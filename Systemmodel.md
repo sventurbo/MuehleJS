@@ -70,7 +70,7 @@ Das Gesamtsystem gliedert sich in modulare, voneinander entkoppelte Subsysteme a
 graph LR
     subgraph Frontend["Frontend (Vanilla Web Stack)"]
         HTML["index.html (SPA Screens)"]
-        CSS["style.css (Responsive Layout 320px - Desktop & SVG-Styles)"]
+        CSS["css/ (9 Module via @import: Tokens, Layout 320px - Desktop, SVG-Styles)"]
         APP["app.js (Client Controller & Socket Handler)"]
         BR["boardRenderer.js (SVG Renderer & Hitboxen)"]
         AU["audio.js (Web Audio API Synthesizer)"]
@@ -106,6 +106,7 @@ graph LR
 - **`public/js/app.js`**: Haupt-Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over), UI-Aktualisierung und Toast-Nachrichten.
 - **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und zeichnet konzentrische Ziel-, Auswahl- und Schlagmarker. Das Brett wird einmal aufgebaut und danach nur gepatcht: `MuehleRules.diffBoards()` bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten.
 - **`public/js/audio.js`**: Reiner Web-Audio-API Synthesizer für Soundeffekte (Klicks, Züge, Mühlenklang, Schlag-Impact, Fanfaren).
+- **`public/css/`**: Modulares Stylesheet. `style.css` ist reines Manifest und zieht die neun Module per `@import` in Kaskadenreihenfolge herein — `tokens.css` zuerst (Design-Tokens für beide Themes), `responsive.css` zuletzt (Breakpoints, Pointer-Typ, `prefers-reduced-motion`), dazwischen die Module je Screen bzw. Komponente. Werkzeuge, die das Stylesheet als Ganzes lesen (`scripts/contrast-check.js`, die statischen CSS-Tests), gehen über `scripts/css-bundle.js`, das die `@import`-Kette auflöst.
 
 ---
 

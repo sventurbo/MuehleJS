@@ -5,15 +5,18 @@
  * These assertions are deliberately structural: they pin the decisions that
  * make the app usable on a phone (own row for the name field, 16px inputs,
  * safe-area padding, touch-sized targets, no hover-only affordances) so a
- * later refactor of style.css cannot silently drop them.
+ * later refactor of the stylesheet cannot silently drop them. They run against
+ * the resolved sheet, not one file, so moving a rule between CSS modules keeps
+ * them honest.
  */
 
 const fs = require('fs');
 const path = require('path');
+const { loadStylesheet } = require('../scripts/css-bundle');
 
 const publicDir = path.join(__dirname, '..', 'public');
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(publicDir, 'css', 'style.css'), 'utf8');
+const css = loadStylesheet();
 const appJs = fs.readFileSync(path.join(publicDir, 'js', 'app.js'), 'utf8');
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
 const audioJs = fs.readFileSync(path.join(publicDir, 'js', 'audio.js'), 'utf8');

@@ -1,0 +1,231 @@
+/* ==========================================================================
+   Overlays
+   Dialogs (game over, rules) and the transient toasts, both drawn above the
+   game screen.
+   ========================================================================== */
+
+/* ── Modals ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--scrim);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--sp-5);
+  animation: fadeIn var(--dur-2) var(--ease-out);
+}
+
+/* Set by app.js while a dialog is open: the page behind it must not scroll. */
+body.modal-open {
+  overflow: hidden;
+}
+
+.modal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-3);
+  animation: modalPop var(--dur-3) var(--ease-out);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Game over */
+.game-over-box {
+  max-width: 420px;
+  width: 100%;
+  padding: var(--sp-10);
+  text-align: center;
+}
+
+.game-over-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-main);
+}
+
+.game-over-title.win {
+  color: var(--accent-gold);
+}
+
+.game-over-title.loss {
+  color: var(--text-main);
+}
+
+.winner-subtitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.reason-text {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-8);
+}
+
+.modal-btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.modal-btn-row .btn {
+  width: 100%;
+}
+
+/* Rules */
+.rules-card {
+  max-width: 620px;
+  width: 100%;
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.rules-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.rules-header h2 {
+  font-size: 1.1875rem;
+  color: var(--text-main);
+}
+
+.btn-close-modal {
+  background: var(--btn-secondary-bg);
+  border: none;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+
+.btn-close-modal .icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.btn-close-modal:active {
+  transform: scale(0.92);
+}
+
+.rules-body {
+  padding: var(--sp-6);
+  overflow-y: auto;
+  font-size: 0.9375rem;
+  color: var(--rules-body-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.rule-section h3 {
+  color: var(--text-main);
+  font-size: 1rem;
+  margin-bottom: var(--sp-1);
+}
+
+.rule-section p + p {
+  margin-top: var(--sp-2);
+}
+
+.rule-section ul {
+  padding-left: var(--sp-5);
+  margin-top: var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rule-section strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* ── Toasts ── */
+.toast-container {
+  position: fixed;
+  bottom: var(--sp-6);
+  right: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--material-bg);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  color: var(--text-main);
+  border: 1px solid var(--hairline);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 400;
+  box-shadow: var(--shadow-2);
+  pointer-events: auto;
+  animation: slideInToast var(--dur-3) var(--ease-out);
+  max-width: 320px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.toast::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--accent-blue);
+}
+
+.toast-warning::before { background: var(--accent-gold); }
+.toast-error::before { background: var(--accent-red); }
+
+.toast-fade {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
+}
+
+@keyframes slideInToast {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

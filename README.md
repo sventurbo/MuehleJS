@@ -140,7 +140,38 @@ Das Projekt enthält einen automatisierten Kontrast-Checker, der sicherstellt, d
 ```bash
 npm run contrast-check
 ```
-Dieser prüft alle Farbpaare in den Dark- und Light-Themes des Stylesheets.
+Dieser prüft alle Farbpaare in den Dark- und Light-Themes des Stylesheets. Die
+Tokens liest er aus `public/css/tokens.css` — über `scripts/css-bundle.js`, das
+die `@import`-Kette auflöst, sodass der Checker das Stylesheet als Ganzes sieht.
+
+---
+
+## 🎨 CSS-Architektur
+
+Das Stylesheet ist in neun Module aufgeteilt, die jeweils einen Abschnitt der
+Oberfläche abdecken. `public/css/style.css` enthält keine eigenen Regeln mehr,
+sondern ist das Manifest: es zieht die Module per `@import` in Kaskadenreihenfolge
+herein. Die Seite bindet weiterhin nur dieses eine Stylesheet ein.
+
+```
+public/css/style.css   →   tokens · base · layout · controls · login
+                           game · board · modals · responsive
+```
+
+Die Reihenfolge ist Teil des Vertrags: `tokens.css` steht zuerst, weil alle
+anderen Module seine Custom Properties benutzen, `responsive.css` zuletzt, weil
+seine Breakpoints die Module darüber überschreiben. Ein neues Modul gilt erst,
+wenn es im Manifest steht — `tests/CssModules.test.js` prüft genau das, zusammen
+mit der Regel, dass Custom Properties ausschließlich in `tokens.css` deklariert
+werden.
+
+Werkzeuge, die das Stylesheet als Ganzes lesen (der Kontrast-Checker und die
+statischen CSS-Tests), gehen über `scripts/css-bundle.js`. Das Skript löst die
+`@import`-Kette auf und gibt den zusammengesetzten Stylesheet-Text zurück:
+
+```bash
+node scripts/css-bundle.js   # gibt das aufgelöste Stylesheet auf stdout aus
+```
 
 ---
 
@@ -153,7 +184,8 @@ Web-Spiel/
 ├── Systemmodel.md            # Umfassendes Systemmodell (Architektur, Domänenmodell, State Machines)
 ├── scripts/
 │   ├── contrast.js           # WCAG 2.1 Kontrastberechnung (relative Luminance, Kontrastverhältnis)
-│   └── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
+│   ├── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
+│   └── css-bundle.js         # Löst die @import-Kette von style.css auf (für Checker & Tests)
 ├── lib/
 │   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen)
 │   ├── GameManager.js        # Matchmaking-Warteschlange & Verwaltung paralleler Spielräume
@@ -161,8 +193,17 @@ Web-Spiel/
 │   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)
-│   ├── css/
-│   │   └── style.css         # Design-System (Tokens, Light/Dark-Theme), Layout & Animationen
+│   ├── css/                  # Modulares Stylesheet, per @import in Kaskadenreihenfolge gebündelt
+│   │   ├── style.css         # Manifest: nur die @import-Liste, keine eigenen Regeln
+│   │   ├── tokens.css        # Design-Tokens (:root) + Light-Theme-Override
+│   │   ├── base.css          # Reset, Typografie, Touch-Handling, Scrollbars, Icons
+│   │   ├── layout.css        # App-Shell: Header (Verbindungsstatus, Ton) & Screen-Switcher
+│   │   ├── controls.css      # Buttons & Eingabefelder
+│   │   ├── login.css         # Screen 1 & 2: Login/Lobby und Matchmaking-Warteschlange
+│   │   ├── game.css          # Screen 3: HUD, Spielerkarten, Arena, Dock (Zugliste & Chat)
+│   │   ├── board.css         # SVG-Brett (Gradienten, Marker, Stein-Animationen)
+│   │   ├── modals.css        # Dialoge & Toasts
+│   │   └── responsive.css    # Breakpoints, pointer/hover, prefers-reduced-motion
 │   └── js/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
 │       ├── gameRules.js      # Geteilte Brettgeometrie, Schlag-Regeln & Brett-Diff (einzige Quelle für Schlag-Markierungen)
@@ -180,7 +221,9 @@ Web-Spiel/
 │   ├── GameManager.test.js   # Unit-Tests für Matchmaking und Verbindungsabbruch (108 Tests)
 │   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests (127 Tests)
 │   ├── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
-│   └── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
+│   ├── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
+│   ├── BoardAnimation.test.js # Strukturtests für Stein-Animationen und Mühlen-Beam
+│   └── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Kaskadenreihenfolge, Token-Zugriff des Kontrast-Checkers)
 ├── .gitignore                # Git-Ignore (node_modules, .DS_Store, coverage, .env)
 ├── package-lock.json         # Abhängigkeits-Lockfile
 └── README.md                 # Diese Dokumentation
