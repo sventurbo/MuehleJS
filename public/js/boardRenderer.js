@@ -3,12 +3,14 @@
  * Crisp SVG board renderer for Mühle.
  * Manages coordinates, pieces, selection highlights, valid move markers, and mill effects.
  *
- * Colours live in css/style.css. Gradient stops are addressed by class so the
+ * Colours live in css/board.css. Gradient stops are addressed by class so the
  * board follows the active light/dark theme instead of hardcoding hex values.
  *
  * The board's DOM is built once and then patched: every stone keeps its SVG
- * node for as long as it stays on its point. Only that lets CSS animate a stone
- * at all — a freshly inserted node has no previous state to transition from.
+ * node for as long as it stays on its point, and every point keeps its four
+ * markers. Only that lets CSS animate a stone at all — a freshly inserted node
+ * has no previous state to transition from — and it keeps a board update down
+ * to a handful of class toggles.
  */
 
 const POINT_COORDS = {
@@ -78,6 +80,48 @@ const BOARD_LINES = [
   ['a4', 'b4'], ['b4', 'c4']  // West
 ];
 
+/** The 32 connecting lines of the three squares and their four bridges. */
+function boardLinesMarkup() {
+  return BOARD_LINES.map(([from, to]) => {
+    const a = POINT_COORDS[from];
+    const b = POINT_COORDS[to];
+    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="board-line" stroke-width="3.5" stroke-linecap="round"/>`;
+  }).join('');
+}
+
+/** The faint coordinate labels, pushed outwards from their own point. */
+function gridLabelsMarkup() {
+  return Object.entries(POINT_COORDS).map(([pt, c]) => {
+    const dy = (c.y < 300) ? -18 : (c.y > 300 ? 18 : 0);
+    const dx = (c.y === 300) ? (c.x < 300 ? -18 : 18) : 0;
+    return `<text x="${c.x + dx}" y="${c.y + dy}" class="grid-label">${pt}</text>`;
+  }).join('');
+}
+
+/**
+ * One interactive group per point, holding everything that point can ever show:
+ * the hit area, the socket, and the three markers (destination, selection,
+ * capture target). The markers are hidden in CSS and switched on by the
+ * `is-*` classes `render()` sets, so no node is ever created during play.
+ */
+function pointGroupsMarkup(hitRadius) {
+  return Object.entries(POINT_COORDS).map(([pt, c]) => `
+    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">
+      <!-- Transparent wide hit area for easy clicking / tapping -->
+      <circle cx="0" cy="0" r="${hitRadius}" fill="transparent" class="hit-area" />
+      <!-- Base socket, inside the group so hover/press feedback can reach it -->
+      <circle cx="0" cy="0" r="6" class="grid-socket" stroke-width="1.5" />
+      <!-- Markers; the stone is appended after them and therefore paints on top -->
+      <g class="point-markers">
+        <circle cx="0" cy="0" r="16" class="dest-indicator" stroke-width="1.5" />
+        <circle cx="0" cy="0" r="5" class="dest-dot" />
+        <circle cx="0" cy="0" r="27" fill="none" class="selection-ring" stroke-width="2" />
+        <circle cx="0" cy="0" r="26" class="removal-target" stroke-width="2" />
+      </g>
+    </g>
+  `).join('');
+}
+
 class BoardRenderer {
   constructor(containerElement, onPointClick) {
     this.container = containerElement;
@@ -85,7 +129,6 @@ class BoardRenderer {
     this.selectedPoint = null;
     this.validDestinations = [];
     this.removablePoints = [];
-    this.lastMillPoints = [];
     this.hitRadius = BoardRenderer.hitRadius();
 
     // Stones currently on screen: point -> { color, el }. Stones that are still
@@ -135,40 +178,15 @@ class BoardRenderer {
         <rect x="12" y="12" width="576" height="576" rx="28" class="board-plate" fill="url(#boardGrad)" stroke-width="1"/>
         <rect x="26" y="26" width="548" height="548" rx="20" fill="none" class="board-plate-inner" stroke-width="1"/>
 
-        <!-- Grid Lines Group -->
-        <g id="grid-lines" class="grid-lines">
-          ${BOARD_LINES.map(([p1, p2]) => {
-            const c1 = POINT_COORDS[p1];
-            const c2 = POINT_COORDS[p2];
-            return `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" class="board-line" stroke-width="3.5" stroke-linecap="round"/>`;
-          }).join('')}
-        </g>
+        <g id="grid-lines" class="grid-lines">${boardLinesMarkup()}</g>
 
         <!-- Active Mill Glowing Lines Group -->
         <g id="mill-glow-lines"></g>
 
-        <!-- Coordinate Labels (subtle) -->
-        <g id="grid-labels" class="grid-labels" font-size="9" text-anchor="middle" dominant-baseline="central">
-          ${Object.entries(POINT_COORDS).map(([pt, c]) => {
-            const dy = (c.y < 300) ? -18 : (c.y > 300 ? 18 : 0);
-            const dx = (c.y === 300) ? (c.x < 300 ? -18 : 18) : 0;
-            return `<text x="${c.x + dx}" y="${c.y + dy}" class="grid-label">${pt}</text>`;
-          }).join('')}
-        </g>
+        <g id="grid-labels" class="grid-labels" font-size="9" text-anchor="middle" dominant-baseline="central">${gridLabelsMarkup()}</g>
 
         <!-- Interactive Pieces and Target Markers Layer -->
-        <g id="interactive-layer">
-          ${Object.entries(POINT_COORDS).map(([pt, c]) => `
-            <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">
-              <!-- Transparent wide hit area for easy clicking / tapping -->
-              <circle cx="0" cy="0" r="${this.hitRadius}" fill="transparent" class="hit-area" />
-              <!-- Base socket, inside the group so hover/press feedback can reach it -->
-              <circle cx="0" cy="0" r="6" class="grid-socket" stroke-width="1.5" />
-              <!-- Destination, selection and capture markers; the stone follows -->
-              <g class="point-markers"></g>
-            </g>
-          `).join('')}
-        </g>
+        <g id="interactive-layer">${pointGroupsMarkup(this.hitRadius)}</g>
       </svg>
     `;
 
@@ -176,11 +194,8 @@ class BoardRenderer {
     this.millGlowLayer = this.container.querySelector('#mill-glow-lines');
 
     this.pointGroups = {};
-    this.markerLayers = {};
     this.interactiveLayer.querySelectorAll('.board-point-group').forEach(group => {
-      const pt = group.getAttribute('data-point');
-      this.pointGroups[pt] = group;
-      this.markerLayers[pt] = group.querySelector('.point-markers');
+      this.pointGroups[group.getAttribute('data-point')] = group;
     });
 
     // One delegated listener: the groups outlive every render, and a stone that
@@ -194,7 +209,7 @@ class BoardRenderer {
     });
 
     // iOS Safari only applies :active to elements that have a touch listener;
-    // the socket press feedback in style.css depends on it.
+    // the socket press feedback in board.css depends on it.
     this.interactiveLayer.addEventListener('touchstart', () => {}, { passive: true });
   }
 
@@ -205,6 +220,10 @@ class BoardRenderer {
    * so a `.removal-target` ring can never outlive the state it was computed
    * from: the click handler in app.js asks the same function with the same
    * state and therefore always accepts what the board shows.
+   *
+   * Nothing is created here — every marker already exists and only its `is-*`
+   * class changes, so a full board update is 24 class toggles, not 24 rebuilt
+   * subtrees.
    */
   render(gameState, playerColor, selectedPoint = null, validDestinations = []) {
     this.selectedPoint = selectedPoint;
@@ -218,34 +237,16 @@ class BoardRenderer {
 
     Object.keys(POINT_COORDS).forEach(pt => {
       const isRemovable = this.removablePoints.includes(pt);
-      let markersHtml = '';
 
-      // 1. Valid destination: a calm concentric ring plus a solid centre dot
-      if (this.validDestinations.includes(pt)) {
-        markersHtml += `
-          <circle cx="0" cy="0" r="16" class="dest-indicator" stroke-width="1.5" />
-          <circle cx="0" cy="0" r="5" class="dest-dot" />
-        `;
-      }
+      // Markers: a calm ring plus a centre dot for a destination, an accent ring
+      // for the selected stone, a tinted target ring for a capturable one.
+      const group = this.pointGroups[pt];
+      group.classList.toggle('is-destination', this.validDestinations.includes(pt));
+      group.classList.toggle('is-selected', this.selectedPoint === pt);
+      group.classList.toggle('is-capturable', isRemovable);
 
-      // 2. Selected stone: a single solid accent ring
-      if (this.selectedPoint === pt) {
-        markersHtml += `
-          <circle cx="0" cy="0" r="27" fill="none" class="selection-ring" stroke-width="2" />
-        `;
-      }
-
-      // 3. Removable opponent piece: a tinted target ring
-      if (isRemovable) {
-        markersHtml += `
-          <circle cx="0" cy="0" r="26" class="removal-target" stroke-width="2" />
-        `;
-      }
-
-      this.markerLayers[pt].innerHTML = markersHtml;
-
-      // 4. Stone state. Toggled on the existing node, never by rewriting its
-      //    class attribute, which would cut short a running entry animation.
+      // Stone state. Toggled on the existing node, never by rewriting its class
+      // attribute, which would cut short a running entry animation.
       const piece = this.pieces.get(pt);
       if (piece) {
         piece.el.classList.toggle('piece-selectable', canSelect && piece.color === playerColor);

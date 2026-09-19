@@ -159,11 +159,11 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest:
 npm test
 ```
 
-Getestet werden (229 Tests in 10 Test-Dateien):
+Getestet werden (239 Tests in 11 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
-- Übereinstimmung der Client-Regeln (`public/js/gameRules.js`) mit der Server-Engine.
+- Identität des geteilten Regelmoduls (`shared/muehleRules.js`) mit der Server-Engine: beide Seiten benutzen dasselbe Objekt, nicht zwei Kopien.
 - Brett-Diff für die Stein-Animationen: jede Aktion zufällig gespielter Partien wird als genau das Setzen, Ziehen oder Schlagen erkannt.
 - Sieg durch Steinedezimierung (< 3 Steine).
 - Sieg durch Einsperren des Gegners (keine legalen Züge).
@@ -174,6 +174,7 @@ Getestet werden (229 Tests in 10 Test-Dateien):
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
 - Ton-Einstellung auch bei blockiertem `localStorage` (Safari im privaten Modus, abgeschaltete Website-Daten).
+- Vollständigkeit und Reihenfolge der Client-Module (`index.html` als Manifest) sowie die Architekturregel, dass nur `app.js` mit dem Socket spricht.
 
 ### WCAG 2.1 AA Kontrastprüfung
 
@@ -189,14 +190,14 @@ die `@import`-Kette auflöst, sodass der Checker das Stylesheet als Ganzes sieht
 
 ## 🎨 CSS-Architektur
 
-Das Stylesheet ist in neun Module aufgeteilt, die jeweils einen Abschnitt der
+Das Stylesheet ist in elf Module aufgeteilt, die jeweils einen Abschnitt der
 Oberfläche abdecken. `public/css/style.css` enthält keine eigenen Regeln mehr,
 sondern ist das Manifest: es zieht die Module per `@import` in Kaskadenreihenfolge
 herein. Die Seite bindet weiterhin nur dieses eine Stylesheet ein.
 
 ```
 public/css/style.css   →   tokens · base · layout · controls · login
-                           game · board · modals · responsive
+                           hud · arena · dock · board · modals · responsive
 ```
 
 Die Reihenfolge ist Teil des Vertrags: `tokens.css` steht zuerst, weil alle
@@ -216,6 +217,35 @@ node scripts/css-bundle.js   # gibt das aufgelöste Stylesheet auf stdout aus
 
 ---
 
+## 🧩 Client-Architektur
+
+Der Client kommt ohne Framework und ohne Build-Schritt aus: `index.html` lädt
+klassische `<script>`-Dateien in Abhängigkeitsreihenfolge. Die Datei ist damit
+zugleich das Manifest des Clients — ein Modul, das dort nicht steht, erreicht
+weder den Browser noch die Tests.
+
+```
+/shared/muehleRules.js  →  audio · boardRenderer  →  hudView · dockView · overlays  →  app
+```
+
+Die Aufteilung folgt einer einzigen Regel: **die Views zeichnen, der Controller
+spricht.** `hudView.js`, `dockView.js`, `overlays.js` und `boardRenderer.js`
+bekommen fertige Daten und besitzen keinen Socket; nur `app.js` sendet Aktionen
+an den Server und verteilt dessen Antworten. Deshalb ist der Zug-Countdown im
+HUD auch reine Anzeige: er kann gar keinen Zug auslösen, die einzige zählende
+Uhr läuft im `GameManager`.
+
+Werkzeuge, die den Client als Ganzes lesen (die statischen Client-Tests), gehen
+über `scripts/client-bundle.js` — das Gegenstück zu `css-bundle.js`. Es löst die
+`<script>`-Liste auf, sodass eine Zusicherung weiterhin gilt, wenn eine Funktion
+in ein anderes Modul umzieht:
+
+```bash
+node scripts/client-bundle.js   # gibt den geladenen Client-Code auf stdout aus
+```
+
+---
+
 ## 📁 Projektstruktur
 
 ```
@@ -226,9 +256,12 @@ Web-Spiel/
 ├── scripts/
 │   ├── contrast.js           # WCAG 2.1 Kontrastberechnung (relative Luminance, Kontrastverhältnis)
 │   ├── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
-│   └── css-bundle.js         # Löst die @import-Kette von style.css auf (für Checker & Tests)
+│   ├── css-bundle.js         # Löst die @import-Kette von style.css auf (für Checker & Tests)
+│   └── client-bundle.js      # Löst die <script>-Liste von index.html auf (für die Client-Tests)
+├── shared/
+│   └── muehleRules.js        # Geteiltes Regelmodul: Brettgeometrie, Mühlen- & Schlag-Regeln, Brett-Diff (Server UND Browser)
 ├── lib/
-│   ├── MuehleGame.js         # Autoritatives Spielregel- und Zustandsmodell (24 Punkte, Mühlen, Phasen, legale Züge)
+│   ├── MuehleGame.js         # Autoritative Zustandsmaschine auf Basis von shared/muehleRules.js (Phasen, legale Züge, Sieg)
 │   ├── GameManager.js        # Matchmaking-Warteschlange, Verwaltung paralleler Spielräume & Zug-Timer (25 s)
 │   ├── clientAddress.js      # Client-Adresse & Budget-Schlüssel fürs Rate-Limiting (X-Forwarded-For nur von vertrauten Proxys, IPv6 pro /64)
 │   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
@@ -241,15 +274,19 @@ Web-Spiel/
 │   │   ├── layout.css        # App-Shell: Header (Verbindungsstatus, Ton) & Screen-Switcher
 │   │   ├── controls.css      # Buttons & Eingabefelder
 │   │   ├── login.css         # Screen 1 & 2: Login/Lobby und Matchmaking-Warteschlange
-│   │   ├── game.css          # Screen 3: HUD, Spielerkarten, Arena, Dock (Zugliste & Chat)
+│   │   ├── hud.css           # Screen 3: Phasenanzeige, Zug-Badge, Countdown, Hinweisbanner
+│   │   ├── arena.css         # Screen 3: Spielerkarten und die Brettfläche dazwischen
+│   │   ├── dock.css          # Screen 3: Zugprotokoll & Chat (auf Smartphones mit Tab-Leiste)
 │   │   ├── board.css         # SVG-Brett (Gradienten, Marker, Stein-Animationen)
 │   │   ├── modals.css        # Dialoge & Toasts
 │   │   └── responsive.css    # Breakpoints, pointer/hover, prefers-reduced-motion
 │   └── js/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
-│       ├── gameRules.js      # Geteilte Brettgeometrie, Schlag-Regeln & Brett-Diff (einzige Quelle für Schlag-Markierungen)
 │       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen, Hervorhebungen & Stein-Animationen
-│       └── app.js            # Client-Zustand, Socket.io-Client, HUD & Benutzeraktionen
+│       ├── hudView.js        # Phasen-, Zug- und Spieleranzeige sowie der Zug-Countdown
+│       ├── dockView.js       # Zugprotokoll, Chat und die Tab-Leiste auf kleinen Bildschirmen
+│       ├── overlays.js       # Dialoge (Regeln, Spielende), Toasts und Verbindungsanzeige
+│       └── app.js            # Controller: Socket.io-Client, Screen-Wechsel & Brett-Interaktion
 ├── docs/
 │   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation
 ├── .github/
@@ -258,14 +295,15 @@ Web-Spiel/
 ├── tests/
 │   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
 │   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
-│   ├── GameRules.test.js     # Abgleich der Client-Regeln mit der Server-Engine
+│   ├── GameRules.test.js     # Abgleich von geteiltem Regelmodul und Server-Engine
 │   ├── GameManager.test.js   # Unit-Tests für Matchmaking, Verbindungsabbruch und den Zug-Timer
 │   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests
 │   ├── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
 │   ├── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
 │   ├── BoardAnimation.test.js # Strukturtests für Stein-Animationen und Mühlen-Beam
 │   ├── AudioMute.test.js     # Ton-Einstellung bei blockiertem localStorage (Safari privat)
-│   └── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Kaskadenreihenfolge, Token-Zugriff des Kontrast-Checkers)
+│   ├── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Kaskadenreihenfolge, Token-Zugriff des Kontrast-Checkers)
+│   └── ClientModules.test.js # Guards für das Client-Manifest (Vollständigkeit, Ladereihenfolge, Views ohne Socket)
 ├── .gitignore                # Git-Ignore (node_modules, .DS_Store, coverage, .env)
 ├── .npmrc                    # engine-strict=true (erzwingt die Node-Version aus "engines")
 ├── package-lock.json         # Abhängigkeits-Lockfile

@@ -243,10 +243,12 @@ describe('Turn timer over the socket interface', () => {
 describe('Turn timer UI', () => {
   let htmlContent;
   let appJs;
+  let hudJs;
 
   beforeAll(() => {
     htmlContent = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+    hudJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'hudView.js'), 'utf8');
   });
 
   test('the HUD carries a countdown element', () => {
@@ -261,15 +263,13 @@ describe('Turn timer UI', () => {
   });
 
   test('the client only displays the clock and never plays on it', () => {
-    // Everything between the countdown helpers: if a move were emitted from a
-    // browser timer, the 25 s limit would be as manipulable as the client.
-    const countdown = appJs.slice(
-      appJs.indexOf('_startTurnCountdown(data) {'),
-      appJs.indexOf('_colorName(color) {')
-    );
-    expect(countdown.length).toBeGreaterThan(0);
-    expect(countdown).not.toContain('socket.emit');
-    expect(countdown).toContain('setInterval');
+    // The countdown lives in the HUD view, which holds no socket at all: if a
+    // move could be emitted from a browser timer, the 25 s limit would be as
+    // manipulable as the client.
+    const code = hudJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).toContain('setInterval');
+    expect(code).not.toContain('socket');
+    expect(appJs).toContain('this.hud.startCountdown(data)');
   });
 
   test('a move the server played for a player is marked in the log', () => {

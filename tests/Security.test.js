@@ -107,7 +107,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
 
     test('forwards chat text verbatim - escaping belongs to the renderer (CH-01/CH-02)', () => {
       // Escaping here as well produced literal "&amp;" / "&lt;b&gt;" on screen.
-      // The client renders every message through textContent / _escapeHtml, so
+      // The client renders every message through textContent / escapeHtml, so
       // the payload must arrive exactly as it was typed.
       gm.handleChatMessage(socket1, '<script>alert(1)</script> Hello & Welcome!');
       expect(roomEmitMock).toHaveBeenCalledWith('chatMessage', expect.objectContaining({
@@ -528,9 +528,10 @@ describe('Username Validation (Issue #1)', () => {
    });
 
    describe('XSS: the client is the escaping boundary', () => {
-     const fs = require('fs');
-     const path = require('path');
-     const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+     // Read as one client: the escaping has to happen wherever the markup is
+     // built, which is the dock view today and may move again tomorrow.
+     const { loadClientScripts } = require('../scripts/client-bundle');
+     const clientJs = loadClientScripts();
 
      test('sanitizeText keeps ampersands and angle brackets intact', () => {
        expect(sanitizeText('Tom&Jerry')).toBe('Tom&Jerry');
@@ -544,16 +545,24 @@ describe('Username Validation (Issue #1)', () => {
      });
 
      // The server deliberately no longer escapes, so the markup the client
-     // builds by hand must run every server-supplied string through _escapeHtml.
+     // builds by hand must run every server-supplied string through escapeHtml.
      test('chat markup escapes both sender and text', () => {
-       expect(appJs).toContain('this._escapeHtml(msg.sender)');
-       expect(appJs).toContain('this._escapeHtml(msg.text)');
+       expect(clientJs).toContain('escapeHtml(msg.sender)');
+       expect(clientJs).toContain('escapeHtml(msg.text)');
      });
 
      test('player names are written with textContent, never innerHTML', () => {
-       expect(appJs).toMatch(/playerWName\.textContent\s*=/);
-       expect(appJs).toMatch(/playerBName\.textContent\s*=/);
-       expect(appJs).not.toMatch(/player[WB]Name\.innerHTML/);
+       expect(clientJs).toMatch(/panel\.name\.textContent\s*=/);
+       expect(clientJs).not.toMatch(/\.name\.innerHTML\s*=/);
+     });
+
+     test('no chat field is ever interpolated into markup raw', () => {
+       // The chat bubble is the one place that builds markup from a message.
+       const withMessageData = clientJs.match(/innerHTML\s*=\s*`[^`]*msg\.[^`]*`/g) || [];
+       expect(withMessageData.length).toBeGreaterThan(0);
+       withMessageData.forEach(assignment => {
+         expect(assignment).not.toMatch(/\$\{\s*msg\.(sender|text)\s*\}/);
+       });
      });
    });
 

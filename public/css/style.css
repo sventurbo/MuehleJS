@@ -20,7 +20,9 @@
 @import url("layout.css");     /* app shell: header, screen switcher          */
 @import url("controls.css");   /* buttons & inputs                            */
 @import url("login.css");      /* screen 1 & 2: login/lobby, queue            */
-@import url("game.css");       /* screen 3: HUD, arena, player panels, dock   */
+@import url("hud.css");        /* screen 3: phase, turn badge, countdown      */
+@import url("arena.css");      /* screen 3: player panels & board             */
+@import url("dock.css");       /* screen 3: move log & chat                   */
 @import url("board.css");      /* SVG board internals & stone animations      */
 @import url("modals.css");     /* dialogs & toasts                            */
 @import url("responsive.css"); /* breakpoints, pointer/hover, reduced motion  */

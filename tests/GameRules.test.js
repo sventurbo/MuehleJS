@@ -1,11 +1,13 @@
 /**
  * GameRules.test.js
- * The client draws capture rings from public/js/gameRules.js. These tests pin
- * that module to the authoritative server engine in lib/MuehleGame.js, so a
- * stone the board marks is always a stone the server accepts.
+ * The client draws its capture rings from shared/muehleRules.js — the very
+ * module the server engine in lib/MuehleGame.js is built on. These tests pin
+ * that the two really are one: the geometry is the same object on both sides,
+ * and the engine's stateful answers still match the shared pure functions, so
+ * a stone the board marks is always a stone the server accepts.
  */
 
-const RULES = require('../public/js/gameRules');
+const RULES = require('../shared/muehleRules');
 const { MuehleGame, POINTS, MILLS, ADJACENCY } = require('../lib/MuehleGame');
 
 /** Builds a game whose board holds exactly the given stones. */
@@ -27,23 +29,25 @@ function makeRandom(seed) {
   };
 }
 
-describe('Client rule module (gameRules.js)', () => {
-  describe('Board geometry matches the server', () => {
-    test('exposes the same 24 points as the engine', () => {
+describe('Shared rule module (shared/muehleRules.js)', () => {
+  describe('Board geometry is one object, not a copy', () => {
+    // The engine re-exports what it was handed. Identity, not equality, is what
+    // rules out a second board that could drift away from this one.
+    test('the engine hands out the shared 24 points', () => {
       expect(RULES.POINTS.length).toBe(24);
-      expect([...RULES.POINTS].sort()).toEqual([...POINTS].sort());
+      expect(POINTS).toBe(RULES.POINTS);
     });
 
-    test('exposes the same 16 mills as the engine', () => {
-      const normalize = mills => mills.map(m => [...m].sort().join('-')).sort();
+    test('the engine hands out the shared 16 mills', () => {
       expect(RULES.MILLS.length).toBe(16);
-      expect(normalize(RULES.MILLS)).toEqual(normalize(MILLS));
+      expect(MILLS).toBe(RULES.MILLS);
     });
 
-    test('exposes the same adjacency graph as the engine', () => {
-      POINTS.forEach(pt => {
-        expect([...RULES.ADJACENCY[pt]].sort()).toEqual([...ADJACENCY[pt]].sort());
-      });
+    test('the engine hands out the shared adjacency graph', () => {
+      expect(ADJACENCY).toBe(RULES.ADJACENCY);
+      // 32 undirected edges over the 24 points, counted from both ends.
+      const degrees = POINTS.reduce((sum, pt) => sum + ADJACENCY[pt].length, 0);
+      expect(degrees).toBe(64);
     });
   });
 

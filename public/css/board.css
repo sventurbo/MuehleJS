@@ -39,6 +39,23 @@
   stroke: var(--accent-blue);
 }
 
+/* Point markers. Every point carries all three of them from the moment the
+   board is built; boardRenderer.js only switches the `is-*` class on the point
+   group, so a board update never creates or destroys a node. */
+.dest-indicator,
+.dest-dot,
+.selection-ring,
+.removal-target {
+  display: none;
+}
+
+.board-point-group.is-destination .dest-indicator,
+.board-point-group.is-destination .dest-dot,
+.board-point-group.is-selected .selection-ring,
+.board-point-group.is-capturable .removal-target {
+  display: block;
+}
+
 /* Valid destination: a calm ring plus a solid centre dot. */
 .dest-indicator {
   fill: var(--tint-blue);

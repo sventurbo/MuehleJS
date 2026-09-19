@@ -1,10 +1,71 @@
 /**
  * audio.js
- * Synthesizes game sound effects using Web Audio API.
+ * Synthesizes the game's sound effects with the Web Audio API.
  * 100% self-contained, no external audio files required.
+ *
+ * Every effect is just a short list of oscillator bursts, so the sounds are
+ * written down as data (SOUNDS) and played by one scheduler (_schedule).
+ * Adding or tuning a sound therefore means editing a note, never repeating the
+ * oscillator/gain wiring.
  */
 
 const MUTE_STORAGE_KEY = 'muehle_muted';
+
+/**
+ * One oscillator burst.
+ *
+ * @param {string} type Oscillator waveform ('sine', 'triangle', 'square', 'sawtooth').
+ * @param {number} freq Pitch in Hz at the start of the burst.
+ * @param {number} gain Peak volume; every burst fades from here to silence.
+ * @param {number} duration Length in seconds.
+ * @param {number} [to] Pitch to glide to over `duration` (null keeps `freq`).
+ * @param {number} [at] Delay in seconds before the burst starts.
+ */
+function note({ type, freq, gain, duration, to = null, at = 0 }) {
+  return { type, freq, gain, duration, to, at };
+}
+
+/** Equal-length notes played one after another, `step` seconds apart. */
+function arpeggio(type, freqs, { gain, duration, step }) {
+  return freqs.map((freq, i) => note({ type, freq, gain, duration, at: i * step }));
+}
+
+/** Notes of individual length, each starting just before the previous has faded. */
+function melody(type, steps, { gain, overlap = 0.9 }) {
+  let at = 0;
+  return steps.map(({ freq, duration }) => {
+    const burst = note({ type, freq, gain, duration, at });
+    at += duration * overlap;
+    return burst;
+  });
+}
+
+// C5, E5, G5, C6 — the major triad both winning fanfares are built from.
+const C5 = 523.25;
+const E5 = 659.25;
+const G5 = 783.99;
+const C6 = 1046.5;
+
+/** The complete sound set, one entry per game event. */
+const SOUNDS = {
+  // A stone dropping onto the board: a short, low-going knock.
+  place: [note({ type: 'triangle', freq: 320, to: 120, gain: 0.3, duration: 0.08 })],
+  // A stone sliding along a line: a soft rising blip.
+  move: [note({ type: 'sine', freq: 260, to: 440, gain: 0.25, duration: 0.12 })],
+  // A stone being captured: a hard, falling buzz.
+  remove: [note({ type: 'square', freq: 180, to: 60, gain: 0.3, duration: 0.18 })],
+  // A closed mill: the triad, quick and bright.
+  mill: arpeggio('triangle', [C5, E5, G5, C6], { gain: 0.2, duration: 0.35, step: 0.07 }),
+  // Victory: the same triad, held on the last note.
+  win: melody('triangle', [
+    { freq: C5, duration: 0.12 },
+    { freq: E5, duration: 0.12 },
+    { freq: G5, duration: 0.12 },
+    { freq: C6, duration: 0.35 }
+  ], { gain: 0.25 }),
+  // Defeat: four descending, rougher notes.
+  lose: arpeggio('sawtooth', [440, 415.3, 392, 349.2], { gain: 0.18, duration: 0.25, step: 0.12 })
+};
 
 /**
  * Reads the stored mute preference.
@@ -38,17 +99,22 @@ class SoundController {
     this.muted = loadMuted();
   }
 
-  _init() {
-    if (!this.ctx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        this.ctx = new AudioContext();
-      }
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
+  isMuted() {
+    return this.muted;
   }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    storeMuted(this.muted);
+    return this.muted;
+  }
+
+  playPlace() { this._play(SOUNDS.place); }
+  playMove() { this._play(SOUNDS.move); }
+  playMill() { this._play(SOUNDS.mill); }
+  playRemove() { this._play(SOUNDS.remove); }
+  playWin() { this._play(SOUNDS.win); }
+  playLose() { this._play(SOUNDS.lose); }
 
   /**
    * Mobile Safari (and Chrome's autoplay policy) only let an AudioContext
@@ -61,194 +127,63 @@ class SoundController {
     if (!this.ctx) return;
     try {
       // A silent blip finishes the unlock on older iOS versions.
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.01);
+      this._schedule(this.ctx.currentTime, note({ type: 'sine', freq: 440, gain: 0, duration: 0.01 }));
     } catch (e) {
       // Nothing to do — sound simply stays off on this device.
     }
   }
 
-  isMuted() {
-    return this.muted;
-  }
-
-  toggleMute() {
-    this.muted = !this.muted;
-    storeMuted(this.muted);
-    return this.muted;
-  }
-
-  playPlace() {
-    if (this.muted) return;
-    this._init();
-    if (!this.ctx) return;
-
-    try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
-
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.08);
-    } catch (e) {
-      // Audio autoplay policy fallback
+  /** Creates the audio context on first use and resumes a suspended one. */
+  _init() {
+    if (!this.ctx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) this.ctx = new AudioContext();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
     }
   }
 
-  playMove() {
+  /**
+   * Plays one of the SOUNDS entries, unless the player has muted the game or
+   * this browser has no usable audio context.
+   */
+  _play(notes) {
     if (this.muted) return;
     this._init();
     if (!this.ctx) return;
 
     try {
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(260, now);
-      osc.frequency.exponentialRampToValueAtTime(440, now + 0.12);
-
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.12);
-    } catch (e) {}
+      notes.forEach(burst => this._schedule(now + burst.at, burst));
+    } catch (e) {
+      // A device that refuses to play (autoplay policy, no output) stays silent;
+      // sound is decoration and must never interrupt the game.
+    }
   }
 
-  playMill() {
-    if (this.muted) return;
-    this._init();
-    if (!this.ctx) return;
+  /**
+   * Wires one oscillator through its own gain node and schedules its whole life
+   * up front, so the burst plays even if the main thread is busy rendering.
+   */
+  _schedule(startAt, { type, freq, gain, duration, to }) {
+    const osc = this.ctx.createOscillator();
+    const level = this.ctx.createGain();
 
-    try {
-      const now = this.ctx.currentTime;
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-      notes.forEach((freq, i) => {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startAt);
+    if (to !== null) osc.frequency.exponentialRampToValueAtTime(to, startAt + duration);
 
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now + i * 0.07);
+    // exponentialRamp cannot reach 0, so every burst fades to near-silence.
+    level.gain.setValueAtTime(gain, startAt);
+    if (gain > 0) level.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
 
-        gain.gain.setValueAtTime(0.2, now + i * 0.07);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.35);
+    osc.connect(level);
+    level.connect(this.ctx.destination);
 
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-
-        osc.start(now + i * 0.07);
-        osc.stop(now + i * 0.07 + 0.35);
-      });
-    } catch (e) {}
-  }
-
-  playRemove() {
-    if (this.muted) return;
-    this._init();
-    if (!this.ctx) return;
-
-    try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(180, now);
-      osc.frequency.exponentialRampToValueAtTime(60, now + 0.18);
-
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.18);
-    } catch (e) {}
-  }
-
-  playWin() {
-    if (this.muted) return;
-    this._init();
-    if (!this.ctx) return;
-
-    try {
-      const now = this.ctx.currentTime;
-      const melody = [
-        { f: 523.25, d: 0.12 }, // C5
-        { f: 659.25, d: 0.12 }, // E5
-        { f: 783.99, d: 0.12 }, // G5
-        { f: 1046.50, d: 0.35 } // C6
-      ];
-      let offset = 0;
-      melody.forEach(item => {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(item.f, now + offset);
-
-        gain.gain.setValueAtTime(0.25, now + offset);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + item.d);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-
-        osc.start(now + offset);
-        osc.stop(now + offset + item.d);
-        offset += item.d * 0.9;
-      });
-    } catch (e) {}
-  }
-
-  playLose() {
-    if (this.muted) return;
-    this._init();
-    if (!this.ctx) return;
-
-    try {
-      const now = this.ctx.currentTime;
-      const notes = [440, 415.3, 392, 349.2];
-      notes.forEach((freq, i) => {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(freq, now + i * 0.12);
-
-        gain.gain.setValueAtTime(0.18, now + i * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.25);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-
-        osc.start(now + i * 0.12);
-        osc.stop(now + i * 0.12 + 0.25);
-      });
-    } catch (e) {}
+    osc.start(startAt);
+    osc.stop(startAt + duration);
   }
 }
 
 window.soundController = new SoundController();
-
