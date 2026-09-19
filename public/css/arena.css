@@ -1,0 +1,168 @@
+/* ==========================================================================
+   Screen 3: Arena
+   The two player panels and the board they flank.
+   ========================================================================== */
+
+.game-arena {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-4);
+}
+
+.player-panel {
+  width: 224px;
+  background: var(--bg-surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-1);
+  transition: background-color var(--dur-3) var(--ease-out), border-color var(--dur-3) var(--ease-out);
+}
+
+.player-panel.active-turn {
+  border-color: var(--tint-green-strong);
+  background: var(--tint-green);
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Avatars are real discs matching the board stones, not glyphs. */
+.stone-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 1px 3px var(--piece-shadow);
+}
+
+.avatar-w {
+  background: radial-gradient(circle at 34% 28%, var(--stone-w-hi), var(--stone-w-lo));
+  border: 1px solid var(--stone-w-rim);
+}
+
+.avatar-b {
+  background: radial-gradient(circle at 34% 28%, var(--stone-b-hi), var(--stone-b-lo));
+  border: 1px solid var(--stone-b-rim);
+}
+
+.player-meta {
+  min-width: 0;
+}
+
+.player-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.color-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: block;
+}
+
+.player-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8125rem;
+  gap: var(--sp-2);
+}
+
+.stat-label {
+  color: var(--text-muted);
+}
+
+/* Narrow phone panels swap the long stat labels for the short ones. */
+.label-short {
+  display: none;
+}
+
+.stat-val {
+  font-weight: 600;
+  font-size: 1.0625rem;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.highlight-stat {
+  color: var(--text-main);
+}
+
+/* Pips for stones still in hand */
+.pips-container {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 3px;
+  padding: var(--sp-1) 0 var(--sp-2);
+}
+
+.pip {
+  height: 7px;
+  border-radius: var(--radius-pill);
+  transition: background-color var(--dur-3) var(--ease-out), box-shadow var(--dur-3) var(--ease-out);
+}
+
+/* Filled = still in hand, hollow = already placed. Reads the same in both
+   themes and for both stone colours, unlike tinting alone. */
+.pip.inactive {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--pip-inactive);
+}
+
+.pip-white.active {
+  background: var(--white-stone-color);
+  box-shadow: inset 0 0 0 1px var(--stone-w-rim);
+}
+
+.pip-black.active {
+  background: var(--pip-black-active);
+  box-shadow: inset 0 0 0 1px var(--stone-b-rim);
+}
+
+/* Board */
+/* The board shrinks to keep the whole arena visible at 1024x768, the
+   documented minimum, instead of pushing the dock below the fold. */
+.board-wrapper {
+  flex: 1;
+  max-width: min(540px, calc(100vh - 372px));
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.board-container {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.muehle-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: manipulation;
+  filter: drop-shadow(var(--shadow-1));
+}

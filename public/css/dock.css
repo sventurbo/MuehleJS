@@ -1,0 +1,247 @@
+/* ==========================================================================
+   Screen 3: Dock
+   Move log and chat, side by side on desktop and tabbed on phones.
+   ========================================================================== */
+
+.game-bottom-dock {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+  height: 148px;
+}
+
+.dock-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.panel-header h4 {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-header .icon {
+  width: 15px;
+  height: 15px;
+}
+
+/* Move log */
+.move-log-list {
+  list-style: none;
+  padding: 6px var(--sp-3);
+  overflow-y: auto;
+  font-size: 0.8125rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.move-log-list li {
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.move-log-list li:nth-child(even) {
+  background: var(--zebra-stripe);
+}
+
+.move-log-list .log-system {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+/* Chat */
+.chat-messages {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font-size: 0.8125rem;
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 82%;
+}
+
+.chat-msg.chat-me {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-msg.chat-other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.chat-meta {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Small stone disc replacing the colour emoji in chat metadata. */
+.chat-stone {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+
+.chat-stone-w {
+  background: var(--stone-w-lo);
+  border: 1px solid var(--stone-w-rim);
+}
+
+.chat-stone-b {
+  background: var(--stone-b-hi);
+  border: 1px solid var(--stone-b-rim);
+}
+
+.chat-bubble {
+  background: var(--bg-card);
+  padding: 5px var(--sp-3);
+  border-radius: 16px;
+  border: 1px solid var(--hairline);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.chat-other .chat-bubble {
+  border-bottom-left-radius: 5px;
+}
+
+.chat-me .chat-bubble {
+  background: var(--chat-bubble-me);
+  border-color: var(--chat-bubble-me-border);
+  border-bottom-right-radius: 5px;
+}
+
+.chat-form {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--hairline);
+}
+
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  background: var(--input-bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 6px var(--sp-3);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color var(--dur-2) var(--ease-out);
+}
+
+.chat-form input::placeholder {
+  color: var(--text-muted);
+}
+
+.chat-form input:focus {
+  border-color: var(--accent-blue);
+}
+
+.btn-chat-send {
+  background: var(--accent-blue);
+  color: #ffffff;
+  border: none;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: filter var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+
+.btn-chat-send .icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+.btn-chat-send:active {
+  transform: scale(0.92);
+}
+
+/* Dock tab bar: hidden on desktop, where log and chat sit side by side. */
+.dock-tabs {
+  display: none;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.dock-tab {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: var(--tracking-body);
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+}
+
+.dock-tab .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.dock-tab.is-active {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+.dock-tab:active {
+  transform: scale(0.98);
+}
+
+/* Unread marker on the inactive chat tab. */
+.tab-unread-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  flex: none;
+}

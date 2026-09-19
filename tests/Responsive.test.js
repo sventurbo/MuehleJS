@@ -13,11 +13,14 @@
 const fs = require('fs');
 const path = require('path');
 const { loadStylesheet } = require('../scripts/css-bundle');
+const { loadClientScripts } = require('../scripts/client-bundle');
 
 const publicDir = path.join(__dirname, '..', 'public');
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
 const css = loadStylesheet();
-const appJs = fs.readFileSync(path.join(publicDir, 'js', 'app.js'), 'utf8');
+// Behaviour of "the client", read across every script the page loads, so a
+// module split cannot quietly drop one of these guarantees.
+const clientJs = loadClientScripts();
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
 const audioJs = fs.readFileSync(path.join(publicDir, 'js', 'audio.js'), 'utf8');
 
@@ -141,10 +144,10 @@ describe('Move log / chat tabs', () => {
     expect(phone).toMatch(/\.dock-panel\.is-active\s*\{[^}]*display:\s*flex/);
   });
 
-  test('app.js switches tabs and marks unread chat messages', () => {
-    expect(appJs).toContain('_activateDockTab(name)');
-    expect(appJs).toContain("aria-selected");
-    expect(appJs).toContain('chatUnreadDot');
+  test('the client switches tabs and marks unread chat messages', () => {
+    expect(clientJs).toContain('activateTab(name)');
+    expect(clientJs).toContain('aria-selected');
+    expect(clientJs).toContain('chatUnreadDot');
   });
 });
 
@@ -182,12 +185,12 @@ describe('Touch interaction', () => {
 
   test('audio is unlocked from a user gesture (iOS autoplay policy)', () => {
     expect(audioJs).toContain('unlock()');
-    expect(appJs).toContain("document.addEventListener('pointerdown', unlockAudio");
-    expect(appJs).toContain("document.addEventListener('touchend', unlockAudio");
+    expect(clientJs).toContain("document.addEventListener('pointerdown', unlockAudio");
+    expect(clientJs).toContain("document.addEventListener('touchend', unlockAudio");
   });
 
   test('an open modal freezes the page behind it', () => {
-    expect(appJs).toContain('_syncModalScrollLock()');
+    expect(clientJs).toContain('_syncScrollLock()');
     expect(css).toMatch(/body\.modal-open\s*\{[^}]*overflow:\s*hidden/);
   });
 });

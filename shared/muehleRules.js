@@ -1,14 +1,17 @@
 /**
- * gameRules.js
- * Pure, side-effect free board rules shared by the client UI.
+ * muehleRules.js
+ * Pure, side-effect free board geometry and rules — the single source of truth
+ * for BOTH sides of the game.
  *
- * This module holds the board geometry and the capture rule in ONE place so the
- * markers drawn by boardRenderer.js and the validation in app.js can never
- * disagree: both read `getCaptureTargets()`, which derives everything from the
- * authoritative game state pushed by the server.
+ * The server engine (lib/MuehleGame.js) requires this file and builds its
+ * authoritative state machine on top of it; the browser loads the very same
+ * file from /shared and draws its markers from it. There is therefore no second
+ * copy of the board that could drift out of step — a stone the board marks is
+ * by construction a stone the server accepts.
  *
- * The rules mirror lib/MuehleGame.js (the server stays authoritative); the
- * client copy exists purely for immediate visual feedback.
+ * Everything here is a function of a plain board object, so it holds no state
+ * and can be called from either side at any time. Decisions still belong to the
+ * server alone; the client uses these functions purely for immediate feedback.
  *
  * Runs unchanged in the browser (as `window.MuehleRules`) and in Node (Jest).
  */
@@ -58,6 +61,16 @@
   };
 
   const POINTS = Object.keys(ADJACENCY);
+
+  /**
+   * German names of the two colours. Win reasons, HUD labels and the move log
+   * all name a colour, so the wording lives here once instead of in a ternary
+   * on each side of the wire.
+   */
+  const COLOR_NAMES = { W: 'Weiß', B: 'Schwarz' };
+
+  /** The name to show for a colour ('W' / 'B'). */
+  const colorName = (color) => COLOR_NAMES[color] || '';
 
   // All 16 possible mills (triplets of collinear points).
   const MILLS = [
@@ -167,6 +180,8 @@
     ADJACENCY,
     MILLS,
     MILLS_BY_POINT,
+    COLOR_NAMES,
+    colorName,
     getOpponent,
     isPointInMill,
     areAllPiecesInMills,

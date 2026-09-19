@@ -69,10 +69,17 @@ Das Gesamtsystem gliedert sich in modulare, voneinander entkoppelte Subsysteme a
 
 ```mermaid
 graph LR
+    subgraph Shared["Geteilt (eine Datei, beide Seiten)"]
+        RULES["muehleRules.js (Brettgeometrie, Mühlen- & Schlag-Regeln, Brett-Diff)"]
+    end
+
     subgraph Frontend["Frontend (Vanilla Web Stack)"]
-        HTML["index.html (SPA Screens)"]
-        CSS["css/ (9 Module via @import: Tokens, Layout 320px - Desktop, SVG-Styles)"]
-        APP["app.js (Client Controller & Socket Handler)"]
+        HTML["index.html (SPA Screens & Skript-Manifest)"]
+        CSS["css/ (11 Module via @import: Tokens, Layout 320px - Desktop, SVG-Styles)"]
+        APP["app.js (Controller: Socket, Screens, Brett-Interaktion)"]
+        HUD["hudView.js (Phase, Zug-Badge, Spielerkarten, Countdown)"]
+        DOCK["dockView.js (Zugprotokoll & Chat)"]
+        OVL["overlays.js (Dialoge, Toasts, Verbindungsanzeige)"]
         BR["boardRenderer.js (SVG Renderer & Hitboxen)"]
         AU["audio.js (Web Audio API Synthesizer)"]
     end
@@ -81,33 +88,47 @@ graph LR
         SRV["server.js (Dual-Stack Bootstrap & Socket Events)"]
         MGR["GameManager.js (Rooms, Queues, Lifecycle)"]
         RTL["RateLimiter.js (Sliding-Window Limiter)"]
-        MHL["MuehleGame.js (Regelwerk, Adjazenz, Mühlen)"]
+        MHL["MuehleGame.js (Zustandsmaschine: Phasen, legale Züge, Sieg)"]
     end
 
     HTML --> APP
     CSS --> HTML
+    APP --> HUD
+    APP --> DOCK
+    APP --> OVL
     APP --> BR
     APP --> AU
     APP <-->|WebSocket Events| SRV
     SRV --> MGR
     MGR --> RTL
     MGR --> MHL
+    RULES --> BR
+    RULES --> APP
+    RULES --> MHL
 ```
+
+Die Views (`hudView`, `dockView`, `overlays`, `boardRenderer`) besitzen bewusst
+keinen Socket: sie bekommen fertige Daten und zeichnen. Nur `app.js` sendet
+Aktionen an den Server. `tests/ClientModules.test.js` prüft genau das.
 
 ### Komponentenbeschreibung
 
 #### Serverseitige Module
 - **`server.js`**: Initialisiert Express, serviert statische Dateien (`/public`), konfiguriert Socket.io mit Payload-Grenzen (`maxHttpBufferSize: 10KB`), bindet das Dual-Stack IPv6/IPv4-Netzwerk und fängt Ausnahmen global ab.
 - **`lib/GameManager.js`**: Verwaltet die Matchmaking-Warteschlange, Socket-zu-Spieler-Mappings (`socketMap`), Räume (`games`) und koordiniert Event-Aufrufe. Hier liegt auch der **Zug-Timer**: pro Partie eine eigene Uhr (Standard 25 s), die bei jeder angenommenen Aktion neu startet und bei Ablauf einen automatischen legalen Zug auslöst.
-- **`lib/MuehleGame.js`**: Rein deterministische, autoritative Mühle-Regel-Engine. Verwaltet das Brett (24 Punkte), 32 Adjazenzkanten, 16 Mühlenlinien und validiert Setzen, Ziehen, Springen sowie Sieg-/Verlustbedingungen. Über `getLegalActions()` / `makeRandomLegalMove()` liefert sie außerdem die vollständige Zugmenge des Spielers am Zug — die Grundlage des automatischen Zugs bei Zeitablauf.
+- **`shared/muehleRules.js`**: Das geteilte Regelmodul — Brettgeometrie (24 Punkte, 32 Adjazenzkanten, 16 Mühlenlinien), Mühlen- und Schlag-Regeln sowie der Brett-Diff, alles zustandsfrei. Server-Engine und Browser laden **dieselbe Datei** (der Server per `require`, die Seite über den Mount `/shared`), weshalb es keine zweite Brett-Definition gibt, die auseinanderlaufen könnte.
+- **`lib/MuehleGame.js`**: Rein deterministische, autoritative Mühle-Zustandsmaschine auf Basis des geteilten Regelmoduls. Verwaltet Brett, Phase, Zugrecht und Historie und validiert Setzen, Ziehen, Springen sowie Sieg-/Verlustbedingungen. Über `getLegalActions()` / `makeRandomLegalMove()` liefert sie außerdem die vollständige Zugmenge des Spielers am Zug — die Grundlage des automatischen Zugs bei Zeitablauf.
 - **`lib/RateLimiter.js`**: In-Memory Sliding-Window Token-Bucket-Filter zum Schutz vor Chat-Floods (CH-05), Queue-Flooding (DOS-01) und Aktions-Spam.
 - **`lib/clientAddress.js`**: Ermittelt die Adresse, unter der ein Client limitiert wird. `X-Forwarded-For` wird nur ausgewertet, wenn die Gegenstelle als vertrauenswürdiger Proxy konfiguriert ist (`TRUST_PROXY`); anschließend wird die Adresse auf ihren Block reduziert (IPv4 und IPv4-mapped IPv6 auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix), damit ein Client mit eigenem Präfix sein Kontingent nicht durch Adresswechsel umgehen kann.
 
 #### Clientseitige Module
-- **`public/js/app.js`**: Haupt-Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over), UI-Aktualisierung und Toast-Nachrichten. Zeichnet den Zug-Countdown aus den Server-Events `turnTimer` / `turnTimeout` — reine Anzeige ohne eigene Zeitlogik.
-- **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und zeichnet konzentrische Ziel-, Auswahl- und Schlagmarker. Das Brett wird einmal aufgebaut und danach nur gepatcht: `MuehleRules.diffBoards()` bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten.
-- **`public/js/audio.js`**: Reiner Web-Audio-API Synthesizer für Soundeffekte (Klicks, Züge, Mühlenklang, Schlag-Impact, Fanfaren).
-- **`public/css/`**: Modulares Stylesheet. `style.css` ist reines Manifest und zieht die neun Module per `@import` in Kaskadenreihenfolge herein — `tokens.css` zuerst (Design-Tokens für beide Themes), `responsive.css` zuletzt (Breakpoints, Pointer-Typ, `prefers-reduced-motion`), dazwischen die Module je Screen bzw. Komponente. Werkzeuge, die das Stylesheet als Ganzes lesen (`scripts/contrast-check.js`, die statischen CSS-Tests), gehen über `scripts/css-bundle.js`, das die `@import`-Kette auflöst.
+- **`public/js/app.js`**: Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over) und Brett-Interaktion. Übersetzt Klicks in Server-Anfragen und Server-Events in Aufrufe der Views — er zeichnet selbst nichts.
+- **`public/js/hudView.js`**: Phasenanzeige, Zug-Badge, Hinweisbanner, beide Spielerkarten und der Zug-Countdown aus den Server-Events `turnTimer` / `turnTimeout` — reine Anzeige ohne eigene Zeitlogik und ohne Socket.
+- **`public/js/dockView.js`**: Zugprotokoll und Chat samt Tab-Leiste und Ungelesen-Markierung auf kleinen Bildschirmen. Hier liegt die Escaping-Grenze: Name und Text einer Nachricht gehen durch `escapeHtml()`, bevor Markup entsteht.
+- **`public/js/overlays.js`**: Regel- und Spielende-Dialog, Toasts, Verbindungsanzeige und die Scroll-Sperre hinter einem offenen Dialog.
+- **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und legt Ziel-, Auswahl- und Schlagmarker einmalig an; ein Zustandswechsel schaltet nur noch deren `is-*`-Klasse um. Das Brett wird einmal aufgebaut und danach nur gepatcht: `MuehleRules.diffBoards()` bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten.
+- **`public/js/audio.js`**: Reiner Web-Audio-API Synthesizer für Soundeffekte (Klicks, Züge, Mühlenklang, Schlag-Impact, Fanfaren). Jeder Effekt ist als Notenliste beschrieben; ein einziger Scheduler spielt sie.
+- **`public/css/`**: Modulares Stylesheet. `style.css` ist reines Manifest und zieht die elf Module per `@import` in Kaskadenreihenfolge herein — `tokens.css` zuerst (Design-Tokens für beide Themes), `responsive.css` zuletzt (Breakpoints, Pointer-Typ, `prefers-reduced-motion`), dazwischen die Module je Screen bzw. Komponente. Werkzeuge, die das Stylesheet als Ganzes lesen (`scripts/contrast-check.js`, die statischen CSS-Tests), gehen über `scripts/css-bundle.js`, das die `@import`-Kette auflöst.
 
 ---
 

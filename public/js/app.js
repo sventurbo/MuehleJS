@@ -1,13 +1,23 @@
 /**
  * app.js
- * Main client controller for Mühle Web-Spiel.
- * Connects Socket.io, orchestrates UI views, board interaction, and chat.
+ * The client controller of the Mühle web game.
+ *
+ * It owns exactly three things:
+ *   - the Socket.io connection and what each server event means,
+ *   - which of the three screens (login, queue, game) is visible,
+ *   - what a click on a board point should ask the server for.
+ *
+ * Everything that only *draws* is delegated: HudView (state around the board),
+ * DockView (move log and chat), Overlays (dialogs, toasts, connection badge)
+ * and BoardRenderer (the SVG board). None of those views knows the socket, so
+ * the server stays the only authority — the client merely shows what it is told
+ * and asks for what the player clicked.
  */
 
-// Board geometry and capture rules live in gameRules.js so that the markers the
-// renderer draws and the checks in _onPointClick are computed by the same code.
+// Board geometry and capture rules come from the module the server engine is
+// built on, so the markers this client draws and the moves it offers are
+// validated by the very same code that will judge them.
 const RULES = window.MuehleRules;
-const CLIENT_MILLS = RULES.MILLS;
 
 class MuehleApp {
   constructor() {
@@ -15,17 +25,10 @@ class MuehleApp {
     this.myColor = null; // 'W' or 'B'
     this.myName = '';
     this.opponentName = '';
-    this.opponentColor = null;
     this.gameState = null;
 
     this.selectedPoint = null;
     this.validDestinations = [];
-
-    // Countdown for the server-side turn timer. The server owns the clock and
-    // announces it with `turnTimer`; what runs here only draws the remaining
-    // time, so a stopped or manipulated interval changes nothing about the game.
-    this.turnTimerState = null; // { turn, durationMs, endsAt }
-    this.turnTimerInterval = null;
 
     // True while the server holds something for us (a queue slot or a running
     // game). Socket.io reconnects with a fresh socket id, so anything the
@@ -33,10 +36,30 @@ class MuehleApp {
     this.sessionActive = false;
     this.connectionLost = false;
 
-    this.boardRenderer = null;
+    this.screens = {
+      login: document.getElementById('screen-login'),
+      queue: document.getElementById('screen-queue'),
+      game: document.getElementById('screen-game')
+    };
+    this.usernameInput = document.getElementById('username-input');
+    this.queueStatusText = document.getElementById('queue-status-text');
+    this.btnSoundToggle = document.getElementById('btn-sound-toggle');
 
-    this._cacheDom();
-    this._bindEvents();
+    this.hud = new window.HudView();
+    this.dock = new window.DockView({ onSend: (text) => this.socket.emit('chatMessage', { text }) });
+    this.overlays = new window.Overlays({
+      onPlayAgain: () => this._handleLogin(),
+      onBackToLobby: () => {
+        this.socket.emit('leaveGame');
+        this._terminateSession(null);
+      }
+    });
+    this.board = new window.BoardRenderer(
+      document.getElementById('board-container'),
+      (point) => this._onPointClick(point)
+    );
+
+    this._bindControls();
     this._initSocket();
   }
 
@@ -52,125 +75,29 @@ class MuehleApp {
     return RULES.getCaptureTargets(this.gameState, this.myColor);
   }
 
-  _cacheDom() {
-    // Screens
-    this.screens = {
-      login: document.getElementById('screen-login'),
-      queue: document.getElementById('screen-queue'),
-      game: document.getElementById('screen-game')
-    };
+  // ── Controls outside the views ────────────────────────────────────────────
 
-    // Modals
-    this.modalGameOver = document.getElementById('modal-game-over');
-    this.modalRules = document.getElementById('modal-rules');
-
-    // Login inputs
-    this.usernameInput = document.getElementById('username-input');
-    this.btnFindGame = document.getElementById('btn-find-game');
-    this.btnRulesLogin = document.getElementById('btn-rules-login');
-
-    // Queue elements
-    this.btnCancelQueue = document.getElementById('btn-cancel-queue');
-    this.queueStatusText = document.getElementById('queue-status-text');
-
-    // Game HUD elements
-    this.hudTurnBadge = document.getElementById('hud-turn-badge');
-    this.hudPhaseText = document.getElementById('hud-phase-text');
-    this.hudStatusBanner = document.getElementById('hud-status-banner');
-    this.hudInstructionText = document.getElementById('hud-instruction-text');
-
-    // Turn countdown
-    this.hudTurnTimer = document.getElementById('hud-turn-timer');
-    this.hudTimerValue = document.getElementById('hud-timer-value');
-    this.hudTimerArc = document.getElementById('hud-timer-arc');
-
-    // Player White HUD
-    this.playerWName = document.getElementById('player-w-name');
-    this.playerWCard = document.getElementById('player-w-card');
-    this.playerWPiecesLeft = document.getElementById('player-w-pieces-left');
-    this.playerWCaptured = document.getElementById('player-w-captured');
-    this.playerWPips = document.getElementById('player-w-pips');
-
-    // Player Black HUD
-    this.playerBName = document.getElementById('player-b-name');
-    this.playerBCard = document.getElementById('player-b-card');
-    this.playerBPiecesLeft = document.getElementById('player-b-pieces-left');
-    this.playerBCaptured = document.getElementById('player-b-captured');
-    this.playerBPips = document.getElementById('player-b-pips');
-
-    // Controls
-    this.btnSurrender = document.getElementById('btn-surrender');
-    this.btnSoundToggle = document.getElementById('btn-sound-toggle');
-    this.btnRulesGame = document.getElementById('btn-rules-game');
-    this.btnRulesHeader = document.getElementById('btn-rules-header');
-    this.btnCloseRules = document.getElementById('btn-close-rules');
-
-    // Chat
-    this.chatMessages = document.getElementById('chat-messages');
-    this.chatInput = document.getElementById('chat-input');
-    this.chatForm = document.getElementById('chat-form');
-
-    // Dock tabs (only visible on small screens, where log and chat share a slot)
-    this.dockTabs = Array.from(document.querySelectorAll('[data-dock-tab]'));
-    this.dockPanels = Array.from(document.querySelectorAll('[data-dock-panel]'));
-    this.chatUnreadDot = document.getElementById('chat-unread-dot');
-    this.activeDockTab = 'log';
-
-    // Move Log
-    this.moveLogList = document.getElementById('move-log-list');
-
-    // Game Over Modal elements
-    this.gameOverTitle = document.getElementById('game-over-title');
-    this.gameOverReason = document.getElementById('game-over-reason');
-    this.gameOverWinnerName = document.getElementById('game-over-winner-name');
-    this.btnPlayAgain = document.getElementById('btn-play-again');
-    this.btnBackToLobby = document.getElementById('btn-back-to-lobby');
-
-    // Toast
-    this.toastContainer = document.getElementById('toast-container');
-    this.connStatusIndicator = document.getElementById('conn-status-indicator');
-
-    // Board container
-    this.boardContainer = document.getElementById('board-container');
-  }
-
-  _bindEvents() {
-    // Login submit
-    this.btnFindGame.addEventListener('click', () => this._handleLogin());
-    this.usernameInput.addEventListener('keypress', (e) => {
+  _bindControls() {
+    document.getElementById('btn-find-game')
+      .addEventListener('click', () => this._handleLogin());
+    this.usernameInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this._handleLogin();
     });
 
-    // Cancel queue
-    this.btnCancelQueue.addEventListener('click', () => {
+    document.getElementById('btn-cancel-queue').addEventListener('click', () => {
       this.socket.emit('leaveGame');
       this.sessionActive = false;
       this._switchScreen('login');
     });
 
-    // Surrender
-    this.btnSurrender.addEventListener('click', () => {
+    document.getElementById('btn-surrender').addEventListener('click', () => {
       if (confirm('Möchtest du diese Partie wirklich aufgeben?')) {
         this.socket.emit('forfeit');
       }
     });
 
-    // Sound toggle
-    this.btnSoundToggle.addEventListener('click', () => {
-      const isMuted = window.soundController.toggleMute();
-      this.btnSoundToggle.classList.toggle('is-muted', isMuted);
-      this.btnSoundToggle.title = isMuted ? 'Ton aktivieren' : 'Ton stummschalten';
-    });
-    this.btnSoundToggle.classList.toggle('is-muted', window.soundController.isMuted());
-
-    // Rules modal
-    this.btnRulesLogin.addEventListener('click', () => this._showRulesModal(true));
-    this.btnRulesGame.addEventListener('click', () => this._showRulesModal(true));
-    this.btnRulesHeader.addEventListener('click', () => this._showRulesModal(true));
-    this.btnCloseRules.addEventListener('click', () => this._showRulesModal(false));
-    this.modalRules.addEventListener('click', (e) => {
-      if (e.target === this.modalRules) this._showRulesModal(false);
-    });
+    this.btnSoundToggle.addEventListener('click', () => this._toggleSound());
+    this._markSoundButton(window.soundController.isMuted());
 
     // Audio has to be unlocked from a user gesture on iOS; the first game
     // sound is fired by a socket event, which would be too late.
@@ -183,42 +110,31 @@ class MuehleApp {
     document.addEventListener('pointerdown', unlockAudio, { passive: true });
     document.addEventListener('touchend', unlockAudio, { passive: true });
     document.addEventListener('keydown', unlockAudio);
-
-    // Dock tabs: log / chat on phones
-    this.dockTabs.forEach(tab => {
-      tab.addEventListener('click', () => this._activateDockTab(tab.dataset.dockTab));
-    });
-
-    // Chat form
-    this.chatForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = this.chatInput.value.trim();
-      if (text && this.socket) {
-        this.socket.emit('chatMessage', { text });
-        this.chatInput.value = '';
-      }
-      this.chatInput.focus();
-    });
-
-    // Game over actions
-    this.btnPlayAgain.addEventListener('click', () => {
-      this._hideGameOverModal();
-      this._handleLogin();
-    });
-    this.btnBackToLobby.addEventListener('click', () => {
-      this.socket.emit('leaveGame');
-      this._terminateSession(null);
-    });
-
-    // Setup BoardRenderer
-    this.boardRenderer = new window.BoardRenderer(this.boardContainer, (pt) => this._onPointClick(pt));
   }
+
+  _toggleSound() {
+    this._markSoundButton(window.soundController.toggleMute());
+  }
+
+  _markSoundButton(isMuted) {
+    this.btnSoundToggle.classList.toggle('is-muted', isMuted);
+    this.btnSoundToggle.title = isMuted ? 'Ton aktivieren' : 'Ton stummschalten';
+  }
+
+  _handleLogin() {
+    const username = this.usernameInput.value.trim().substring(0, 12);
+    if (!username) return;
+    this.myName = username;
+    this.socket.emit('login', { username });
+  }
+
+  // ── Server events ─────────────────────────────────────────────────────────
 
   _initSocket() {
     this.socket = io();
 
     this.socket.on('connect', () => {
-      this._updateConnStatus(true);
+      this.overlays.setConnected(true);
 
       // Reconnecting gives us a new socket id, so the server has already ended
       // and forgotten the game we were in. Terminate it instead of leaving a
@@ -231,18 +147,18 @@ class MuehleApp {
       }
     });
 
-    this.socket.on('disconnect', (reason) => {
+    this.socket.on('disconnect', () => {
       this.connectionLost = true;
-      this._updateConnStatus(false);
-      this._stopTurnCountdown();
-      this._showToast('Verbindung zum Server unterbrochen', 'error');
+      this.overlays.setConnected(false);
+      this.hud.stopCountdown();
+      this.overlays.toast('Verbindung zum Server unterbrochen', 'error');
     });
 
     // The server no longer knows this socket's game (opponent gone, or we
     // reconnected under a new id). Nothing is recoverable, so end the session.
     this.socket.on('gameNotFound', (data) => {
       if (!this.sessionActive) return;
-      this._terminateSession(data && data.message ? data.message : 'Deine Partie ist nicht mehr aktiv.');
+      this._terminateSession((data && data.message) || 'Deine Partie ist nicht mehr aktiv.');
     });
 
     this.socket.on('queueWaiting', (data) => {
@@ -251,90 +167,20 @@ class MuehleApp {
       this._switchScreen('queue');
     });
 
-    this.socket.on('gameStart', (data) => {
-      this.sessionActive = true;
-      this.myColor = data.yourColor;
-      this.myName = data.yourName;
-      this.opponentName = data.opponentName;
-      this.opponentColor = data.opponentColor;
-      this.gameState = data.state;
+    this.socket.on('gameStart', (data) => this._startGame(data));
 
-      this.selectedPoint = null;
-      this.validDestinations = [];
-      this._stopTurnCountdown();
-
-      this.chatMessages.innerHTML = '';
-      this.moveLogList.innerHTML = '';
-      this._activateDockTab('log');
-
-      this._switchScreen('game');
-      this._addSystemLog(`Spiel gestartet! Du spielst als ${this.myColor === 'W' ? 'Weiß' : 'Schwarz'}.`);
-
-      window.soundController.playPlace();
-      this._updateGameUI();
-    });
-
-    this.socket.on('gameStateUpdate', (data) => {
-      const prevState = this.gameState;
-      this.gameState = data.state;
-      const lastAction = data.lastAction;
-
-      // Reset local selection if turn switched
-      if (prevState && prevState.turn !== this.gameState.turn) {
-        this.selectedPoint = null;
-        this.validDestinations = [];
-      }
-
-      // Audio feedback & animations
-      if (lastAction) {
-        const actor = this._colorName(lastAction.player);
-
-        // A move the server played after the turn timer expired is marked, so
-        // the protocol shows who actually decided it.
-        const autoSuffix = lastAction.auto ? ' (automatisch)' : '';
-
-        if (lastAction.action === 'place') {
-          window.soundController.playPlace();
-          this._addMoveLog(`${actor} setzt auf ${lastAction.point}${autoSuffix}`);
-        } else if (lastAction.action === 'move') {
-          window.soundController.playMove();
-          this._addMoveLog(`${actor} zieht ${lastAction.from} → ${lastAction.to}${autoSuffix}`);
-        } else if (lastAction.action === 'remove') {
-          window.soundController.playRemove();
-          this._addMoveLog(`${actor} schlägt Stein auf ${lastAction.point}${autoSuffix}`);
-        }
-
-        if (lastAction.millFormed) {
-          window.soundController.playMill();
-          this._addSystemLog(`Mühle geschlossen von ${actor}!`);
-          if (this.gameState.millTriggerPoint) {
-            // Find which mill was closed
-            const formedMill = CLIENT_MILLS.find(m =>
-              m.includes(this.gameState.millTriggerPoint) &&
-              m.every(pt => this.gameState.board[pt] === lastAction.player)
-            );
-            if (formedMill) {
-              this.boardRenderer.highlightMill(formedMill);
-            }
-          }
-        }
-      }
-
-      this._updateGameUI();
-    });
+    this.socket.on('gameStateUpdate', (data) => this._applyUpdate(data));
 
     // The server restarts the turn clock after every accepted action and says
     // how much time the player on turn has left.
-    this.socket.on('turnTimer', (data) => {
-      this._startTurnCountdown(data);
-    });
+    this.socket.on('turnTimer', (data) => this.hud.startCountdown(data));
 
     // The clock ran out: the server played a legal move for the player on turn.
     this.socket.on('turnTimeout', (data) => {
       if (!data) return;
-      const actor = this._colorName(data.player);
-      this._addSystemLog(data.message || `Zeit abgelaufen – für ${actor} wurde automatisch gezogen.`);
-      this._showToast(
+      const actor = RULES.colorName(data.player);
+      this.dock.addSystemNote(data.message || `Zeit abgelaufen – für ${actor} wurde automatisch gezogen.`);
+      this.overlays.toast(
         data.player === this.myColor
           ? 'Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen.'
           : `Bedenkzeit von ${actor} abgelaufen – der Zug wurde automatisch ausgeführt.`,
@@ -342,129 +188,124 @@ class MuehleApp {
       );
     });
 
-    this.socket.on('gameOver', (data) => {
-      this.gameState = data.state;
-      this._stopTurnCountdown();
-      this._updateGameUI();
-      this._showGameOverModal(data.winner, data.winnerName, data.winReason);
-    });
+    this.socket.on('gameOver', (data) => this._endGame(data));
 
     this.socket.on('opponentDisconnected', (data) => {
-      this.gameState = data.state;
-      this._stopTurnCountdown();
-      this._updateGameUI();
-      this._showGameOverModal(data.winner, data.winnerName, data.winReason);
+      this._endGame(data);
       // The exact cause (dropped connection vs. deliberate exit) is in winReason.
-      this._showToast(data.winReason || 'Die Partie wurde beendet.', 'warning');
+      this.overlays.toast(data.winReason || 'Die Partie wurde beendet.', 'warning');
     });
 
     this.socket.on('actionError', (data) => {
-      this._showToast(data.message || 'Ungültige Aktion', 'error');
+      this.overlays.toast(data.message || 'Ungültige Aktion', 'error');
     });
 
     this.socket.on('serverError', (data) => {
-      this._showToast(data.message || 'Serverfehler', 'error');
+      this.overlays.toast(data.message || 'Serverfehler', 'error');
     });
 
-    this.socket.on('chatMessage', (msg) => {
-      this._addChatMessage(msg);
+    this.socket.on('chatMessage', (msg) => this.dock.addChatMessage(msg));
+  }
+
+  /** A match was found: set up both views and show the board. */
+  _startGame(data) {
+    this.sessionActive = true;
+    this.myColor = data.yourColor;
+    this.myName = data.yourName;
+    this.opponentName = data.opponentName;
+    this.gameState = data.state;
+
+    this.selectedPoint = null;
+    this.validDestinations = [];
+
+    this.hud.reset();
+    this.hud.setPlayers({
+      myColor: this.myColor,
+      myName: this.myName,
+      opponentName: this.opponentName
     });
+    this.dock.reset(this.myName);
+
+    this._switchScreen('game');
+    this.dock.addSystemNote(`Spiel gestartet! Du spielst als ${RULES.colorName(this.myColor)}.`);
+
+    window.soundController.playPlace();
+    this._render();
   }
 
-_handleLogin() {
-     const username = this.usernameInput.value.trim().substring(0, 12);
-     if (!username) return;
-     this.myName = username;
-     this.socket.emit('login', { username });
-   }
+  /** An accepted action: log it, play its sound, then redraw. */
+  _applyUpdate(data) {
+    const previousTurn = this.gameState && this.gameState.turn;
+    this.gameState = data.state;
+    const lastAction = data.lastAction;
 
-  /**
-   * Takes over the clock the server just announced and keeps the ring updated.
-   *
-   * The remaining time is anchored on the local clock the moment the event
-   * arrives, so a skewed system time cannot shift the display.
-   */
-  _startTurnCountdown(data) {
-    if (!data) return;
-
-    const durationMs = Number(data.durationMs);
-    if (!Number.isFinite(durationMs) || durationMs <= 0) {
-      this._stopTurnCountdown();
-      return;
+    // Reset local selection if turn switched
+    if (previousTurn && previousTurn !== this.gameState.turn) {
+      this.selectedPoint = null;
+      this.validDestinations = [];
     }
 
-    const remainingMs = Number(data.remainingMs);
-    this.turnTimerState = {
-      turn: data.turn,
-      durationMs,
-      endsAt: Date.now() + (Number.isFinite(remainingMs) ? remainingMs : durationMs)
-    };
-
-    if (!this.turnTimerInterval) {
-      this.turnTimerInterval = setInterval(() => this._renderTurnTimer(), 200);
+    if (lastAction) {
+      this._reportAction(lastAction);
     }
-    this._renderTurnTimer();
+
+    this._render();
   }
 
-  /**
-   * Stops and hides the countdown (game over, lost connection, new game).
-   */
-  _stopTurnCountdown() {
-    if (this.turnTimerInterval) {
-      clearInterval(this.turnTimerInterval);
-      this.turnTimerInterval = null;
-    }
-    this.turnTimerState = null;
-    this._renderTurnTimer();
-  }
+  /** Move log entry, sound and mill beam for one accepted action. */
+  _reportAction(lastAction) {
+    const actor = RULES.colorName(lastAction.player);
 
-  /**
-   * Draws the remaining seconds and the shrinking ring.
-   *
-   * Once it hits zero the display stays at 0 until the server has played the
-   * automatic move and announced the next turn — the client never decides that
-   * a turn is over.
-   */
-  _renderTurnTimer() {
-    if (!this.hudTurnTimer) return;
+    // A move the server played after the turn timer expired is marked, so
+    // the protocol shows who actually decided it.
+    const autoSuffix = lastAction.auto ? ' (automatisch)' : '';
 
-    const timer = this.turnTimerState;
-    if (!timer || !this.gameState || this.gameState.winner) {
-      this.hudTurnTimer.classList.add('hidden');
-      return;
+    if (lastAction.action === 'place') {
+      window.soundController.playPlace();
+      this.dock.addMove(`${actor} setzt auf ${lastAction.point}${autoSuffix}`);
+    } else if (lastAction.action === 'move') {
+      window.soundController.playMove();
+      this.dock.addMove(`${actor} zieht ${lastAction.from} → ${lastAction.to}${autoSuffix}`);
+    } else if (lastAction.action === 'remove') {
+      window.soundController.playRemove();
+      this.dock.addMove(`${actor} schlägt Stein auf ${lastAction.point}${autoSuffix}`);
     }
 
-    const remainingMs = Math.max(0, timer.endsAt - Date.now());
-    const seconds = Math.ceil(remainingMs / 1000);
-    const isMine = timer.turn === this.myColor;
+    if (!lastAction.millFormed) return;
 
-    this.hudTurnTimer.classList.remove('hidden');
-    this.hudTurnTimer.classList.toggle('is-mine', isMine);
-    this.hudTurnTimer.classList.toggle('is-urgent', remainingMs <= 5000);
-    this.hudTurnTimer.setAttribute(
-      'aria-label',
-      `${isMine ? 'Deine Bedenkzeit' : 'Bedenkzeit des Gegners'}: noch ${seconds} Sekunden`
+    window.soundController.playMill();
+    this.dock.addSystemNote(`Mühle geschlossen von ${actor}!`);
+
+    const trigger = this.gameState.millTriggerPoint;
+    if (!trigger) return;
+    const closedMill = RULES.MILLS.find(mill =>
+      mill.includes(trigger) && mill.every(pt => this.gameState.board[pt] === lastAction.player)
     );
-    this.hudTurnTimer.title = isMine
-      ? 'Deine Bedenkzeit für diesen Zug'
-      : 'Bedenkzeit des Gegners für diesen Zug';
-
-    if (this.hudTimerValue) this.hudTimerValue.textContent = String(seconds);
-
-    if (this.hudTimerArc) {
-      const radius = Number(this.hudTimerArc.getAttribute('r')) || 0;
-      const circumference = 2 * Math.PI * radius;
-      const fraction = Math.max(0, Math.min(1, remainingMs / timer.durationMs));
-      this.hudTimerArc.style.strokeDasharray = String(circumference);
-      this.hudTimerArc.style.strokeDashoffset = String(circumference * (1 - fraction));
-    }
+    if (closedMill) this.board.highlightMill(closedMill);
   }
 
-  /**
-   * German label for a stone colour, used across log, HUD and modals.
-   */
-  _colorName(color) {
-    return color === 'W' ? 'Weiß' : 'Schwarz';
+  /** The game is decided — by a win, a forfeit or a lost opponent. */
+  _endGame(data) {
+    this.gameState = data.state;
+    this.hud.stopCountdown();
+    this._render();
+
+    // The server is done with this game, so a later reconnect or `gameNotFound`
+    // must not tear the result screen away before it has been read.
+    this.sessionActive = false;
+
+    const isWin = data.winner === this.myColor;
+    if (isWin) {
+      window.soundController.playWin();
+    } else {
+      window.soundController.playLose();
+    }
+    this.overlays.showGameOver({
+      winner: data.winner,
+      winnerName: data.winnerName,
+      winReason: data.winReason,
+      isWin
+    });
   }
 
   /**
@@ -477,334 +318,106 @@ _handleLogin() {
    */
   _terminateSession(message) {
     this.sessionActive = false;
-    this._stopTurnCountdown();
+    this.hud.reset();
     this.gameState = null;
     this.myColor = null;
-    this.opponentColor = null;
     this.selectedPoint = null;
     this.validDestinations = [];
 
-    this._hideGameOverModal();
+    this.overlays.hideGameOver();
     this._switchScreen('login');
-    if (message) this._showToast(message, 'warning');
+    if (message) this.overlays.toast(message, 'warning');
   }
 
-  _switchScreen(screenName) {
-    window.scrollTo(0, 0);
-    Object.keys(this.screens).forEach(key => {
-      if (key === screenName) {
-        this.screens[key].classList.remove('hidden');
-      } else {
-        this.screens[key].classList.add('hidden');
-      }
-    });
-  }
-
-  _updateConnStatus(online) {
-    if (this.connStatusIndicator) {
-      if (online) {
-        this.connStatusIndicator.textContent = 'Online';
-        this.connStatusIndicator.className = 'conn-status online';
-      } else {
-        this.connStatusIndicator.textContent = 'Getrennt';
-        this.connStatusIndicator.className = 'conn-status offline';
-      }
-    }
-  }
-
-  _updateGameUI() {
-    if (!this.gameState) return;
-
-    const isMyTurn = this.gameState.turn === this.myColor && !this.gameState.winner;
-    const isWhiteTurn = this.gameState.turn === 'W';
-
-    // Player Cards highlighting
-    this.playerWCard.classList.toggle('active-turn', isWhiteTurn && !this.gameState.winner);
-    this.playerBCard.classList.toggle('active-turn', !isWhiteTurn && !this.gameState.winner);
-
-    // Names
-    this.playerWName.textContent = (this.myColor === 'W' ? this.myName : this.opponentName) + (this.myColor === 'W' ? ' (Du)' : '');
-    this.playerBName.textContent = (this.myColor === 'B' ? this.myName : this.opponentName) + (this.myColor === 'B' ? ' (Du)' : '');
-
-    // Counts
-    this.playerWPiecesLeft.textContent = this.gameState.unplacedPieces.W;
-    this.playerBPiecesLeft.textContent = this.gameState.unplacedPieces.B;
-    this.playerWCaptured.textContent = this.gameState.capturedPieces.B; // W captured B's stones
-    this.playerBCaptured.textContent = this.gameState.capturedPieces.W; // B captured W's stones
-
-    // Visual Pips for unplaced stones
-    this._renderPips(this.playerWPips, this.gameState.unplacedPieces.W, 'white');
-    this._renderPips(this.playerBPips, this.gameState.unplacedPieces.B, 'black');
-
-    // Turn indicator and banner instructions
-    if (this.gameState.winner) {
-      this.hudTurnBadge.textContent = 'Spiel Beendet';
-      this.hudTurnBadge.className = 'hud-badge finished';
-      this.hudStatusBanner.className = 'hud-status-banner finished';
-      this.hudInstructionText.textContent = this.gameState.winReason || 'Partie abgeschlossen.';
-    } else if (isMyTurn) {
-      this.hudTurnBadge.textContent = 'Du bist am Zug';
-      this.hudTurnBadge.className = 'hud-badge my-turn';
-      this.hudStatusBanner.className = 'hud-status-banner my-turn';
-
-      if (this.gameState.awaitingRemoval) {
-        this.hudInstructionText.innerHTML = '<strong>Mühle geschlossen!</strong> Klicke auf einen gegnerischen Stein, um ihn zu schlagen.';
-      } else if (this.gameState.phase === 'SETTING') {
-        this.hudInstructionText.textContent = `Setzphase: Platziere einen Stein auf ein freies Feld (${this.gameState.unplacedPieces[this.myColor]} übrig).`;
-      } else if (this.gameState.phase === 'MOVING') {
-        const canJump = this.gameState.piecesOnBoard[this.myColor] === 3;
-        if (canJump) {
-          this.hudInstructionText.textContent = 'Endphase (Springen): Du hast nur noch 3 Steine! Du darfst auf jedes freie Feld springen.';
-        } else {
-          this.hudInstructionText.textContent = 'Zugphase: Wähle einen deiner Steine aus und ziehe auf ein benachbartes freies Feld.';
-        }
-      }
-    } else {
-      this.hudTurnBadge.textContent = 'Gegner ist am Zug';
-      this.hudTurnBadge.className = 'hud-badge opponent-turn';
-      this.hudStatusBanner.className = 'hud-status-banner opponent-turn';
-
-      if (this.gameState.awaitingRemoval) {
-        this.hudInstructionText.textContent = 'Gegner hat eine Mühle geschlossen und wählt einen Stein zum Schlagen...';
-      } else if (this.gameState.phase === 'SETTING') {
-        this.hudInstructionText.textContent = 'Gegner setzt einen Stein...';
-      } else {
-        this.hudInstructionText.textContent = 'Gegner überlegt seinen nächsten Zug...';
-      }
-    }
-
-    // Phase label
-    if (this.gameState.phase === 'SETTING') {
-      this.hudPhaseText.textContent = 'Phase 1: Setzen';
-    } else if (this.gameState.phase === 'MOVING') {
-      const isJump = (this.gameState.piecesOnBoard.W === 3 || this.gameState.piecesOnBoard.B === 3);
-      this.hudPhaseText.textContent = isJump ? 'Phase 3: Springen' : 'Phase 2: Ziehen';
-    } else {
-      this.hudPhaseText.textContent = 'Partie Beendet';
-    }
-
-    // Countdown: hidden once the game is over, otherwise in sync with the turn.
-    this._renderTurnTimer();
-
-    // Re-render board SVG. The renderer derives the capture markers from the
-    // same state and the same rule helper as `this.removablePoints`.
-    this.boardRenderer.render(
-      this.gameState,
-      this.myColor,
-      this.selectedPoint,
-      this.validDestinations
-    );
-  }
+  // ── Board interaction ─────────────────────────────────────────────────────
 
   /**
-   * Switches the small-screen dock between move log and chat.
-   * On desktop both panels are visible, so this only tracks which one is
-   * "current" for the unread marker.
-   */
-  _activateDockTab(name) {
-    if (!name) return;
-    this.activeDockTab = name;
-
-    this.dockTabs.forEach(tab => {
-      const isActive = tab.dataset.dockTab === name;
-      tab.classList.toggle('is-active', isActive);
-      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    this.dockPanels.forEach(panel => {
-      panel.classList.toggle('is-active', panel.dataset.dockPanel === name);
-    });
-
-    if (name === 'chat') {
-      if (this.chatUnreadDot) this.chatUnreadDot.classList.add('hidden');
-      this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-    }
-  }
-
-  /**
-   * True while the dock tab bar is on screen (phone-sized viewports).
-   */
-  _isDockTabbed() {
-    const tabs = document.querySelector('.dock-tabs');
-    return !!tabs && tabs.offsetParent !== null;
-  }
-
-  _renderPips(container, count, colorClass) {
-    let pipsHtml = '';
-    for (let i = 0; i < 9; i++) {
-      const active = i < count;
-      pipsHtml += `<span class="pip pip-${colorClass} ${active ? 'active' : 'inactive'}"></span>`;
-    }
-    container.innerHTML = pipsHtml;
-  }
-
-  /**
-   * User clicked on a board point.
+   * A click on a board point. Nothing is decided here: the click is turned into
+   * the one request it can be right now, and the server answers with the new
+   * state (or an `actionError`).
    */
   _onPointClick(point) {
     if (!this.gameState || this.gameState.winner) return;
     if (this.gameState.turn !== this.myColor) {
-      this._showToast('Der Gegner ist am Zug!', 'info');
+      this.overlays.toast('Der Gegner ist am Zug!', 'info');
       return;
     }
 
-    const board = this.gameState.board;
-    const piece = board[point];
-
-    // Case 1: Mill formed, must remove an opponent piece
     if (this.gameState.awaitingRemoval) {
-      if (this.removablePoints.includes(point)) {
-        this.socket.emit('removePiece', { point });
-      } else {
-        this._showToast('Wähle einen gültigen gegnerischen Stein zum Schlagen (nicht in einer Mühle)!', 'warning');
-      }
-      return;
+      this._tryCapture(point);
+    } else if (this.gameState.phase === 'SETTING') {
+      this._tryPlace(point);
+    } else if (this.gameState.phase === 'MOVING') {
+      this._trySelectOrMove(point);
     }
+  }
 
-    // Case 2: SETTING phase (place stone on empty field)
-    if (this.gameState.phase === 'SETTING') {
-      if (piece === null) {
-        this.socket.emit('placePiece', { point });
-      } else {
-        this._showToast('Dieses Feld ist bereits besetzt!', 'warning');
-      }
-      return;
+  /** A mill was closed: the click has to name a capturable opponent stone. */
+  _tryCapture(point) {
+    if (this.removablePoints.includes(point)) {
+      this.socket.emit('removePiece', { point });
+    } else {
+      this.overlays.toast('Wähle einen gültigen gegnerischen Stein zum Schlagen (nicht in einer Mühle)!', 'warning');
     }
+  }
 
-    // Case 3: MOVING phase
-    if (this.gameState.phase === 'MOVING') {
-      // If clicking own piece: select it
-      if (piece === this.myColor) {
-        if (this.selectedPoint === point) {
-          // Deselect
-          this.selectedPoint = null;
-          this.validDestinations = [];
-        } else {
-          // Select piece and show destinations
-          this.selectedPoint = point;
-          const canJump = this.gameState.piecesOnBoard[this.myColor] === 3;
-          this.validDestinations = RULES.getValidDestinations(board, point, this.myColor, canJump);
-        }
-        this._updateGameUI();
-        return;
-      }
+  /** Phase 1: any free point takes a stone. */
+  _tryPlace(point) {
+    if (this.gameState.board[point] === null) {
+      this.socket.emit('placePiece', { point });
+    } else {
+      this.overlays.toast('Dieses Feld ist bereits besetzt!', 'warning');
+    }
+  }
 
-      // If a piece is already selected and clicking a valid destination
-      if (this.selectedPoint && this.validDestinations.includes(point)) {
-        this.socket.emit('movePiece', {
-          from: this.selectedPoint,
-          to: point
-        });
+  /** Phase 2 & 3: first click selects a stone, second click moves it. */
+  _trySelectOrMove(point) {
+    const piece = this.gameState.board[point];
+
+    // Own stone: select it, or deselect the one already selected.
+    if (piece === this.myColor) {
+      if (this.selectedPoint === point) {
         this.selectedPoint = null;
         this.validDestinations = [];
-        this._updateGameUI();
-        return;
+      } else {
+        const canJump = this.gameState.piecesOnBoard[this.myColor] === 3;
+        this.selectedPoint = point;
+        this.validDestinations = RULES.getValidDestinations(
+          this.gameState.board, point, this.myColor, canJump
+        );
       }
+      this._render();
+      return;
+    }
 
-      // Clicking empty point without valid selection
-      if (piece === null && this.selectedPoint) {
-        this._showToast('Dieser Zug ist ungültig (keine direkte Verbindung)!', 'warning');
-      }
+    // A stone is selected and this is one of its destinations.
+    if (this.selectedPoint && this.validDestinations.includes(point)) {
+      this.socket.emit('movePiece', { from: this.selectedPoint, to: point });
+      this.selectedPoint = null;
+      this.validDestinations = [];
+      this._render();
+      return;
+    }
+
+    if (piece === null && this.selectedPoint) {
+      this.overlays.toast('Dieser Zug ist ungültig (keine direkte Verbindung)!', 'warning');
     }
   }
 
-  _showGameOverModal(winner, winnerName, winReason) {
-    // The server is done with this game, so a later reconnect or `gameNotFound`
-    // must not tear the result screen away before it has been read.
-    this.sessionActive = false;
+  // ── Screens ───────────────────────────────────────────────────────────────
 
-    const isWin = winner === this.myColor;
-    if (isWin) {
-      window.soundController.playWin();
-      this.gameOverTitle.textContent = 'Sieg! Herzlichen Glückwunsch!';
-      this.gameOverTitle.className = 'game-over-title win';
-      this.gameOverWinnerName.textContent = `Gewinner: ${winnerName} (${winner === 'W' ? 'Weiß' : 'Schwarz'})`;
-    } else {
-      window.soundController.playLose();
-      this.gameOverTitle.textContent = 'Partie Verloren';
-      this.gameOverTitle.className = 'game-over-title loss';
-      this.gameOverWinnerName.textContent = `Gewinner: ${winnerName} (${winner === 'W' ? 'Weiß' : 'Schwarz'})`;
-    }
-
-    this.gameOverReason.textContent = winReason || 'Spiel beendet';
-    this.modalGameOver.classList.remove('hidden');
-    this._syncModalScrollLock();
+  _switchScreen(screenName) {
+    window.scrollTo(0, 0);
+    Object.entries(this.screens).forEach(([name, section]) => {
+      section.classList.toggle('hidden', name !== screenName);
+    });
   }
 
-  _hideGameOverModal() {
-    this.modalGameOver.classList.add('hidden');
-    this._syncModalScrollLock();
-  }
-
-  _showRulesModal(show) {
-    if (show) {
-      this.modalRules.classList.remove('hidden');
-    } else {
-      this.modalRules.classList.add('hidden');
-    }
-    this._syncModalScrollLock();
-  }
-
-  /**
-   * Freezes the page behind an open modal so touch scrolling stays inside the
-   * dialog instead of moving the board around underneath it.
-   */
-  _syncModalScrollLock() {
-    const anyOpen = !this.modalRules.classList.contains('hidden') ||
-      !this.modalGameOver.classList.contains('hidden');
-    document.body.classList.toggle('modal-open', anyOpen);
-  }
-
-  _addChatMessage(msg) {
-    const item = document.createElement('div');
-    const isMe = msg.sender === this.myName;
-    item.className = `chat-msg ${isMe ? 'chat-me' : 'chat-other'}`;
-
-    const colorBadge = `<span class="chat-stone chat-stone-${msg.color === 'W' ? 'w' : 'b'}" aria-hidden="true"></span>`;
-    item.innerHTML = `
-      <div class="chat-meta">${colorBadge} <strong>${this._escapeHtml(msg.sender)}</strong></div>
-      <div class="chat-bubble">${this._escapeHtml(msg.text)}</div>
-    `;
-    this.chatMessages.appendChild(item);
-    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-
-    // Phone layout: mark the hidden chat tab when the opponent writes.
-    if (!isMe && this.chatUnreadDot && this._isDockTabbed() && this.activeDockTab !== 'chat') {
-      this.chatUnreadDot.classList.remove('hidden');
-    }
-  }
-
-  _addMoveLog(text) {
-    const li = document.createElement('li');
-    li.textContent = text;
-    this.moveLogList.appendChild(li);
-    this.moveLogList.scrollTop = this.moveLogList.scrollHeight;
-  }
-
-  _addSystemLog(text) {
-    const li = document.createElement('li');
-    li.className = 'log-system';
-    li.textContent = text;
-    this.moveLogList.appendChild(li);
-    this.moveLogList.scrollTop = this.moveLogList.scrollHeight;
-  }
-
-  _showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    this.toastContainer.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.add('toast-fade');
-      setTimeout(() => toast.remove(), 400);
-    }, 3000);
-  }
-
-  _escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  /** Redraws everything that depends on the current game state. */
+  _render() {
+    if (!this.gameState) return;
+    this.hud.render(this.gameState);
+    this.board.render(this.gameState, this.myColor, this.selectedPoint, this.validDestinations);
   }
 }
 
@@ -822,4 +435,3 @@ if (window.matchMedia) {
   darkModeQuery.addEventListener('change', handleThemeChange);
   handleThemeChange();
 }
-
