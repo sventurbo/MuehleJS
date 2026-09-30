@@ -28,7 +28,7 @@
     "express": "^5.2.1",
     "ipaddr.js": "^2.5.0",
     "proxy-addr": "^2.0.8",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.4"
   },
   "devDependencies": {
     "jest": "^30.5.2",
