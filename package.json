@@ -23,7 +23,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=24.2"
+    "node": ">=26"
   },
   "dependencies": {
     "express": "^5.2.1",
@@ -40,5 +40,9 @@
       "<rootDir>/tests/**/*.test.js"
     ],
     "transform": {}
+  },
+  "allowScripts": {
+    "@parcel/watcher": false,
+    "unrs-resolver": false
   }
 }

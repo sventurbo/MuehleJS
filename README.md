@@ -58,9 +58,11 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
 
 ## 🚀 Schnellanleitung (Installation & Start)
 
-Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung. Die Untergrenze ist das jeweils aktive Node.js-LTS – aktuell **Node.js >= 24.2** („Krypton", aktives LTS seit 28.10.2025). Server, Regelmodul und Skripte sind ES-Module; die Minor-Version 24.2 ist nötig, weil sie ihren Einstiegspunkt über `import.meta.main` erkennen.
+Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung. Wie für die Browser gilt auch hier: unterstützt wird nur die jeweils neueste Node.js-Hauptversion – aktuell **Node.js >= 26** (mit npm 11).
 
-Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc` (`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Wird eine neue Node.js-Version zum aktiven LTS (Node 26 am 28.10.2026), werden `engines`, dieser Abschnitt und die CI-Matrix in `.github/workflows/node.js.yml` gemeinsam angehoben.
+Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc` (`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Erscheint eine neue Node.js-Hauptversion, werden `engines`, dieser Abschnitt und die CI-Matrix in `.github/workflows/node.js.yml` gemeinsam angehoben.
+
+npm führt Installationsskripte von Abhängigkeiten nur aus, wenn `allowScripts` in `package.json` sie erlaubt. Die beiden Jest-Abhängigkeiten `@parcel/watcher` und `unrs-resolver` sind dort ausdrücklich abgelehnt: Ihre Skripte bauen native Binärdateien nur als Fallback, wenn die mitgelieferten fehlen.
 
 ### 1. Abhängigkeiten installieren
 ```bash
@@ -296,7 +298,7 @@ Web-Spiel/
 │   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation
 ├── .github/
 │   └── workflows/
-│       └── node.js.yml       # CI-Pipeline (Node.js 24.x, npm ci && npm test && npm run contrast-check)
+│       └── node.js.yml       # CI-Pipeline (Node.js 26.x, npm ci && npm test && npm run contrast-check)
 ├── tests/
 │   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
 │   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
