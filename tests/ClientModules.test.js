@@ -25,7 +25,7 @@ function code(source) {
 
 describe('The module graph', () => {
   test('the page has a single entry: the controller, as an ES module', () => {
-    const tags = html.match(/<script\b[^>]*>/g);
+    const tags = html.match(/<script\b[^>]*>/gi);
     expect(tags).toEqual(['<script type="module" src="js/app.js">']);
   });
 

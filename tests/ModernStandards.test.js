@@ -45,7 +45,7 @@ describe('Stylesheet', () => {
 
 describe('Page', () => {
   test('loads ES modules only', () => {
-    const tags = html.match(/<script\b[^>]*>/g) ?? [];
+    const tags = html.match(/<script\b[^>]*>/gi) ?? [];
     expect(tags.length).toBeGreaterThan(0);
     tags.forEach(tag => expect(tag).toContain('type="module"'));
   });

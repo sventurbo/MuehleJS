@@ -29,7 +29,7 @@ const INDEX_HTML = path.join(ROOT, 'public', 'index.html');
 const PAGE_URL = new URL('http://muehle.invalid/');
 
 /** `<script type="module" src="…">`, in document order. */
-export const SCRIPT_RE = /<script\s+type="module"\s+src="([^"]+)"/g;
+export const SCRIPT_RE = /<script\s+type="module"\s+src="([^"]+)"/gi;
 
 /** A static `import … from '…'` or `import '…'` at the start of a line. */
 export const IMPORT_RE = /^\s*import\s+(?:[^;'"]*?\s+from\s+)?['"]([^'"]+)['"]/gm;
