@@ -53,8 +53,8 @@ export class DockView {
   /** Empties log and chat for a new game and shows the log tab. */
   reset(myName) {
     this.myName = myName;
-    this.chatMessages.innerHTML = '';
-    this.moveLogList.innerHTML = '';
+    this.chatMessages.replaceChildren();
+    this.moveLogList.replaceChildren();
     this.activateTab('log');
   }
 
@@ -78,19 +78,19 @@ export class DockView {
     });
 
     if (name === 'chat') {
-      if (this.chatUnreadDot) this.chatUnreadDot.classList.add('hidden');
-      this._scrollToBottom(this.chatMessages);
+      if (this.chatUnreadDot) this.chatUnreadDot.hidden = true;
+      this.#scrollToBottom(this.chatMessages);
     }
   }
 
   /** A move made on the board. */
   addMove(text) {
-    this._appendLogEntry(text);
+    this.#appendLogEntry(text);
   }
 
   /** A note about the game itself (start, mill, timeout). */
   addSystemNote(text) {
-    this._appendLogEntry(text, 'log-system');
+    this.#appendLogEntry(text, 'log-system');
   }
 
   /** A chat message from either player. */
@@ -105,29 +105,29 @@ export class DockView {
       <div class="chat-bubble">${escapeHtml(msg.text)}</div>
     `;
 
-    this.chatMessages.appendChild(item);
-    this._scrollToBottom(this.chatMessages);
+    this.chatMessages.append(item);
+    this.#scrollToBottom(this.chatMessages);
 
     // Phone layout: mark the hidden chat tab when the opponent writes.
-    if (!isMine && this.chatUnreadDot && this._isTabbed() && this.activeTab !== 'chat') {
-      this.chatUnreadDot.classList.remove('hidden');
+    if (!isMine && this.chatUnreadDot && this.#isTabbed() && this.activeTab !== 'chat') {
+      this.chatUnreadDot.hidden = false;
     }
   }
 
-  _appendLogEntry(text, className) {
+  #appendLogEntry(text, className) {
     const entry = document.createElement('li');
     if (className) entry.className = className;
     entry.textContent = text;
-    this.moveLogList.appendChild(entry);
-    this._scrollToBottom(this.moveLogList);
+    this.moveLogList.append(entry);
+    this.#scrollToBottom(this.moveLogList);
   }
 
-  _scrollToBottom(element) {
+  #scrollToBottom(element) {
     element.scrollTop = element.scrollHeight;
   }
 
   /** True while the tab bar is on screen (phone-sized viewports). */
-  _isTabbed() {
+  #isTabbed() {
     const tabBar = document.querySelector('.dock-tabs');
     return !!tabBar && tabBar.offsetParent !== null;
   }

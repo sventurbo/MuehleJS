@@ -4,7 +4,7 @@
  * 100% self-contained, no external audio files required.
  *
  * Every effect is just a short list of oscillator bursts, so the sounds are
- * written down as data (SOUNDS) and played by one scheduler (_schedule).
+ * written down as data (SOUNDS) and played by one scheduler (#schedule).
  * Adding or tuning a sound therefore means editing a note, never repeating the
  * oscillator/gain wiring.
  */
@@ -109,12 +109,12 @@ export class SoundController {
     return this.muted;
   }
 
-  playPlace() { this._play(SOUNDS.place); }
-  playMove() { this._play(SOUNDS.move); }
-  playMill() { this._play(SOUNDS.mill); }
-  playRemove() { this._play(SOUNDS.remove); }
-  playWin() { this._play(SOUNDS.win); }
-  playLose() { this._play(SOUNDS.lose); }
+  playPlace() { this.#play(SOUNDS.place); }
+  playMove() { this.#play(SOUNDS.move); }
+  playMill() { this.#play(SOUNDS.mill); }
+  playRemove() { this.#play(SOUNDS.remove); }
+  playWin() { this.#play(SOUNDS.win); }
+  playLose() { this.#play(SOUNDS.lose); }
 
   /**
    * The autoplay policy only lets an AudioContext start with user activation.
@@ -123,11 +123,11 @@ export class SoundController {
    * while the activation is still valid.
    */
   unlock() {
-    this._init();
+    this.#init();
   }
 
   /** Creates the audio context on first use and resumes a suspended one. */
-  _init() {
+  #init() {
     this.ctx ??= new AudioContext();
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
@@ -135,13 +135,13 @@ export class SoundController {
   }
 
   /** Plays one of the SOUNDS entries, unless the player has muted the game. */
-  _play(notes) {
+  #play(notes) {
     if (this.muted) return;
-    this._init();
+    this.#init();
 
     try {
       const now = this.ctx.currentTime;
-      notes.forEach(burst => this._schedule(now + burst.at, burst));
+      notes.forEach(burst => this.#schedule(now + burst.at, burst));
     } catch {
       // Sound is decoration and must never interrupt the game.
     }
@@ -151,7 +151,7 @@ export class SoundController {
    * Wires one oscillator through its own gain node and schedules its whole life
    * up front, so the burst plays even if the main thread is busy rendering.
    */
-  _schedule(startAt, { type, freq, gain, duration, to }) {
+  #schedule(startAt, { type, freq, gain, duration, to }) {
     const osc = this.ctx.createOscillator();
     const level = this.ctx.createGain();
 

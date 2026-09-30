@@ -128,7 +128,7 @@ describe('Mill beam', () => {
   });
 
   test('a new game drops the previous game\'s beam', () => {
-    expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.innerHTML = ''/);
+    expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.replaceChildren\(\)/);
   });
 
   test('reduced motion shows the beam without a fade instead of one that ends at opacity 0', () => {

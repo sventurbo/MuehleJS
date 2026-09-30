@@ -1,11 +1,14 @@
 /**
  * overlays.js
- * Everything that sits *above* the app: the connection badge, transient toasts,
- * the rules dialog and the game-over dialog.
+ * Everything that sits *above* the app: the connection badge, transient toasts
+ * and the three dialogs (rules, surrender, game over).
  *
- * These are the only parts of the UI that can appear over the board, so they
- * also own the scroll lock that keeps a phone from scrolling the board around
- * underneath an open dialog.
+ * The dialogs are native <dialog> elements. The browser opens them in the top
+ * layer, makes the page behind them inert, traps focus and closes them on
+ * Escape; the buttons that open and close the rules and the surrender dialog
+ * do so through invoker commands in index.html. What is left for this view is
+ * to fill the game-over dialog and to hand each dialog's answer — its
+ * returnValue — to the controller.
  */
 
 import * as RULES from '/shared/muehleRules.js';
@@ -14,38 +17,48 @@ import * as RULES from '/shared/muehleRules.js';
 const TOAST_VISIBLE_MS = 3000;
 const TOAST_FADE_MS = 400;
 
+/** returnValue of a dialog the app closed itself, so it carries no choice. */
+const CLOSED_BY_APP = 'app';
+
+/**
+ * Calls `onChoice` with the returnValue every time `dialog` closes, then clears
+ * it: Escape and a click beside the dialog close it without setting one, and
+ * must not replay the previous answer.
+ */
+function onDialogClose(dialog, onChoice) {
+  dialog.addEventListener('close', () => {
+    const choice = dialog.returnValue;
+    dialog.returnValue = '';
+    onChoice(choice);
+  });
+}
+
 export class Overlays {
   /**
    * @param {Object} handlers
    * @param {Function} handlers.onPlayAgain Player wants another game.
    * @param {Function} handlers.onBackToLobby Player returns to the start screen.
+   * @param {Function} handlers.onSurrender Player confirmed giving the game up.
    */
-  constructor({ onPlayAgain, onBackToLobby } = {}) {
+  constructor({ onPlayAgain, onBackToLobby, onSurrender } = {}) {
     this.connStatus = document.getElementById('conn-status-indicator');
     this.toastContainer = document.getElementById('toast-container');
 
-    this.rulesModal = document.getElementById('modal-rules');
+    this.surrenderModal = document.getElementById('modal-surrender');
     this.gameOverModal = document.getElementById('modal-game-over');
     this.gameOverTitle = document.getElementById('game-over-title');
     this.gameOverReason = document.getElementById('game-over-reason');
     this.gameOverWinner = document.getElementById('game-over-winner-name');
 
-    // Three buttons open the rules (login screen, game HUD, header).
-    ['btn-rules-login', 'btn-rules-game', 'btn-rules-header'].forEach(id => {
-      document.getElementById(id).addEventListener('click', () => this.showRules(true));
-    });
-    document.getElementById('btn-close-rules')
-      .addEventListener('click', () => this.showRules(false));
-    this.rulesModal.addEventListener('click', (e) => {
-      if (e.target === this.rulesModal) this.showRules(false);
+    onDialogClose(this.surrenderModal, (choice) => {
+      if (choice === 'surrender') onSurrender?.();
     });
 
-    document.getElementById('btn-play-again').addEventListener('click', () => {
-      this.hideGameOver();
-      onPlayAgain?.();
-    });
-    document.getElementById('btn-back-to-lobby').addEventListener('click', () => {
-      onBackToLobby?.();
+    // The game is over either way, so closing the dialog without a choice
+    // (Escape) means leaving, just like the "Zurück zur Startseite" button.
+    onDialogClose(this.gameOverModal, (choice) => {
+      if (choice === 'again') onPlayAgain?.();
+      else if (choice !== CLOSED_BY_APP) onBackToLobby?.();
     });
   }
 
@@ -65,7 +78,7 @@ export class Overlays {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
-    this.toastContainer.appendChild(toast);
+    this.toastContainer.append(toast);
 
     setTimeout(() => {
       toast.classList.add('toast-fade');
@@ -73,13 +86,9 @@ export class Overlays {
     }, TOAST_VISIBLE_MS);
   }
 
-  showRules(show) {
-    this.rulesModal.classList.toggle('hidden', !show);
-    this._syncScrollLock();
-  }
-
   /**
-   * Announces the result of a finished game.
+   * Announces the result of a finished game. A surrender question that is
+   * still open has nothing left to decide and is dropped.
    * @param {Object} result
    * @param {string} result.winner Winning colour, 'W' or 'B'.
    * @param {string} result.winnerName Display name of the winner.
@@ -92,22 +101,13 @@ export class Overlays {
     this.gameOverWinner.textContent = `Gewinner: ${winnerName} (${RULES.colorName(winner)})`;
     this.gameOverReason.textContent = winReason || 'Spiel beendet';
 
-    this.gameOverModal.classList.remove('hidden');
-    this._syncScrollLock();
+    this.surrenderModal.close(CLOSED_BY_APP);
+    if (!this.gameOverModal.open) this.gameOverModal.showModal();
   }
 
-  hideGameOver() {
-    this.gameOverModal.classList.add('hidden');
-    this._syncScrollLock();
-  }
-
-  /**
-   * Freezes the page behind an open dialog so touch scrolling stays inside it
-   * instead of moving the board around underneath.
-   */
-  _syncScrollLock() {
-    const anyOpen = !this.rulesModal.classList.contains('hidden') ||
-      !this.gameOverModal.classList.contains('hidden');
-    document.body.classList.toggle('modal-open', anyOpen);
+  /** Closes the dialogs that belong to a game, without acting on them. */
+  closeGameDialogs() {
+    this.surrenderModal.close(CLOSED_BY_APP);
+    this.gameOverModal.close(CLOSED_BY_APP);
   }
 }

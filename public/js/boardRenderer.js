@@ -138,10 +138,10 @@ export class BoardRenderer {
     this.pieces = new Map();
     this.gameId = null;
 
-    this._initSvg();
+    this.#initSvg();
   }
 
-  _initSvg() {
+  #initSvg() {
     this.container.innerHTML = `
       <svg viewBox="0 0 600 600" class="muehle-svg" preserveAspectRatio="xMidYMid meet">
         <title>Mühle-Spielbrett mit 24 Feldern</title>
@@ -228,7 +228,7 @@ export class BoardRenderer {
     const isMyTurn = gameState.turn === playerColor && !gameState.winner;
     const canSelect = isMyTurn && gameState.phase === 'MOVING' && !gameState.awaitingRemoval;
 
-    this._syncPieces(gameState);
+    this.#syncPieces(gameState);
 
     Object.keys(POINT_COORDS).forEach(pt => {
       const isRemovable = this.removablePoints.includes(pt);
@@ -257,14 +257,14 @@ export class BoardRenderer {
    * board instead of animating the previous game's stones away, and without
    * the last game's mill beam.
    */
-  _syncPieces(gameState) {
+  #syncPieces(gameState) {
     const board = gameState.board;
     const sameGame = gameState.gameId === this.gameId;
 
     if (!sameGame) {
       this.interactiveLayer.querySelectorAll('.game-piece').forEach(el => el.remove());
       this.pieces.clear();
-      this.millGlowLayer.innerHTML = '';
+      this.millGlowLayer.replaceChildren();
       this.gameId = gameState.gameId;
     }
 
@@ -273,25 +273,25 @@ export class BoardRenderer {
     const { moved, placed, removed } = RULES.diffBoards(shown, board);
 
     if (moved) {
-      this._removePiece(moved.from, false);
-      this._addPiece(moved.to, board[moved.to], { from: moved.from });
+      this.#removePiece(moved.from, false);
+      this.#addPiece(moved.to, board[moved.to], { from: moved.from });
     }
-    removed.forEach(pt => this._removePiece(pt, sameGame));
-    placed.forEach(pt => this._addPiece(pt, board[pt], sameGame ? { enter: true } : {}));
+    removed.forEach(pt => this.#removePiece(pt, sameGame));
+    placed.forEach(pt => this.#addPiece(pt, board[pt], sameGame ? { enter: true } : {}));
   }
 
   /**
    * Puts a stone on `pt`. `from` makes it travel there from another point,
    * `enter` lets it pop in; with neither it simply appears.
    */
-  _addPiece(pt, color, { from = null, enter = false } = {}) {
+  #addPiece(pt, color, { from = null, enter = false } = {}) {
     const group = this.pointGroups[pt];
     const isWhite = color === 'W';
     const fillGrad = isWhite ? 'url(#whitePieceGrad)' : 'url(#blackPieceGrad)';
 
     if (from) {
       // Paint the travelling stone above every point it crosses on the way.
-      this.interactiveLayer.appendChild(group);
+      this.interactiveLayer.append(group);
     }
 
     group.insertAdjacentHTML('beforeend', `
@@ -308,9 +308,9 @@ export class BoardRenderer {
       // Start offset in local user units; the keyframes glide it back to 0.
       el.style.setProperty('--travel-x', `${POINT_COORDS[from].x - POINT_COORDS[pt].x}px`);
       el.style.setProperty('--travel-y', `${POINT_COORDS[from].y - POINT_COORDS[pt].y}px`);
-      BoardRenderer._playOnce(el, 'piece-arriving');
+      BoardRenderer.#playOnce(el, 'piece-arriving');
     } else if (enter) {
-      BoardRenderer._playOnce(el, 'piece-entering');
+      BoardRenderer.#playOnce(el, 'piece-entering');
     }
 
     this.pieces.set(pt, { color, el });
@@ -321,7 +321,7 @@ export class BoardRenderer {
    * It leaves `this.pieces` immediately, so the next render already treats the
    * point as empty while the old node finishes its exit.
    */
-  _removePiece(pt, animate) {
+  #removePiece(pt, animate) {
     const piece = this.pieces.get(pt);
     if (!piece) return;
     this.pieces.delete(pt);
@@ -341,7 +341,7 @@ export class BoardRenderer {
    * afterwards so the animation cannot replay when the node is re-inserted
    * or its screen is shown again.
    */
-  static _playOnce(el, className) {
+  static #playOnce(el, className) {
     el.classList.add(className);
     el.addEventListener('animationend', () => el.classList.remove(className), { once: true });
   }
@@ -361,7 +361,7 @@ export class BoardRenderer {
    */
   highlightMill(millPoints) {
     if (!millPoints || millPoints.length < 3) {
-      this.millGlowLayer.innerHTML = '';
+      this.millGlowLayer.replaceChildren();
       return;
     }
 

@@ -74,8 +74,8 @@ graph LR
     end
 
     subgraph Frontend["Frontend (Vanilla Web Stack)"]
-        HTML["index.html (SPA Screens & Skript-Manifest)"]
-        CSS["css/ (11 Module via @import: Tokens, Layout 320px - Desktop, SVG-Styles)"]
+        HTML["index.html (SPA Screens, dialog-Elemente & Einstiegsmodul)"]
+        CSS["css/ (11 Module in Cascade Layers: Tokens, Layout 320px - Desktop, SVG-Styles)"]
         APP["app.js (Controller: Socket, Screens, Brett-Interaktion)"]
         HUD["hudView.js (Phase, Zug-Badge, Spielerkarten, Countdown)"]
         DOCK["dockView.js (Zugprotokoll & Chat)"]
@@ -125,10 +125,10 @@ Aktionen an den Server. `tests/ClientModules.test.js` prüft genau das.
 - **`public/js/app.js`**: Einziges Einstiegsmodul der Seite (`<script type="module">`); importiert Socket.io-Client, Regelmodul und Views. Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over) und Brett-Interaktion. Übersetzt Klicks in Server-Anfragen und Server-Events in Aufrufe der Views — er zeichnet selbst nichts.
 - **`public/js/hudView.js`**: Phasenanzeige, Zug-Badge, Hinweisbanner, beide Spielerkarten und der Zug-Countdown aus den Server-Events `turnTimer` / `turnTimeout` — reine Anzeige ohne eigene Zeitlogik und ohne Socket.
 - **`public/js/dockView.js`**: Zugprotokoll und Chat samt Tab-Leiste und Ungelesen-Markierung auf kleinen Bildschirmen. Hier liegt die Escaping-Grenze: Name und Text einer Nachricht gehen durch `escapeHtml()`, bevor Markup entsteht.
-- **`public/js/overlays.js`**: Regel- und Spielende-Dialog, Toasts, Verbindungsanzeige und die Scroll-Sperre hinter einem offenen Dialog.
+- **`public/js/overlays.js`**: Toasts, Verbindungsanzeige und die Antworten der nativen `<dialog>`-Elemente. Regel- und Aufgeben-Dialog öffnen und schließen sich über Invoker Commands (`command`/`commandfor`) ohne Skript; die View reicht nur den `returnValue` von Aufgeben- und Spielende-Dialog an den Controller weiter. Die Scroll-Sperre hinter einem offenen Dialog leistet CSS (`body:has(dialog:modal)`).
 - **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und legt Ziel-, Auswahl- und Schlagmarker einmalig an; ein Zustandswechsel schaltet nur noch deren `is-*`-Klasse um. Das Brett wird einmal aufgebaut und danach nur gepatcht: `diffBoards()` aus dem geteilten Regelmodul bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten.
 - **`public/js/audio.js`**: Reiner Web-Audio-API Synthesizer für Soundeffekte (Klicks, Züge, Mühlenklang, Schlag-Impact, Fanfaren). Jeder Effekt ist als Notenliste beschrieben; ein einziger Scheduler spielt sie.
-- **`public/css/`**: Modulares Stylesheet. `style.css` ist reines Manifest und zieht die elf Module per `@import` in Kaskadenreihenfolge herein — `tokens.css` zuerst (Design-Tokens für beide Themes), `responsive.css` zuletzt (Breakpoints, Pointer-Typ, `prefers-reduced-motion`), dazwischen die Module je Screen bzw. Komponente. Werkzeuge, die das Stylesheet als Ganzes lesen (`scripts/contrast-check.js`, die statischen CSS-Tests), gehen über `scripts/css-bundle.js`, das die `@import`-Kette auflöst.
+- **`public/css/`**: Modulares Stylesheet. `style.css` ist reines Manifest: eine `@layer`-Anweisung legt die Cascade Layers fest, und jedes der elf Module wird per `@import … layer(<name>)` in seinen Layer geladen — `tokens` mit der niedrigsten Priorität (Design-Tokens, Theme-Farben als `light-dark()`-Paare), `responsive` mit der höchsten (Breakpoints als Bereichs-Media-Queries, Pointer-Typ, `prefers-reduced-motion`), dazwischen die Module je Screen bzw. Komponente, jeweils nativ verschachtelt. Werkzeuge, die das Stylesheet als Ganzes lesen (`scripts/contrast-check.js`, die statischen CSS-Tests), gehen über `scripts/css-bundle.js`, das die `@import`-Kette auflöst.
 
 ---
 
@@ -314,7 +314,7 @@ stateDiagram-v2
 
     Screen_Game --> Modal_GameOver: Event "gameOver" oder "opponentDisconnected"
     Modal_GameOver --> Screen_Queue: Klick auf "Erneut spielen"
-    Modal_GameOver --> Screen_Login: Klick auf "Zurück zur Startseite"
+    Modal_GameOver --> Screen_Login: Klick auf "Zurück zur Startseite" oder Esc
 ```
 
 ---

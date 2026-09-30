@@ -70,13 +70,13 @@ describe('Viewport & mobile meta tags', () => {
 
 describe('Login form on phones', () => {
   test('name field and search button stack into their own rows', () => {
-    const phone = mediaBlock('@media (max-width: 700px)');
+    const phone = mediaBlock('@media (width <= 700px)');
     expect(phone).toMatch(/\.input-group\s*\{[^}]*flex-direction:\s*column/);
     expect(phone).toMatch(/\.input-group \.btn\s*\{[^}]*width:\s*100%/);
   });
 
   test('text inputs are 16px so iOS does not zoom in on focus', () => {
-    const phone = mediaBlock('@media (max-width: 700px)');
+    const phone = mediaBlock('@media (width <= 700px)');
     expect(phone).toMatch(/\.text-input,\s*\n\s*\.chat-form input\s*\{[^}]*font-size:\s*1rem/);
   });
 
@@ -95,21 +95,21 @@ describe('Login form on phones', () => {
 
 describe('Game layout on phones', () => {
   test('both player panels share one row above the board', () => {
-    const phone = mediaBlock('@media (max-width: 700px)');
+    const phone = mediaBlock('@media (width <= 700px)');
     expect(phone).toMatch(/\.game-arena\s*\{[^}]*display:\s*grid/);
     expect(phone).toContain('"player-w player-b"');
     expect(phone).toContain('"board board"');
   });
 
   test('landscape phones put the panels beside the board', () => {
-    const landscape = mediaBlock('@media (orientation: landscape) and (max-height: 560px)');
+    const landscape = mediaBlock('@media (orientation: landscape) and (height <= 560px)');
     expect(landscape).toContain('"player-w board player-b"');
     // The board is sized off the short edge so it stays fully visible.
     expect(landscape).toMatch(/\.board-wrapper\s*\{[^}]*width:\s*min\(/);
   });
 
   test('the duplicate turn badge is dropped where the banner already says it', () => {
-    const phone = mediaBlock('@media (max-width: 700px)');
+    const phone = mediaBlock('@media (width <= 700px)');
     expect(phone).toMatch(/\.hud-badge\s*\{[^}]*display:\s*none/);
   });
 
@@ -138,7 +138,7 @@ describe('Move log / chat tabs', () => {
 
   test('tabs are hidden on desktop and shown on phones', () => {
     expect(css).toMatch(/\.dock-tabs\s*\{[^}]*display:\s*none/);
-    const phone = mediaBlock('@media (max-width: 700px)');
+    const phone = mediaBlock('@media (width <= 700px)');
     expect(phone).toMatch(/\.dock-tabs\s*\{[^}]*display:\s*flex/);
     expect(phone).toMatch(/\.dock-panel\s*\{[^}]*display:\s*none/);
     expect(phone).toMatch(/\.dock-panel\.is-active\s*\{[^}]*display:\s*flex/);
@@ -189,9 +189,13 @@ describe('Touch interaction', () => {
     expect(clientJs).toContain("document.addEventListener('keydown', unlockAudio");
   });
 
-  test('an open modal freezes the page behind it', () => {
-    expect(clientJs).toContain('_syncScrollLock()');
-    expect(css).toMatch(/body\.modal-open\s*\{[^}]*overflow:\s*hidden/);
+  test('an open dialog freezes the page behind it', () => {
+    expect(css).toMatch(/body:has\(dialog:modal\)\s*\{[^}]*overflow:\s*hidden/);
+  });
+
+  test('dialogs keep clear of the notch and the home indicator on phones', () => {
+    const phone = mediaBlock('@media (width <= 700px)');
+    expect(phone).toMatch(/\.modal\s*\{[^}]*inset-block:[^;]*env\(safe-area-inset-top\)[^;]*env\(safe-area-inset-bottom\)/);
   });
 });
 

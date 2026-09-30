@@ -1,4 +1,4 @@
-import { hexToRgb, sRGBtoLinear, relativeLuminance, contrastRatio, parseRgba, resolveColor } from '../scripts/contrast.js';
+import { hexToRgb, sRGBtoLinear, relativeLuminance, contrastRatio, parseRgb, resolveColor } from '../scripts/contrast.js';
 
 describe('WCAG 2.1 Contrast Calculation', () => {
   describe('hexToRgb', () => {
@@ -72,30 +72,36 @@ describe('WCAG 2.1 Contrast Calculation', () => {
     });
   });
 
-  describe('parseRgba', () => {
-    test('parses rgba string', () => {
-      expect(parseRgba('rgba(255, 128, 0, 0.5)')).toBe('#ff8000');
+  describe('parseRgb', () => {
+    test('parses rgb() with alpha', () => {
+      expect(parseRgb('rgb(255 128 0 / 0.5)')).toBe('#ff8000');
+    });
+    test('parses opaque rgb()', () => {
+      expect(parseRgb('rgb(18 129 63)')).toBe('#12813f');
+    });
+    test('does not read the legacy comma syntax', () => {
+      expect(parseRgb('rgba(255, 128, 0, 0.5)')).toBeNull();
     });
     test('returns null for invalid', () => {
-      expect(parseRgba('invalid')).toBeNull();
+      expect(parseRgb('invalid')).toBeNull();
     });
   });
 
   describe('resolveColor', () => {
     test('returns hex color as-is', () => {
-      expect(resolveColor('#d8dce4', {})).toBe('#d8dce4');
+      expect(resolveColor('#d8dce4')).toBe('#d8dce4');
     });
     test('returns null for var() references', () => {
-      expect(resolveColor('var(--text-main)', {})).toBeNull();
+      expect(resolveColor('var(--text-main)')).toBeNull();
     });
-    test('parses rgba strings', () => {
-      expect(resolveColor('rgba(255, 0, 0, 0.8)', {})).toBe('#ff0000');
+    test('parses rgb() strings', () => {
+      expect(resolveColor('rgb(255 0 0 / 0.8)')).toBe('#ff0000');
     });
     test('returns null for undefined', () => {
-      expect(resolveColor(undefined, {})).toBeNull();
+      expect(resolveColor(undefined)).toBeNull();
     });
     test('returns null for empty string', () => {
-      expect(resolveColor('', {})).toBeNull();
+      expect(resolveColor('')).toBeNull();
     });
   });
 });

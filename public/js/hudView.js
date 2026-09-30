@@ -39,8 +39,8 @@ export class HudView {
     // Both player panels share one shape, so they are addressed by colour
     // instead of being written out twice.
     this.panels = {
-      W: this._panel('w', 'white'),
-      B: this._panel('b', 'black')
+      W: this.#panel('w', 'white'),
+      B: this.#panel('b', 'black')
     };
 
     this.myColor = null;
@@ -54,13 +54,13 @@ export class HudView {
   }
 
   /** Collects one panel's nodes and creates its pips once and for all. */
-  _panel(idPart, colorClass) {
+  #panel(idPart, colorClass) {
     const pipsContainer = document.getElementById(`player-${idPart}-pips`);
     const pips = [];
     for (let i = 0; i < PIECES_PER_PLAYER; i++) {
       const pip = document.createElement('span');
       pip.className = `pip pip-${colorClass}`;
-      pipsContainer.appendChild(pip);
+      pipsContainer.append(pip);
       pips.push(pip);
     }
 
@@ -95,14 +95,14 @@ export class HudView {
 
     const isMyTurn = state.turn === this.myColor && !state.winner;
 
-    this._renderPanels(state);
-    this._renderPhase(state);
-    this._renderStatus(state, isMyTurn);
-    this._renderCountdown();
+    this.#renderPanels(state);
+    this.#renderPhase(state);
+    this.#renderStatus(state, isMyTurn);
+    this.#renderCountdown();
   }
 
   /** Names, stones in hand, captured stones and whose turn it is. */
-  _renderPanels(state) {
+  #renderPanels(state) {
     ['W', 'B'].forEach(color => {
       const panel = this.panels[color];
       const isMine = color === this.myColor;
@@ -122,7 +122,7 @@ export class HudView {
   }
 
   /** "Phase 1: Setzen" / "Phase 2: Ziehen" / "Phase 3: Springen". */
-  _renderPhase(state) {
+  #renderPhase(state) {
     if (state.phase === 'SETTING') {
       this.phaseText.textContent = 'Phase 1: Setzen';
     } else if (state.phase === 'MOVING') {
@@ -134,7 +134,7 @@ export class HudView {
   }
 
   /** The turn badge and the tinted instruction banner below it. */
-  _renderStatus(state, isMyTurn) {
+  #renderStatus(state, isMyTurn) {
     let tone;
     let badge;
 
@@ -156,14 +156,14 @@ export class HudView {
     if (isMyTurn && state.awaitingRemoval) {
       this.instructionText.innerHTML = CAPTURE_INSTRUCTION;
     } else {
-      this.instructionText.textContent = this._instructionFor(state, isMyTurn);
+      this.instructionText.textContent = this.#instructionFor(state, isMyTurn);
     }
   }
 
   /**
    * What the player should do (or wait for) right now, in one sentence.
    */
-  _instructionFor(state, isMyTurn) {
+  #instructionFor(state, isMyTurn) {
     if (state.winner) return state.winReason || 'Partie abgeschlossen.';
 
     if (!isMyTurn) {
@@ -204,9 +204,9 @@ export class HudView {
     };
 
     if (!this.tick) {
-      this.tick = setInterval(() => this._renderCountdown(), TICK_MS);
+      this.tick = setInterval(() => this.#renderCountdown(), TICK_MS);
     }
-    this._renderCountdown();
+    this.#renderCountdown();
   }
 
   /** Stops and hides the countdown (game over, lost connection, new game). */
@@ -216,7 +216,7 @@ export class HudView {
       this.tick = null;
     }
     this.countdown = null;
-    this._renderCountdown();
+    this.#renderCountdown();
   }
 
   /**
@@ -226,12 +226,12 @@ export class HudView {
    * automatic move and announced the next turn — the client never decides that
    * a turn is over.
    */
-  _renderCountdown() {
+  #renderCountdown() {
     if (!this.timerBox) return;
 
     const timer = this.countdown;
     if (!timer || !this.state || this.state.winner) {
-      this.timerBox.classList.add('hidden');
+      this.timerBox.hidden = true;
       return;
     }
 
@@ -239,7 +239,7 @@ export class HudView {
     const seconds = Math.ceil(remainingMs / 1000);
     const isMine = timer.turn === this.myColor;
 
-    this.timerBox.classList.remove('hidden');
+    this.timerBox.hidden = false;
     this.timerBox.classList.toggle('is-mine', isMine);
     this.timerBox.classList.toggle('is-urgent', remainingMs <= URGENT_MS);
     this.timerBox.setAttribute(

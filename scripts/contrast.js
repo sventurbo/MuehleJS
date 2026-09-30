@@ -41,8 +41,12 @@ export function contrastRatio(hex1, hex2) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-export function parseRgba(rgba) {
-  const result = /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/.exec(rgba);
+/**
+ * Reads `rgb(r g b)` or `rgb(r g b / alpha)` into a hex colour. The alpha is
+ * dropped: every translucent token is checked as if it were opaque.
+ */
+export function parseRgb(rgb) {
+  const result = /^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*(?:\/\s*[\d.]+%?\s*)?\)$/.exec(rgb);
   if (!result) return null;
   const r = parseInt(result[1], 10).toString(16).padStart(2, '0');
   const g = parseInt(result[2], 10).toString(16).padStart(2, '0');
@@ -50,11 +54,10 @@ export function parseRgba(rgba) {
   return `#${r}${g}${b}`;
 }
 
-export function resolveColor(value, themeVars) {
+/** A token value as a hex colour, or null when it is not a literal colour. */
+export function resolveColor(value) {
   if (!value) return null;
   if (/^#[0-9a-fA-F]{3,8}$/.test(value)) return value;
-  if (value.startsWith('rgba(')) return parseRgba(value);
-  if (value.startsWith('rgb(')) return parseRgba(value.replace('rgb(', 'rgba(').replace(')', ', 1)'));
-  if (value.startsWith('var(')) return null;
+  if (value.startsWith('rgb(')) return parseRgb(value);
   return null;
 }
