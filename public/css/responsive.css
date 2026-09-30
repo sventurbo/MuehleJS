@@ -284,7 +284,6 @@
     font-size: 1.3125rem;
   }
   .rules-card {
-    max-height: 88vh;
     max-height: 88dvh;
   }
   .rules-header {
@@ -394,7 +393,6 @@
     height: 132px;
   }
   .rules-card {
-    max-height: 92vh;
     max-height: 92dvh;
   }
 }

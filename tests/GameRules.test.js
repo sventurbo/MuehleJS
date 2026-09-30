@@ -7,8 +7,8 @@
  * a stone the board marks is always a stone the server accepts.
  */
 
-const RULES = require('../shared/muehleRules');
-const { MuehleGame, POINTS, MILLS, ADJACENCY } = require('../lib/MuehleGame');
+import * as RULES from '../shared/muehleRules.js';
+import { MuehleGame, POINTS, MILLS, ADJACENCY } from '../lib/MuehleGame.js';
 
 /** Builds a game whose board holds exactly the given stones. */
 function gameWith(stones, overrides = {}) {

@@ -9,11 +9,11 @@
  * cannot quietly bring back a board that just jumps.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { loadStylesheet } = require('../scripts/css-bundle');
+import fs from 'node:fs';
+import path from 'node:path';
+import { loadStylesheet } from '../scripts/css-bundle.js';
 
-const publicDir = path.join(__dirname, '..', 'public');
+const publicDir = path.join(import.meta.dirname, '..', 'public');
 const css = loadStylesheet();
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
 
@@ -56,7 +56,8 @@ describe('Board renderer keeps its nodes', () => {
   });
 
   test('changes are classified by the shared, tested board diff', () => {
-    expect(boardJs).toContain('window.MuehleRules.diffBoards(');
+    expect(boardJs).toContain("import * as RULES from '/shared/muehleRules.js';");
+    expect(boardJs).toContain('RULES.diffBoards(');
   });
 });
 

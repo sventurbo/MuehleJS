@@ -101,7 +101,6 @@
   font-weight: 600;
   font-size: 1.0625rem;
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
 }
 
 .highlight-stat {
@@ -156,7 +155,6 @@
   aspect-ratio: 1 / 1;
   position: relative;
   user-select: none;
-  -webkit-user-select: none;
 }
 
 .muehle-svg {

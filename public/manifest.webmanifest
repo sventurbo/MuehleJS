@@ -1,0 +1,14 @@
+{
+  "name": "Mühle Online",
+  "short_name": "Mühle",
+  "description": "Mühle (Nine Men's Morris) für zwei Spieler im Browser.",
+  "lang": "de",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0a0a0c",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

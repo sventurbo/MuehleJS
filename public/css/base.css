@@ -8,18 +8,16 @@
 }
 
 html {
-  /* Stops iOS from inflating text when the device is rotated. */
-  -webkit-text-size-adjust: 100%;
+  /* Stops mobile browsers from inflating text when the device is rotated. */
   text-size-adjust: 100%;
 }
 
-/* Touch handling: no grey flash on tap and no 300ms double-tap-zoom delay. */
+/* Touch handling: a quick second tap on a control must not zoom the page. */
 button,
 input,
 select,
 textarea,
 .board-point-group {
-  -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
@@ -27,8 +25,7 @@ body {
   font-family: var(--font-stack);
   background-color: var(--bg-main);
   color: var(--text-main);
-  min-height: 100vh;
-  /* dvh tracks the collapsing Safari toolbars; vh above is the fallback. */
+  /* dvh tracks the collapsing mobile toolbars. */
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -36,8 +33,6 @@ body {
   font-size: 15px;
   line-height: 1.47;
   letter-spacing: var(--tracking-body);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4 {
@@ -52,28 +47,6 @@ h1, h2, h3, h4 {
   scrollbar-width: thin;
   scrollbar-color: var(--pip-inactive) transparent;
   overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.move-log-list::-webkit-scrollbar,
-.chat-messages::-webkit-scrollbar,
-.rules-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.move-log-list::-webkit-scrollbar-track,
-.chat-messages::-webkit-scrollbar-track,
-.rules-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.move-log-list::-webkit-scrollbar-thumb,
-.chat-messages::-webkit-scrollbar-thumb,
-.rules-body::-webkit-scrollbar-thumb {
-  background: var(--pip-inactive);
-  border-radius: var(--radius-pill);
-  border: 2px solid transparent;
-  background-clip: content-box;
 }
 
 /* Shared inline-icon sizing. All icons are stroked with currentColor. */
@@ -91,7 +64,6 @@ h1, h2, h3, h4 {
 .app-wrapper {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
 }

@@ -45,20 +45,20 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
     - Eigene Touch-Layouts ab 700 px Breite: Spielername und „Spieler suchen" stehen in eigenen Zeilen, beide Spielerkarten teilen sich eine kompakte Zeile über dem Brett, das Brett nutzt die volle Breite.
     - Zugprotokoll und Chat teilen sich auf dem Handy eine Tab-Leiste (inkl. Ungelesen-Markierung), statt die Seite endlos zu verlängern.
     - Querformat: Spielerkarten flankieren das Brett, dessen Größe sich an der kurzen Bildschirmkante orientiert.
-    - iOS-Feinheiten: `viewport-fit=cover` + `env(safe-area-inset-*)` für Notch und Home-Indicator, `100dvh` gegen die einklappende Safari-Leiste, 16 px Eingabefelder (kein Auto-Zoom), entsperrter Web-Audio-Kontext beim ersten Tap.
+    - Mobile Feinheiten: `viewport-fit=cover` + `env(safe-area-inset-*)` für Notch und Home-Indicator, `100dvh` gegen die einklappende Browser-Leiste, 16 px Eingabefelder (kein Auto-Zoom), entsperrter Web-Audio-Kontext beim ersten Tap, Web App Manifest für den Home-Bildschirm.
     - Touch-Bedienung: Tippziele ab 44 px, vergrößerte Trefferflächen auf dem Spielbrett, Druck- statt Hover-Feedback (Hover-Stile gelten nur für echte Zeigegeräte).
   - Respektiert `prefers-reduced-motion` (gilt auch für die Stein-Animationen).
-  - Cross-Browser-kompatibel (aktuelle Versionen von **Chrome, Firefox, Safari** – Desktop wie auch **iOS Safari** und **Chrome für Android**).
+  - Läuft **ausschließlich auf den aktuellen Versionen** von **Chrome, Firefox, Safari** – Desktop wie auch **iOS Safari** und **Chrome für Android**. Es gibt bewusst keine Rückwärtskompatibilität: keine Vendor-Präfixe, keine Fallback-Deklarationen, keine Feature-Erkennung, ES-Module statt globaler Skripte (`tests/ModernStandards.test.js` wacht darüber).
   - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
 - **Automatisierte Testsuite**:
-   - 229 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
+   - 268 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
 
 ---
 
 ## 🚀 Schnellanleitung (Installation & Start)
 
-Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung. Die Untergrenze ist das jeweils aktive Node.js-LTS – aktuell **Node.js >= 24** („Krypton", aktives LTS seit 28.10.2025).
+Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung. Die Untergrenze ist das jeweils aktive Node.js-LTS – aktuell **Node.js >= 24.2** („Krypton", aktives LTS seit 28.10.2025). Server, Regelmodul und Skripte sind ES-Module; die Minor-Version 24.2 ist nötig, weil sie ihren Einstiegspunkt über `import.meta.main` erkennen.
 
 Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc` (`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Wird eine neue Node.js-Version zum aktiven LTS (Node 26 am 28.10.2026), werden `engines`, dieser Abschnitt und die CI-Matrix in `.github/workflows/node.js.yml` gemeinsam angehoben.
 
@@ -154,12 +154,12 @@ Ohne Angabe gelten 25 000 ms. Werte, die keine positive Zahl sind (Tippfehler, l
 
 ## 🧪 Tests ausführen
 
-Das Projekt verfügt über eine umfassende Testsuite mit Jest:
+Das Projekt verfügt über eine umfassende Testsuite mit Jest. Da alle Quellen ES-Module sind, läuft Jest im ESM-Modus (`--experimental-vm-modules`, im `test`-Skript bereits gesetzt):
 ```bash
 npm test
 ```
 
-Getestet werden (239 Tests in 11 Test-Dateien):
+Getestet werden (268 Tests in 12 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -173,8 +173,9 @@ Getestet werden (239 Tests in 11 Test-Dateien):
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
-- Ton-Einstellung auch bei blockiertem `localStorage` (Safari im privaten Modus, abgeschaltete Website-Daten).
-- Vollständigkeit und Reihenfolge der Client-Module (`index.html` als Manifest) sowie die Architekturregel, dass nur `app.js` mit dem Socket spricht.
+- Ton-Einstellung auch bei blockiertem `localStorage` (abgeschaltete Website-Daten).
+- Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die Architekturregel, dass nur `app.js` mit dem Socket spricht.
+- Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine Vendor-Metatags, nur ES-Module, keine Feature-Erkennung, Node-Built-ins über `node:`.
 
 ### WCAG 2.1 AA Kontrastprüfung
 
@@ -220,12 +221,14 @@ node scripts/css-bundle.js   # gibt das aufgelöste Stylesheet auf stdout aus
 ## 🧩 Client-Architektur
 
 Der Client kommt ohne Framework und ohne Build-Schritt aus: `index.html` lädt
-klassische `<script>`-Dateien in Abhängigkeitsreihenfolge. Die Datei ist damit
-zugleich das Manifest des Clients — ein Modul, das dort nicht steht, erreicht
-weder den Browser noch die Tests.
+genau ein ES-Modul, den Controller `js/app.js`. Alles andere erreicht den
+Browser über dessen `import`-Anweisungen — auch das geteilte Regelmodul und der
+Socket.io-Client (`/socket.io/socket.io.esm.min.js`). Ein Modul, das nicht
+importiert wird, erreicht weder den Browser noch die Tests.
 
 ```
-/shared/muehleRules.js  →  audio · boardRenderer  →  hudView · dockView · overlays  →  app
+js/app.js  →  /socket.io/socket.io.esm.min.js · /shared/muehleRules.js
+              audio · boardRenderer · hudView · dockView · overlays
 ```
 
 Die Aufteilung folgt einer einzigen Regel: **die Views zeichnen, der Controller
@@ -236,8 +239,8 @@ HUD auch reine Anzeige: er kann gar keinen Zug auslösen, die einzige zählende
 Uhr läuft im `GameManager`.
 
 Werkzeuge, die den Client als Ganzes lesen (die statischen Client-Tests), gehen
-über `scripts/client-bundle.js` — das Gegenstück zu `css-bundle.js`. Es löst die
-`<script>`-Liste auf, sodass eine Zusicherung weiterhin gilt, wenn eine Funktion
+über `scripts/client-bundle.js` — das Gegenstück zu `css-bundle.js`. Es löst den
+Import-Graphen auf, sodass eine Zusicherung weiterhin gilt, wenn eine Funktion
 in ein anderes Modul umzieht:
 
 ```bash
@@ -257,7 +260,7 @@ Web-Spiel/
 │   ├── contrast.js           # WCAG 2.1 Kontrastberechnung (relative Luminance, Kontrastverhältnis)
 │   ├── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
 │   ├── css-bundle.js         # Löst die @import-Kette von style.css auf (für Checker & Tests)
-│   └── client-bundle.js      # Löst die <script>-Liste von index.html auf (für die Client-Tests)
+│   └── client-bundle.js      # Löst den Modul-Import-Graphen ab index.html auf (für die Client-Tests)
 ├── shared/
 │   └── muehleRules.js        # Geteiltes Regelmodul: Brettgeometrie, Mühlen- & Schlag-Regeln, Brett-Diff (Server UND Browser)
 ├── lib/
@@ -267,6 +270,8 @@ Web-Spiel/
 │   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
 ├── public/
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, Modals)
+│   ├── manifest.webmanifest  # Web App Manifest (Home-Bildschirm, Standalone-Modus)
+│   ├── icon.svg              # App- und Favicon
 │   ├── css/                  # Modulares Stylesheet, per @import in Kaskadenreihenfolge gebündelt
 │   │   ├── style.css         # Manifest: nur die @import-Liste, keine eigenen Regeln
 │   │   ├── tokens.css        # Design-Tokens (:root) + Light-Theme-Override
@@ -301,9 +306,10 @@ Web-Spiel/
 │   ├── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
 │   ├── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
 │   ├── BoardAnimation.test.js # Strukturtests für Stein-Animationen und Mühlen-Beam
-│   ├── AudioMute.test.js     # Ton-Einstellung bei blockiertem localStorage (Safari privat)
+│   ├── AudioMute.test.js     # Ton-Einstellung bei blockiertem localStorage
 │   ├── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Kaskadenreihenfolge, Token-Zugriff des Kontrast-Checkers)
-│   └── ClientModules.test.js # Guards für das Client-Manifest (Vollständigkeit, Ladereihenfolge, Views ohne Socket)
+│   ├── ClientModules.test.js # Guards für den Client-Modulgraphen (Vollständigkeit, Auswertungsreihenfolge, Views ohne Socket)
+│   └── ModernStandards.test.js # Guards gegen Rückwärtskompatibilität (Präfixe, Fallbacks, CommonJS, Globals)
 ├── .gitignore                # Git-Ignore (node_modules, .DS_Store, coverage, .env)
 ├── .npmrc                    # engine-strict=true (erzwingt die Node-Version aus "engines")
 ├── package-lock.json         # Abhängigkeits-Lockfile

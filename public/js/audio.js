@@ -70,16 +70,16 @@ const SOUNDS = {
 /**
  * Reads the stored mute preference.
  *
- * Safari in private mode — and any browser with site data switched off —
- * throws on localStorage instead of handing back an empty store. Swallowing
- * that here keeps the constructor from throwing, which would leave
- * window.soundController undefined and take every later sound call with it.
- * The fallback is the default: sound on, preference simply not remembered.
+ * A browser with site data blocked throws a SecurityError on the very access
+ * to localStorage instead of handing back an empty store. Swallowing that here
+ * keeps the constructor from throwing, which would abort this module and with
+ * it every module that imports the controller. Sound then simply starts on
+ * and the preference is not remembered.
  */
 function loadMuted() {
   try {
-    return window.localStorage.getItem(MUTE_STORAGE_KEY) === 'true';
-  } catch (e) {
+    return localStorage.getItem(MUTE_STORAGE_KEY) === 'true';
+  } catch {
     return false;
   }
 }
@@ -87,13 +87,13 @@ function loadMuted() {
 /** Stores the mute preference; a blocked or full store just means it is not remembered. */
 function storeMuted(muted) {
   try {
-    window.localStorage.setItem(MUTE_STORAGE_KEY, String(muted));
-  } catch (e) {
+    localStorage.setItem(MUTE_STORAGE_KEY, String(muted));
+  } catch {
     // Preference stays in memory for this session only.
   }
 }
 
-class SoundController {
+export class SoundController {
   constructor() {
     this.ctx = null;
     this.muted = loadMuted();
@@ -117,48 +117,33 @@ class SoundController {
   playLose() { this._play(SOUNDS.lose); }
 
   /**
-   * Mobile Safari (and Chrome's autoplay policy) only let an AudioContext
-   * start from inside a real user gesture. The first game sound is triggered
-   * by a socket event instead, so app.js calls this on the first tap/click to
-   * create and resume the context while a gesture is still on the stack.
+   * The autoplay policy only lets an AudioContext start with user activation.
+   * The first game sound is triggered by a socket event instead, so app.js
+   * calls this on the first tap/click/key to create and resume the context
+   * while the activation is still valid.
    */
   unlock() {
     this._init();
-    if (!this.ctx) return;
-    try {
-      // A silent blip finishes the unlock on older iOS versions.
-      this._schedule(this.ctx.currentTime, note({ type: 'sine', freq: 440, gain: 0, duration: 0.01 }));
-    } catch (e) {
-      // Nothing to do — sound simply stays off on this device.
-    }
   }
 
   /** Creates the audio context on first use and resumes a suspended one. */
   _init() {
-    if (!this.ctx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) this.ctx = new AudioContext();
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
+    this.ctx ??= new AudioContext();
+    if (this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
   }
 
-  /**
-   * Plays one of the SOUNDS entries, unless the player has muted the game or
-   * this browser has no usable audio context.
-   */
+  /** Plays one of the SOUNDS entries, unless the player has muted the game. */
   _play(notes) {
     if (this.muted) return;
     this._init();
-    if (!this.ctx) return;
 
     try {
       const now = this.ctx.currentTime;
       notes.forEach(burst => this._schedule(now + burst.at, burst));
-    } catch (e) {
-      // A device that refuses to play (autoplay policy, no output) stays silent;
-      // sound is decoration and must never interrupt the game.
+    } catch {
+      // Sound is decoration and must never interrupt the game.
     }
   }
 
@@ -176,7 +161,7 @@ class SoundController {
 
     // exponentialRamp cannot reach 0, so every burst fades to near-silence.
     level.gain.setValueAtTime(gain, startAt);
-    if (gain > 0) level.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+    level.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
 
     osc.connect(level);
     level.connect(this.ctx.destination);
@@ -186,4 +171,4 @@ class SoundController {
   }
 }
 
-window.soundController = new SoundController();
+export const soundController = new SoundController();

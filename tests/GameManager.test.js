@@ -1,4 +1,5 @@
-const { GameManager, DEFAULT_TURN_TIMEOUT_MS } = require('../lib/GameManager');
+import { jest } from '@jest/globals';
+import { GameManager, DEFAULT_TURN_TIMEOUT_MS } from '../lib/GameManager.js';
 
 describe('GameManager Matchmaking & Session Management', () => {
   let ioMock;

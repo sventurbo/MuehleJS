@@ -13,7 +13,9 @@
  * to a handful of class toggles.
  */
 
-const POINT_COORDS = {
+import * as RULES from '/shared/muehleRules.js';
+
+export const POINT_COORDS = {
   // Outer square
   'a7': { x: 60, y: 60 },
   'd7': { x: 300, y: 60 },
@@ -122,7 +124,7 @@ function pointGroupsMarkup(hitRadius) {
   `).join('');
 }
 
-class BoardRenderer {
+export class BoardRenderer {
   constructor(containerElement, onPointClick) {
     this.container = containerElement;
     this.onPointClick = onPointClick;
@@ -201,16 +203,9 @@ class BoardRenderer {
     // One delegated listener: the groups outlive every render, and a stone that
     // is still fading out lets the click through to its point.
     this.interactiveLayer.addEventListener('click', (e) => {
-      const group = e.target.closest('.board-point-group');
-      const pt = group && group.getAttribute('data-point');
-      if (pt && this.onPointClick) {
-        this.onPointClick(pt);
-      }
+      const pt = e.target.closest('.board-point-group')?.getAttribute('data-point');
+      if (pt) this.onPointClick?.(pt);
     });
-
-    // iOS Safari only applies :active to elements that have a touch listener;
-    // the socket press feedback in board.css depends on it.
-    this.interactiveLayer.addEventListener('touchstart', () => {}, { passive: true });
   }
 
   /**
@@ -228,7 +223,7 @@ class BoardRenderer {
   render(gameState, playerColor, selectedPoint = null, validDestinations = []) {
     this.selectedPoint = selectedPoint;
     this.validDestinations = validDestinations;
-    this.removablePoints = window.MuehleRules.getCaptureTargets(gameState, playerColor);
+    this.removablePoints = RULES.getCaptureTargets(gameState, playerColor);
 
     const isMyTurn = gameState.turn === playerColor && !gameState.winner;
     const canSelect = isMyTurn && gameState.phase === 'MOVING' && !gameState.awaitingRemoval;
@@ -275,7 +270,7 @@ class BoardRenderer {
 
     const shown = {};
     this.pieces.forEach((piece, pt) => { shown[pt] = piece.color; });
-    const { moved, placed, removed } = window.MuehleRules.diffBoards(shown, board);
+    const { moved, placed, removed } = RULES.diffBoards(shown, board);
 
     if (moved) {
       this._removePiece(moved.from, false);
@@ -355,10 +350,7 @@ class BoardRenderer {
    * Coarse pointers (fingers) need a larger target than a mouse cursor.
    */
   static hitRadius() {
-    const coarse = typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(pointer: coarse)').matches;
-    return coarse ? HIT_RADIUS_TOUCH : HIT_RADIUS_POINTER;
+    return window.matchMedia('(pointer: coarse)').matches ? HIT_RADIUS_TOUCH : HIT_RADIUS_POINTER;
   }
 
   /**
@@ -386,6 +378,3 @@ class BoardRenderer {
     setTimeout(() => beam.remove(), MILL_BEAM_FALLBACK_MS);
   }
 }
-
-window.BoardRenderer = BoardRenderer;
-window.POINT_COORDS = POINT_COORDS;

@@ -75,7 +75,7 @@
   --gloss-white: rgba(255, 255, 255, 0.3);
   --gloss-black: rgba(255, 255, 255, 0.14);
   /* ── Typography ── */
-  --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-stack: system-ui;
   --tracking-tight: -0.021em;
   --tracking-body: -0.01em;
   /* ── 4pt spacing grid ── */

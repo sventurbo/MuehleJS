@@ -12,13 +12,13 @@
  * find, so a sheet it stops understanding would pass CI reporting nothing.
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { loadStylesheet, listModules, bundleCss } = require('../scripts/css-bundle');
-const { parseCssVariables, runContrastCheck, CONTRAST_TESTS } = require('../scripts/contrast-check');
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { loadStylesheet, listModules, bundleCss } from '../scripts/css-bundle.js';
+import { parseCssVariables, runContrastCheck, CONTRAST_TESTS } from '../scripts/contrast-check.js';
 
-const cssDir = path.join(__dirname, '..', 'public', 'css');
+const cssDir = path.join(import.meta.dirname, '..', 'public', 'css');
 const manifest = fs.readFileSync(path.join(cssDir, 'style.css'), 'utf8');
 const modules = listModules();
 
@@ -46,7 +46,7 @@ describe('The manifest', () => {
   });
 
   test('is the only stylesheet the page links', () => {
-    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const html = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'index.html'), 'utf8');
     const hrefs = Array.from(html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g), m => m[1]);
     expect(hrefs).toEqual(['css/style.css']);
   });

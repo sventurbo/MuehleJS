@@ -15,7 +15,6 @@
   white-space: nowrap;
   flex-shrink: 1;
   min-width: 0;
-  -webkit-appearance: none;
   appearance: none;
   display: inline-flex;
   justify-content: center;

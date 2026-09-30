@@ -2,7 +2,8 @@
    Mühle (Nine Men's Morris) — Minimal Design System
    One accent colour, neutral surfaces, hairline borders, materials over glows.
    Responsive from 320px phones up to desktop (>= 1024x768), touch-first below
-   the 700px breakpoint. Chrome, Firefox, Safari (incl. iOS Safari).
+   the 700px breakpoint. Current Chrome, Firefox and Safari (incl. iOS) only:
+   no vendor prefixes, no fallbacks for older engines.
 
    This file is the manifest and holds no rules of its own: it pulls in the
    modules below, in cascade order. The order is significant — tokens have to

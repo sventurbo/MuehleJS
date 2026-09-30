@@ -2,30 +2,19 @@
  * AudioMute.test.js
  * Guards the mute preference against a blocked storage.
  *
- * Safari in private mode — and any browser with site data switched off —
- * throws on localStorage instead of handing back an empty store. audio.js
- * runs as a plain script, so a throw while reading the preference aborts the
- * whole file: window.soundController would never be assigned and every later
- * sound call in app.js would fail on undefined. These tests load the real
- * file against storage stand-ins that throw, and pin that the controller
- * still comes up and the Ton button still toggles.
+ * A browser with site data blocked throws a SecurityError on the very access
+ * to localStorage instead of handing back an empty store. audio.js reads the
+ * preference while the module is evaluated, so a throw there would abort the
+ * module and, with it, app.js and every other module in the page's graph.
+ * These tests construct the real controller against storage stand-ins that
+ * throw, and pin that it still comes up and the Ton button still toggles.
  */
 
-const fs = require('fs');
-const path = require('path');
-const vm = require('vm');
+import { SoundController } from '../public/js/audio.js';
 
-const audioJs = fs.readFileSync(
-  path.join(__dirname, '..', 'public', 'js', 'audio.js'),
-  'utf8'
-);
-
-/** Runs audio.js against a window stand-in and returns the controller it exports. */
-function loadController(win) {
-  const sandbox = { window: win };
-  vm.createContext(sandbox);
-  vm.runInContext(audioJs, sandbox);
-  return sandbox.window.soundController;
+/** Installs `storage` as the global localStorage the controller reads. */
+function useStorage(storage) {
+  Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
 }
 
 /** A localStorage that works, seeded with the given entries. */
@@ -38,29 +27,33 @@ function workingStorage(entries = {}) {
   };
 }
 
-/** A window whose localStorage throws on property access, as private mode does. */
-function windowWithBlockedStorage() {
-  const win = {};
-  Object.defineProperty(win, 'localStorage', {
-    get() { throw new Error('SecurityError: The operation is insecure.'); }
+/** A localStorage whose very access throws, as a blocked one does. */
+function blockStorage() {
+  Object.defineProperty(globalThis, 'localStorage', {
+    get() { throw new DOMException('The operation is insecure.', 'SecurityError'); },
+    configurable: true
   });
-  return win;
 }
+
+afterEach(() => {
+  delete globalThis.localStorage;
+});
 
 describe('The sound controller with a working storage', () => {
   test('starts muted when the preference says so', () => {
-    const controller = loadController({ localStorage: workingStorage({ muehle_muted: 'true' }) });
-    expect(controller.isMuted()).toBe(true);
+    useStorage(workingStorage({ muehle_muted: 'true' }));
+    expect(new SoundController().isMuted()).toBe(true);
   });
 
   test('starts unmuted when nothing is stored', () => {
-    const controller = loadController({ localStorage: workingStorage() });
-    expect(controller.isMuted()).toBe(false);
+    useStorage(workingStorage());
+    expect(new SoundController().isMuted()).toBe(false);
   });
 
   test('persists both directions of the toggle', () => {
     const storage = workingStorage();
-    const controller = loadController({ localStorage: storage });
+    useStorage(storage);
+    const controller = new SoundController();
 
     expect(controller.toggleMute()).toBe(true);
     expect(storage.data.muehle_muted).toBe('true');
@@ -71,18 +64,21 @@ describe('The sound controller with a working storage', () => {
 });
 
 describe('The sound controller with a blocked storage', () => {
-  test('still gets constructed and exported', () => {
+  test('still gets constructed', () => {
+    blockStorage();
     let controller;
-    expect(() => { controller = loadController(windowWithBlockedStorage()); }).not.toThrow();
+    expect(() => { controller = new SoundController(); }).not.toThrow();
     expect(controller).toBeDefined();
   });
 
   test('falls back to sound on', () => {
-    expect(loadController(windowWithBlockedStorage()).isMuted()).toBe(false);
+    blockStorage();
+    expect(new SoundController().isMuted()).toBe(false);
   });
 
   test('keeps the toggle working, in memory', () => {
-    const controller = loadController(windowWithBlockedStorage());
+    blockStorage();
+    const controller = new SoundController();
 
     expect(controller.toggleMute()).toBe(true);
     expect(controller.isMuted()).toBe(true);
@@ -92,8 +88,9 @@ describe('The sound controller with a blocked storage', () => {
 
   test('survives a store that reads but refuses to write', () => {
     const readOnly = workingStorage();
-    readOnly.setItem = () => { throw new Error('QuotaExceededError'); };
-    const controller = loadController({ localStorage: readOnly });
+    readOnly.setItem = () => { throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); };
+    useStorage(readOnly);
+    const controller = new SoundController();
 
     expect(controller.toggleMute()).toBe(true);
     expect(controller.isMuted()).toBe(true);

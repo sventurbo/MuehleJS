@@ -1,4 +1,4 @@
-const { MuehleGame, POINTS, ADJACENCY, MILLS } = require('../lib/MuehleGame');
+import { MuehleGame, POINTS, ADJACENCY, MILLS } from '../lib/MuehleGame.js';
 
 describe('MuehleGame Rule Engine', () => {
   let game;

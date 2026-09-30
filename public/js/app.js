@@ -14,10 +14,16 @@
  * and asks for what the player clicked.
  */
 
+import { io } from '/socket.io/socket.io.esm.min.js';
 // Board geometry and capture rules come from the module the server engine is
 // built on, so the markers this client draws and the moves it offers are
 // validated by the very same code that will judge them.
-const RULES = window.MuehleRules;
+import * as RULES from '/shared/muehleRules.js';
+import { soundController } from './audio.js';
+import { BoardRenderer } from './boardRenderer.js';
+import { HudView } from './hudView.js';
+import { DockView } from './dockView.js';
+import { Overlays } from './overlays.js';
 
 class MuehleApp {
   constructor() {
@@ -45,16 +51,16 @@ class MuehleApp {
     this.queueStatusText = document.getElementById('queue-status-text');
     this.btnSoundToggle = document.getElementById('btn-sound-toggle');
 
-    this.hud = new window.HudView();
-    this.dock = new window.DockView({ onSend: (text) => this.socket.emit('chatMessage', { text }) });
-    this.overlays = new window.Overlays({
+    this.hud = new HudView();
+    this.dock = new DockView({ onSend: (text) => this.socket.emit('chatMessage', { text }) });
+    this.overlays = new Overlays({
       onPlayAgain: () => this._handleLogin(),
       onBackToLobby: () => {
         this.socket.emit('leaveGame');
         this._terminateSession(null);
       }
     });
-    this.board = new window.BoardRenderer(
+    this.board = new BoardRenderer(
       document.getElementById('board-container'),
       (point) => this._onPointClick(point)
     );
@@ -97,23 +103,23 @@ class MuehleApp {
     });
 
     this.btnSoundToggle.addEventListener('click', () => this._toggleSound());
-    this._markSoundButton(window.soundController.isMuted());
+    this._markSoundButton(soundController.isMuted());
 
-    // Audio has to be unlocked from a user gesture on iOS; the first game
-    // sound is fired by a socket event, which would be too late.
+    // Audio may only start with user activation; the first game sound is fired
+    // by a socket event, which would be too late. pointerup is the pointer
+    // event that grants activation for touch and pen (a mouse already has it
+    // from pointerdown), keydown covers the keyboard.
+    const unlock = new AbortController();
     const unlockAudio = () => {
-      window.soundController.unlock();
-      document.removeEventListener('pointerdown', unlockAudio);
-      document.removeEventListener('touchend', unlockAudio);
-      document.removeEventListener('keydown', unlockAudio);
+      soundController.unlock();
+      unlock.abort();
     };
-    document.addEventListener('pointerdown', unlockAudio, { passive: true });
-    document.addEventListener('touchend', unlockAudio, { passive: true });
-    document.addEventListener('keydown', unlockAudio);
+    document.addEventListener('pointerup', unlockAudio, { signal: unlock.signal });
+    document.addEventListener('keydown', unlockAudio, { signal: unlock.signal });
   }
 
   _toggleSound() {
-    this._markSoundButton(window.soundController.toggleMute());
+    this._markSoundButton(soundController.toggleMute());
   }
 
   _markSoundButton(isMuted) {
@@ -158,7 +164,7 @@ class MuehleApp {
     // reconnected under a new id). Nothing is recoverable, so end the session.
     this.socket.on('gameNotFound', (data) => {
       if (!this.sessionActive) return;
-      this._terminateSession((data && data.message) || 'Deine Partie ist nicht mehr aktiv.');
+      this._terminateSession(data?.message || 'Deine Partie ist nicht mehr aktiv.');
     });
 
     this.socket.on('queueWaiting', (data) => {
@@ -229,13 +235,13 @@ class MuehleApp {
     this._switchScreen('game');
     this.dock.addSystemNote(`Spiel gestartet! Du spielst als ${RULES.colorName(this.myColor)}.`);
 
-    window.soundController.playPlace();
+    soundController.playPlace();
     this._render();
   }
 
   /** An accepted action: log it, play its sound, then redraw. */
   _applyUpdate(data) {
-    const previousTurn = this.gameState && this.gameState.turn;
+    const previousTurn = this.gameState?.turn;
     this.gameState = data.state;
     const lastAction = data.lastAction;
 
@@ -261,19 +267,19 @@ class MuehleApp {
     const autoSuffix = lastAction.auto ? ' (automatisch)' : '';
 
     if (lastAction.action === 'place') {
-      window.soundController.playPlace();
+      soundController.playPlace();
       this.dock.addMove(`${actor} setzt auf ${lastAction.point}${autoSuffix}`);
     } else if (lastAction.action === 'move') {
-      window.soundController.playMove();
+      soundController.playMove();
       this.dock.addMove(`${actor} zieht ${lastAction.from} → ${lastAction.to}${autoSuffix}`);
     } else if (lastAction.action === 'remove') {
-      window.soundController.playRemove();
+      soundController.playRemove();
       this.dock.addMove(`${actor} schlägt Stein auf ${lastAction.point}${autoSuffix}`);
     }
 
     if (!lastAction.millFormed) return;
 
-    window.soundController.playMill();
+    soundController.playMill();
     this.dock.addSystemNote(`Mühle geschlossen von ${actor}!`);
 
     const trigger = this.gameState.millTriggerPoint;
@@ -296,9 +302,9 @@ class MuehleApp {
 
     const isWin = data.winner === this.myColor;
     if (isWin) {
-      window.soundController.playWin();
+      soundController.playWin();
     } else {
-      window.soundController.playLose();
+      soundController.playLose();
     }
     this.overlays.showGameOver({
       winner: data.winner,
@@ -421,17 +427,5 @@ class MuehleApp {
   }
 }
 
-// Start application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  window.app = new MuehleApp();
-});
-
-// React to system theme changes at runtime
-if (window.matchMedia) {
-  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  const handleThemeChange = () => {
-    document.documentElement.classList.toggle('dark-theme', darkModeQuery.matches);
-  };
-  darkModeQuery.addEventListener('change', handleThemeChange);
-  handleThemeChange();
-}
+// Module scripts run once the document is parsed, so the DOM is complete here.
+new MuehleApp();

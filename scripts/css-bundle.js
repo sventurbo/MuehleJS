@@ -15,11 +15,11 @@
  * their own position, everything else is passed through byte for byte.
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 /** `@import "a.css";` and `@import url("a.css");`, with either quote style. */
-const IMPORT_RE = /@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*;/g;
+export const IMPORT_RE = /@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*;/g;
 
 /**
  * Reads `entryFile` and replaces every @import with the (recursively resolved)
@@ -29,7 +29,7 @@ const IMPORT_RE = /@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*;/g;
  * @param {Set<string>} [seen] Guards against import cycles.
  * @returns {string} The concatenated stylesheet.
  */
-function bundleCss(entryFile, seen = new Set()) {
+export function bundleCss(entryFile, seen = new Set()) {
   const absolute = path.resolve(entryFile);
   if (seen.has(absolute)) {
     throw new Error(`Circular @import: ${absolute}`);
@@ -47,21 +47,19 @@ function bundleCss(entryFile, seen = new Set()) {
 }
 
 /** The project's own stylesheet entry point, resolved and concatenated. */
-function loadStylesheet() {
-  return bundleCss(path.join(__dirname, '..', 'public', 'css', 'style.css'));
+export function loadStylesheet() {
+  return bundleCss(path.join(import.meta.dirname, '..', 'public', 'css', 'style.css'));
 }
 
 /** The module paths listed in style.css, in cascade order. */
-function listModules() {
-  const entry = path.join(__dirname, '..', 'public', 'css', 'style.css');
+export function listModules() {
+  const entry = path.join(import.meta.dirname, '..', 'public', 'css', 'style.css');
   const source = fs.readFileSync(entry, 'utf8');
   return Array.from(source.matchAll(IMPORT_RE), match => match[1]);
 }
 
-module.exports = { bundleCss, loadStylesheet, listModules, IMPORT_RE };
-
 // Called directly (`node scripts/css-bundle.js`): print the resolved sheet, so
 // the bundle can be piped into any external CSS tool.
-if (require.main === module) {
+if (import.meta.main) {
   process.stdout.write(loadStylesheet());
 }

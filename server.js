@@ -11,30 +11,30 @@
  * stays a thin, readable map of the client/server protocol.
  */
 
-const http = require('http');
-const path = require('path');
-const express = require('express');
-const { Server } = require('socket.io');
-const { GameManager } = require('./lib/GameManager');
+import http from 'node:http';
+import path from 'node:path';
+import express from 'express';
+import { Server } from 'socket.io';
+import { GameManager } from './lib/GameManager.js';
 
 // Port from CLI argument ("node server.js 8080" / "npm start -- 8080") or environment.
 const cliPort = process.argv.slice(2).find(arg => /^\d+$/.test(arg));
 const PORT = parseInt(process.env.PORT || cliPort || '3000', 10);
 
 // ── Express: static client + status endpoint ────────────────────────────────
-const app = express();
+export const app = express();
 app.disable('x-powered-by');
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(import.meta.dirname, 'public')));
 // The rule module the browser and lib/MuehleGame.js share. Serving it from its
 // own folder keeps a single copy on disk instead of one per side.
-app.use('/shared', express.static(path.join(__dirname, 'shared')));
+app.use('/shared', express.static(path.join(import.meta.dirname, 'shared')));
 app.use(express.json({ limit: '10kb' })); // DOS-03: bounded request bodies
 
-const primaryServer = http.createServer(app);
+export const primaryServer = http.createServer(app);
 
 // Socket.io with cross-origin support, heartbeat tuning and a payload cap
 // (DOS-03: a 10 KB frame limit stops oversized-message floods).
-const io = new Server(primaryServer, {
+export const io = new Server(primaryServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
@@ -51,7 +51,7 @@ const io = new Server(primaryServer, {
 // TURN_TIMEOUT_MS overrides the 25 s a player has per decision; an unusable
 // value falls back to that default inside the GameManager, so a typo in the
 // environment can never switch the timer off.
-const gameManager = new GameManager(io, {
+export const gameManager = new GameManager(io, {
   trustProxy: process.env.TRUST_PROXY,
   turnTimeoutMs: process.env.TURN_TIMEOUT_MS
 });
@@ -93,7 +93,7 @@ function safeOn(socket, event, handler, notify = true) {
 
 /** Reads a string field out of an untrusted payload; '' when it is anything else. */
 function readText(data, field) {
-  return (data && typeof data[field] === 'string') ? data[field] : '';
+  return typeof data?.[field] === 'string' ? data[field] : '';
 }
 
 io.on('connection', (socket) => {
@@ -190,8 +190,6 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // Start listening if run directly
-if (require.main === module) {
+if (import.meta.main) {
   startServer();
 }
-
-module.exports = { app, primaryServer, io, gameManager };

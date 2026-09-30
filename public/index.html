@@ -6,13 +6,13 @@
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Mühle">
   <title>Mühle / Nine Men's Morris – Multiplayer Web-Spiel</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%230a0a0c%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23f2f2f7%22%20stroke-width%3D%221.8%22%3E%3Crect%20x%3D%225%22%20y%3D%225%22%20width%3D%2222%22%20height%3D%2222%22%20rx%3D%223%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2211%22%20width%3D%2210%22%20height%3D%2210%22%20rx%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M16%205v6M16%2021v6M5%2016h6M21%2016h6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/style.css">
+  <!-- The controller is the only entry point; it imports the shared rules, the
+       sound controller and the views itself. -->
+  <script type="module" src="js/app.js"></script>
 </head>
 <body>
   <div class="app-wrapper">
@@ -356,18 +356,5 @@
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
   </div>
-
-  <!-- Socket.io client script provided by Express server -->
-  <script src="/socket.io/socket.io.js"></script>
-  <!-- Application scripts, in dependency order: the shared rules and the
-       stand-alone services first, then the views, then the controller that
-       wires them together. -->
-  <script src="/shared/muehleRules.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/boardRenderer.js"></script>
-  <script src="js/hudView.js"></script>
-  <script src="js/dockView.js"></script>
-  <script src="js/overlays.js"></script>
-  <script src="js/app.js"></script>
 </body>
 </html>

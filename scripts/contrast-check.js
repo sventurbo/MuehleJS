@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const { contrastRatio, resolveColor } = require('./contrast');
-const { loadStylesheet } = require('./css-bundle');
+import { contrastRatio, resolveColor } from './contrast.js';
+import { loadStylesheet } from './css-bundle.js';
 
 // ── CSS Variable Parser ──
 
-function parseCssVariables(cssContent) {
+export function parseCssVariables(cssContent) {
   const variables = { dark: {}, light: {} };
 
   const rootMatch = cssContent.match(/:root\s*\{([\s\S]*?)\n\}/);
@@ -33,7 +33,7 @@ function parseCssVariables(cssContent) {
 
 // ── Contrast Test Definitions ──
 
-const CONTRAST_TESTS = [
+export const CONTRAST_TESTS = [
   { name: 'Body text on main background', fgVar: 'text-main', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Fließtext auf Hintergrund' },
   { name: 'Secondary text on main background', fgVar: 'text-muted', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Sekundärtext auf Hintergrund' },
   { name: 'Body text on card background', fgVar: 'text-main', bgVar: 'bg-card', aaThreshold: 4.5, description: 'Fließtext auf Karten-Hintergrund' },
@@ -58,7 +58,7 @@ const CONTRAST_TESTS = [
 
 // ── Main Check Function ──
 
-function runContrastCheck(cssContent) {
+export function runContrastCheck(cssContent) {
   const variables = parseCssVariables(cssContent);
   const results = [];
   let allPassed = true;
@@ -129,8 +129,6 @@ function main() {
   }
 }
 
-module.exports = { parseCssVariables, runContrastCheck, CONTRAST_TESTS };
-
-if (require.main === module) {
+if (import.meta.main) {
   main();
 }

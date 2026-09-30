@@ -1,4 +1,4 @@
-const { hexToRgb, sRGBtoLinear, relativeLuminance, contrastRatio, parseRgba, resolveColor } = require('../scripts/contrast');
+import { hexToRgb, sRGBtoLinear, relativeLuminance, contrastRatio, parseRgba, resolveColor } from '../scripts/contrast.js';
 
 describe('WCAG 2.1 Contrast Calculation', () => {
   describe('hexToRgb', () => {
