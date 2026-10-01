@@ -12,8 +12,12 @@ Projektregeln.
 npm install                          # bricht auf zu alter Node-Version ab (engine-strict)
 npm run build                        # kein Bundler nötig, schließt sofort ab
 npm start                            # Port 3000; eigener Port: npm start 8080 oder PORT=8080 npm start
+                                     # lädt .env, falls vorhanden (Vorlage: .env.example)
 npm test                             # Jest im ESM-Modus, alle Tests
 npm test -- tests/MuehleGame.test.js # eine einzelne Testdatei
+npm run lint                         # ESLint (eslint.config.js)
+npm run format                       # Prettier formatiert alle Dateien (prettier.config.js)
+npm run format:check                 # Prettier prüft nur, wie in der CI
 npm run contrast-check               # WCAG-2.1-AA-Kontrast aller Farbpaare
 node scripts/css-bundle.js           # aufgelöstes Stylesheet (alle @import-Module)
 node scripts/client-bundle.js        # aufgelöster Client-Modulgraph ab js/app.js
@@ -126,7 +130,12 @@ der aktuelle Standard zum Einsatz:
 - `<dialog>` mit Invoker Commands (`command`/`commandfor`) statt `confirm()`,
 - das `hidden`-Attribut statt einer `.hidden`-Klasse,
 - `light-dark()`-Tokens, Cascade Layers, CSS Nesting,
-- Media Queries als Bereiche (`width <= 700px`), Farben als `rgb(r g b / a)`,
+- Vorrang über die Layer-Reihenfolge statt `!important`, keine Inline-Styles,
+- Media Queries als Bereiche (`width <= 700px`),
+- Farben als `oklch()`; eine aus einem anderen Token abgeleitete Farbe als `var()` oder
+  `color-mix()` dieses Tokens (mit `transparent` in `srgb` gemischt),
+- Logical Properties (`margin-block-end`, `padding-inline` …); physisch bleiben nur die
+  Abstände neben `env(safe-area-inset-left/right)`,
 - private `#`-Felder und `#`-Methoden.
 
 `tests/ModernStandards.test.js` wacht darüber. Die Grenze setzt die Aufgabe: Das Spiel muss
@@ -169,7 +178,8 @@ Jede dieser Regeln ist durch Tests abgesichert.
   die Views zeichnen nur (`tests/ClientModules.test.js`).
 - **CSS**:
   - `public/css/style.css` ist das Manifest: `@layer`-Reihenfolge und `@import`-Liste,
-    ein neues Modul gilt erst, wenn es dort steht.
+    ein neues Modul gilt erst, wenn es dort steht. `responsive` kommt nach allen
+    Komponenten, `utilities` (nur `[hidden]`) als letzter Layer.
   - Custom Properties stehen nur in `tokens.css`, und `responsive.css` bleibt flach
     (`tests/CssModules.test.js`).
   - Neue Farbpaare mit `npm run contrast-check` prüfen.
@@ -179,11 +189,13 @@ Jede dieser Regeln ist durch Tests abgesichert.
 - **Sprache**:
   - Deutsch: UI-Texte, Fehlermeldungen an Clients, `README.md` und `Systemmodel.md`.
   - Englisch: Code, Kommentare und Commit-Messages.
-- **Commits**: Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `build:`,
-  `ci:`, `docs:`).
+- **Commits**: Conventional Commits (`feat:`, `fix:`, `refactor:`, `style:`, `test:`,
+  `build:`, `ci:`, `docs:`).
+- **Formatierung**: Prettier formatiert, ESLint prüft. Vor jedem Commit `npm run format`
+  und `npm run lint`.
 - **Branches und PRs**: Gearbeitet wird auf einem Branch, der per Pull Request nach `main`
-  geht. Die CI (`.github/workflows/node.js.yml`: `npm ci`, Build, Tests, Kontrastprüfung)
-  muss grün sein.
+  geht. Die CI (`.github/workflows/node.js.yml`: `npm ci`, Build, Lint, Formatprüfung, Tests,
+  Kontrastprüfung) muss grün sein.
 - **Dokumentation**: Ändern sich Protokoll, Architektur oder Funktionen, werden
   `README.md` (inklusive Testanzahl und Projektstruktur) und die Mermaid-Diagramme in
   `Systemmodel.md` mitgezogen.

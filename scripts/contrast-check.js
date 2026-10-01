@@ -26,9 +26,7 @@ export function resolveScheme(value, scheme) {
     }
     if (comma === -1 || end === -1) throw new SyntaxError(`Malformed light-dark(): ${value}`);
 
-    const side = scheme === 'light'
-      ? value.slice(start + LIGHT_DARK.length, comma)
-      : value.slice(comma + 1, end);
+    const side = scheme === 'light' ? value.slice(start + LIGHT_DARK.length, comma) : value.slice(comma + 1, end);
     out += value.slice(cursor, start) + resolveScheme(side.trim(), scheme);
     cursor = end + 1;
   }
@@ -36,8 +34,23 @@ export function resolveScheme(value, scheme) {
 }
 
 /**
+ * Replaces every var(--name) in `value` with the value of that token, so a
+ * token may be derived from another one, e.g.
+ * color-mix(in oklch, var(--accent-blue) 10%, transparent). A name that is
+ * not a token stays as it is; the value is then no colour the checker can
+ * read, and the checks in tests/CssModules.test.js report it.
+ */
+export function resolveVars(value, tokens, seen = []) {
+  return value.replace(/var\(\s*--([\w-]+)\s*\)/g, (reference, name) => {
+    if (seen.includes(name)) throw new SyntaxError(`Circular var(): --${[...seen, name].join(' -> --')}`);
+    return name in tokens ? resolveVars(tokens[name], tokens, [...seen, name]) : reference;
+  });
+}
+
+/**
  * The design tokens of the :root block, once per theme: every light-dark()
- * pair resolved to the side that theme shows, every other value as it is.
+ * pair resolved to the side that theme shows and every var() reference
+ * replaced by the token it names, every other value as it is.
  */
 export function parseCssVariables(cssContent) {
   const variables = { dark: {}, light: {} };
@@ -50,33 +63,162 @@ export function parseCssVariables(cssContent) {
       variables[scheme][name] = resolveScheme(value.trim(), scheme);
     }
   }
+  for (const tokens of Object.values(variables)) {
+    for (const name of Object.keys(tokens)) tokens[name] = resolveVars(tokens[name], tokens);
+  }
   return variables;
 }
 
 // ── Contrast Test Definitions ──
 
 export const CONTRAST_TESTS = [
-  { name: 'Body text on main background', fgVar: 'text-main', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Fließtext auf Hintergrund' },
-  { name: 'Secondary text on main background', fgVar: 'text-muted', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Sekundärtext auf Hintergrund' },
-  { name: 'Body text on card background', fgVar: 'text-main', bgVar: 'bg-card', aaThreshold: 4.5, description: 'Fließtext auf Karten-Hintergrund' },
-  { name: 'Secondary text on card background', fgVar: 'text-muted', bgVar: 'bg-card', aaThreshold: 4.5, description: 'Sekundärtext auf Karten-Hintergrund' },
-  { name: 'Body text on surface background', fgVar: 'text-main', bgVar: 'bg-surface', aaThreshold: 4.5, description: 'Fließtext auf Surface-Hintergrund' },
-  { name: 'Secondary text on surface background', fgVar: 'text-muted', bgVar: 'bg-surface', aaThreshold: 4.5, description: 'Sekundärtext auf Surface-Hintergrund' },
-  { name: 'Accent gold on main background', fgVar: 'accent-gold', bgVar: 'bg-main', aaThreshold: 3, description: 'Gold-Akzent auf Hintergrund' },
-  { name: 'Accent blue on main background', fgVar: 'accent-blue', bgVar: 'bg-main', aaThreshold: 3, description: 'Blau-Akzent auf Hintergrund' },
-  { name: 'Accent green on main background', fgVar: 'accent-green', bgVar: 'bg-main', aaThreshold: 3, description: 'Grün-Akzent auf Hintergrund' },
-  { name: 'Accent red on main background', fgVar: 'accent-red', bgVar: 'bg-main', aaThreshold: 3, description: 'Rot-Akzent auf Hintergrund' },
-  { name: 'Accent cyan on main background', fgVar: 'accent-cyan', bgVar: 'bg-main', aaThreshold: 3, description: 'Cyan-Akzent auf Hintergrund' },
-  { name: 'Input text on input background', fgVar: 'text-main', bgVar: 'input-bg', aaThreshold: 4.5, description: 'Eingabefeld-Text auf Feld-Hintergrund' },
-  { name: 'Button text on primary button', fgVar: 'white-stone-color', bgVar: 'accent-blue', aaThreshold: 4.5, description: 'Primärer Button-Text auf Button-Hintergrund' },
-  { name: 'Secondary button text on secondary background', fgVar: 'text-main', bgVar: 'btn-secondary-bg', aaThreshold: 4.5, description: 'Sekundärer Button-Text auf Hintergrund' },
-  { name: 'Pip on background', fgVar: 'pip-inactive', bgVar: 'bg-main', aaThreshold: 3, description: 'Pip auf Hintergrund' },
-  { name: 'Opponent turn text on background', fgVar: 'opponent-turn-color', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Gegner-am-Zug-Text auf Hintergrund' },
-  { name: 'Chat bubble text on bubble background', fgVar: 'text-main', bgVar: 'chat-bubble-me', aaThreshold: 4.5, description: 'Chat-Bubble-Text auf Bubble-Hintergrund' },
-  { name: 'Toast text on toast background', fgVar: 'text-main', bgVar: 'bg-card', aaThreshold: 4.5, description: 'Toast-Text auf Toast-Hintergrund' },
-  { name: 'Board label on board plate', fgVar: 'board-label', bgVar: 'board-plate', aaThreshold: 3, description: 'Spielfeld-Labels auf Brett' },
-  { name: 'Board label on board plate-end', fgVar: 'board-label', bgVar: 'board-plate-end', aaThreshold: 3, description: 'Spielfeld-Labels auf Brett-Ende' },
-  { name: 'Destructive button text on dialog surface', fgVar: 'accent-red', bgVar: 'bg-surface', aaThreshold: 4.5, description: 'Aufgeben-Button-Text auf Dialog' },
+  {
+    name: 'Body text on main background',
+    fgVar: 'text-main',
+    bgVar: 'bg-main',
+    aaThreshold: 4.5,
+    description: 'Fließtext auf Hintergrund'
+  },
+  {
+    name: 'Secondary text on main background',
+    fgVar: 'text-muted',
+    bgVar: 'bg-main',
+    aaThreshold: 4.5,
+    description: 'Sekundärtext auf Hintergrund'
+  },
+  {
+    name: 'Body text on card background',
+    fgVar: 'text-main',
+    bgVar: 'bg-card',
+    aaThreshold: 4.5,
+    description: 'Fließtext auf Karten-Hintergrund'
+  },
+  {
+    name: 'Secondary text on card background',
+    fgVar: 'text-muted',
+    bgVar: 'bg-card',
+    aaThreshold: 4.5,
+    description: 'Sekundärtext auf Karten-Hintergrund'
+  },
+  {
+    name: 'Body text on surface background',
+    fgVar: 'text-main',
+    bgVar: 'bg-surface',
+    aaThreshold: 4.5,
+    description: 'Fließtext auf Surface-Hintergrund'
+  },
+  {
+    name: 'Secondary text on surface background',
+    fgVar: 'text-muted',
+    bgVar: 'bg-surface',
+    aaThreshold: 4.5,
+    description: 'Sekundärtext auf Surface-Hintergrund'
+  },
+  {
+    name: 'Accent gold on main background',
+    fgVar: 'accent-gold',
+    bgVar: 'bg-main',
+    aaThreshold: 3,
+    description: 'Gold-Akzent auf Hintergrund'
+  },
+  {
+    name: 'Accent blue on main background',
+    fgVar: 'accent-blue',
+    bgVar: 'bg-main',
+    aaThreshold: 3,
+    description: 'Blau-Akzent auf Hintergrund'
+  },
+  {
+    name: 'Accent green on main background',
+    fgVar: 'accent-green',
+    bgVar: 'bg-main',
+    aaThreshold: 3,
+    description: 'Grün-Akzent auf Hintergrund'
+  },
+  {
+    name: 'Accent red on main background',
+    fgVar: 'accent-red',
+    bgVar: 'bg-main',
+    aaThreshold: 3,
+    description: 'Rot-Akzent auf Hintergrund'
+  },
+  {
+    name: 'Accent cyan on main background',
+    fgVar: 'accent-cyan',
+    bgVar: 'bg-main',
+    aaThreshold: 3,
+    description: 'Cyan-Akzent auf Hintergrund'
+  },
+  {
+    name: 'Input text on input background',
+    fgVar: 'text-main',
+    bgVar: 'input-bg',
+    aaThreshold: 4.5,
+    description: 'Eingabefeld-Text auf Feld-Hintergrund'
+  },
+  {
+    name: 'Button text on primary button',
+    fgVar: 'text-on-accent',
+    bgVar: 'accent-blue',
+    aaThreshold: 4.5,
+    description: 'Primärer Button-Text auf Button-Hintergrund'
+  },
+  {
+    name: 'Secondary button text on secondary background',
+    fgVar: 'text-main',
+    bgVar: 'btn-secondary-bg',
+    aaThreshold: 4.5,
+    description: 'Sekundärer Button-Text auf Hintergrund'
+  },
+  {
+    name: 'Pip on background',
+    fgVar: 'pip-inactive',
+    bgVar: 'bg-main',
+    aaThreshold: 3,
+    description: 'Pip auf Hintergrund'
+  },
+  {
+    name: 'Opponent turn text on background',
+    fgVar: 'opponent-turn-color',
+    bgVar: 'bg-main',
+    aaThreshold: 4.5,
+    description: 'Gegner-am-Zug-Text auf Hintergrund'
+  },
+  {
+    name: 'Chat bubble text on bubble background',
+    fgVar: 'text-main',
+    bgVar: 'chat-bubble-me',
+    aaThreshold: 4.5,
+    description: 'Chat-Bubble-Text auf Bubble-Hintergrund'
+  },
+  {
+    name: 'Toast text on toast background',
+    fgVar: 'text-main',
+    bgVar: 'bg-card',
+    aaThreshold: 4.5,
+    description: 'Toast-Text auf Toast-Hintergrund'
+  },
+  {
+    name: 'Board label on board plate',
+    fgVar: 'board-label',
+    bgVar: 'board-plate',
+    aaThreshold: 3,
+    description: 'Spielfeld-Labels auf Brett'
+  },
+  {
+    name: 'Board label on board plate-end',
+    fgVar: 'board-label',
+    bgVar: 'board-plate-end',
+    aaThreshold: 3,
+    description: 'Spielfeld-Labels auf Brett-Ende'
+  },
+  {
+    name: 'Destructive button text on dialog surface',
+    fgVar: 'accent-red',
+    bgVar: 'bg-surface',
+    aaThreshold: 4.5,
+    description: 'Aufgeben-Button-Text auf Dialog'
+  }
 ];
 
 // ── Main Check Function ──
@@ -100,7 +242,11 @@ export function runContrastCheck(cssContent) {
         name: test.name,
         description: test.description,
         theme: themeName === 'dark' ? 'Dunkel' : 'Hell',
-        fgColor, bgColor, ratio: ratio.toFixed(2), required: test.aaThreshold, passed
+        fgColor,
+        bgColor,
+        ratio: ratio.toFixed(2),
+        required: test.aaThreshold,
+        passed
       });
       if (!passed) allPassed = false;
     }
@@ -119,10 +265,12 @@ function main() {
 
   console.log('\nWCAG 2.1 AA Contrast Verification');
   console.log('═'.repeat(100));
-  const header = ['Test', 'Theme', 'FG', 'BG', 'Ratio', 'Status'].map((h, i) => {
-    const widths = [40, 8, 10, 10, 10, 6];
-    return h.padEnd(widths[i]);
-  }).join(' ');
+  const header = ['Test', 'Theme', 'FG', 'BG', 'Ratio', 'Status']
+    .map((h, i) => {
+      const widths = [40, 8, 10, 10, 10, 6];
+      return h.padEnd(widths[i]);
+    })
+    .join(' ');
   console.log(header);
   console.log('─'.repeat(90));
 
@@ -130,13 +278,15 @@ function main() {
   let failCount = 0;
   for (const r of results) {
     const status = r.passed ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m';
-    const theme = r.theme === 'Dunkel' ? '\x1b[90mDunkel\x1b[0m' : '\x1b[94mHell\x1b[0m';
-    const row = [r.description.substring(0, 38), r.theme, r.fgColor, r.bgColor, `${r.ratio}:1`, status].map((v, i) => {
-      const widths = [40, 8, 10, 10, 10, 6];
-      return String(v).padEnd(widths[i]);
-    }).join(' ');
+    const row = [r.description.substring(0, 38), r.theme, r.fgColor, r.bgColor, `${r.ratio}:1`, status]
+      .map((v, i) => {
+        const widths = [40, 8, 10, 10, 10, 6];
+        return String(v).padEnd(widths[i]);
+      })
+      .join(' ');
     console.log(row);
-    if (r.passed) passCount++; else failCount++;
+    if (r.passed) passCount++;
+    else failCount++;
   }
 
   console.log('─'.repeat(100));

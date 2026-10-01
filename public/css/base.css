@@ -12,12 +12,6 @@ html {
   text-size-adjust: 100%;
 }
 
-/* The hidden attribute switches screens and indicators off. It has to win over
-   the display a component sets for itself, in whichever layer that lives. */
-[hidden] {
-  display: none !important;
-}
-
 /* Touch handling: a quick second tap on a control must not zoom the page. */
 button,
 input,
@@ -41,7 +35,10 @@ body {
   letter-spacing: var(--tracking-body);
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   letter-spacing: var(--tracking-tight);
   font-weight: 600;
 }

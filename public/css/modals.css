@@ -37,8 +37,14 @@ body:has(dialog:modal) {
 }
 
 @keyframes modalPop {
-  from { scale: 0.96; opacity: 0; }
-  to { scale: 1; opacity: 1; }
+  from {
+    scale: 0.96;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
 }
 
 /* Game over and surrender: a short verdict with its buttons stacked below. */
@@ -52,7 +58,7 @@ body:has(dialog:modal) {
 .game-over-title {
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-block-end: 6px;
   color: var(--text-main);
 
   &.win {
@@ -67,20 +73,20 @@ body:has(dialog:modal) {
 .confirm-title {
   font-size: 1.3125rem;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-block-end: 6px;
 }
 
 .winner-subtitle {
   font-size: 1rem;
   font-weight: 500;
   color: var(--text-main);
-  margin-bottom: 6px;
+  margin-block-end: 6px;
 }
 
 .reason-text {
   font-size: 0.875rem;
   color: var(--text-muted);
-  margin-bottom: var(--sp-8);
+  margin-block-end: var(--sp-8);
 }
 
 .modal-btn-row {
@@ -110,7 +116,7 @@ body:has(dialog:modal) {
   justify-content: space-between;
   gap: var(--sp-4);
   padding: var(--sp-5) var(--sp-6);
-  border-bottom: 1px solid var(--hairline);
+  border-block-end: 1px solid var(--hairline);
 
   h2 {
     font-size: 1.1875rem;
@@ -130,7 +136,10 @@ body:has(dialog:modal) {
   justify-content: center;
   cursor: pointer;
   border-radius: 50%;
-  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 
   .icon {
     width: 15px;
@@ -157,16 +166,16 @@ body:has(dialog:modal) {
   h3 {
     color: var(--text-main);
     font-size: 1rem;
-    margin-bottom: var(--sp-1);
+    margin-block-end: var(--sp-1);
   }
 
   p + p {
-    margin-top: var(--sp-2);
+    margin-block-start: var(--sp-2);
   }
 
   ul {
-    padding-left: var(--sp-5);
-    margin-top: var(--sp-2);
+    padding-inline-start: var(--sp-5);
+    margin-block-start: var(--sp-2);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -181,8 +190,8 @@ body:has(dialog:modal) {
 /* ── Toasts ── */
 .toast-container {
   position: fixed;
-  bottom: var(--sp-6);
-  right: var(--sp-6);
+  inset-block-end: var(--sp-6);
+  inset-inline-end: var(--sp-6);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
@@ -217,26 +226,48 @@ body:has(dialog:modal) {
   }
 }
 
-.toast-warning::before { background: var(--accent-gold); }
-.toast-error::before { background: var(--accent-red); }
+.toast-warning::before {
+  background: var(--accent-gold);
+}
+.toast-error::before {
+  background: var(--accent-red);
+}
 
 .toast-fade {
   opacity: 0;
   translate: 0 8px;
-  transition: opacity var(--dur-3) var(--ease-out), translate var(--dur-3) var(--ease-out);
+  transition:
+    opacity var(--dur-3) var(--ease-out),
+    translate var(--dur-3) var(--ease-out);
 }
 
 @keyframes slideInToast {
-  from { translate: 0 16px; opacity: 0; }
-  to { translate: 0 0; opacity: 1; }
+  from {
+    translate: 0 16px;
+    opacity: 0;
+  }
+  to {
+    translate: 0 0;
+    opacity: 1;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; translate: 0 8px; }
-  to { opacity: 1; translate: 0 0; }
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
 }

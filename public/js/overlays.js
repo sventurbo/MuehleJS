@@ -50,13 +50,13 @@ export class Overlays {
     this.gameOverReason = document.getElementById('game-over-reason');
     this.gameOverWinner = document.getElementById('game-over-winner-name');
 
-    onDialogClose(this.surrenderModal, (choice) => {
+    onDialogClose(this.surrenderModal, choice => {
       if (choice === 'surrender') onSurrender?.();
     });
 
     // The game is over either way, so closing the dialog without a choice
     // (Escape) means leaving, just like the "Zurück zur Startseite" button.
-    onDialogClose(this.gameOverModal, (choice) => {
+    onDialogClose(this.gameOverModal, choice => {
       if (choice === 'again') onPlayAgain?.();
       else if (choice !== CLOSED_BY_APP) onBackToLobby?.();
     });

@@ -62,6 +62,8 @@ const LEAVE_FALLBACK_MS = 1000;
    any animation, so it must outlast the fade. */
 const MILL_BEAM_FALLBACK_MS = 3000;
 
+// The rows follow the board: one square or one direction per line.
+// prettier-ignore
 const BOARD_LINES = [
   // Outer square
   ['a7', 'd7'], ['d7', 'g7'], ['g7', 'g4'], ['g4', 'g1'],
@@ -93,11 +95,13 @@ function boardLinesMarkup() {
 
 /** The faint coordinate labels, pushed outwards from their own point. */
 function gridLabelsMarkup() {
-  return Object.entries(POINT_COORDS).map(([pt, c]) => {
-    const dy = (c.y < 300) ? -18 : (c.y > 300 ? 18 : 0);
-    const dx = (c.y === 300) ? (c.x < 300 ? -18 : 18) : 0;
-    return `<text x="${c.x + dx}" y="${c.y + dy}" class="grid-label">${pt}</text>`;
-  }).join('');
+  return Object.entries(POINT_COORDS)
+    .map(([pt, c]) => {
+      const dy = c.y < 300 ? -18 : c.y > 300 ? 18 : 0;
+      const dx = c.y === 300 ? (c.x < 300 ? -18 : 18) : 0;
+      return `<text x="${c.x + dx}" y="${c.y + dy}" class="grid-label">${pt}</text>`;
+    })
+    .join('');
 }
 
 /**
@@ -107,8 +111,10 @@ function gridLabelsMarkup() {
  * `is-*` classes `render()` sets, so no node is ever created during play.
  */
 function pointGroupsMarkup(hitRadius) {
-  return Object.entries(POINT_COORDS).map(([pt, c]) => `
-    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">
+  return Object.entries(POINT_COORDS)
+    .map(
+      ([pt, c]) => `
+    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})">
       <!-- Transparent wide hit area for easy clicking / tapping -->
       <circle cx="0" cy="0" r="${hitRadius}" fill="transparent" class="hit-area" />
       <!-- Base socket, inside the group so hover/press feedback can reach it -->
@@ -121,7 +127,9 @@ function pointGroupsMarkup(hitRadius) {
         <circle cx="0" cy="0" r="26" class="removal-target" stroke-width="2" />
       </g>
     </g>
-  `).join('');
+  `
+    )
+    .join('');
 }
 
 export class BoardRenderer {
@@ -202,7 +210,7 @@ export class BoardRenderer {
 
     // One delegated listener: the groups outlive every render, and a stone that
     // is still fading out lets the click through to its point.
-    this.interactiveLayer.addEventListener('click', (e) => {
+    this.interactiveLayer.addEventListener('click', e => {
       const pt = e.target.closest('.board-point-group')?.getAttribute('data-point');
       if (pt) this.onPointClick?.(pt);
     });
@@ -269,7 +277,9 @@ export class BoardRenderer {
     }
 
     const shown = {};
-    this.pieces.forEach((piece, pt) => { shown[pt] = piece.color; });
+    this.pieces.forEach((piece, pt) => {
+      shown[pt] = piece.color;
+    });
     const { moved, placed, removed } = RULES.diffBoards(shown, board);
 
     if (moved) {
@@ -294,14 +304,17 @@ export class BoardRenderer {
       this.interactiveLayer.append(group);
     }
 
-    group.insertAdjacentHTML('beforeend', `
+    group.insertAdjacentHTML(
+      'beforeend',
+      `
       <g class="game-piece ${isWhite ? 'piece-white' : 'piece-black'}">
         <!-- Stone body -->
         <circle cx="0" cy="0" r="21" class="stone-body" fill="${fillGrad}" stroke-width="1"/>
         <!-- Single specular highlight -->
         <ellipse cx="-5.5" cy="-7.5" rx="7.5" ry="4.5" class="stone-gloss" transform="rotate(-30 -5.5 -7.5)"/>
       </g>
-    `);
+    `
+    );
     const el = group.lastElementChild;
 
     if (from) {
@@ -368,11 +381,14 @@ export class BoardRenderer {
     const c1 = POINT_COORDS[millPoints[0]];
     const c2 = POINT_COORDS[millPoints[2]];
 
-    this.millGlowLayer.insertAdjacentHTML('beforeend', `
+    this.millGlowLayer.insertAdjacentHTML(
+      'beforeend',
+      `
       <line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}"
             stroke-width="6" stroke-linecap="round"
             filter="url(#goldGlow)" class="mill-gold-beam" />
-    `);
+    `
+    );
     const beam = this.millGlowLayer.lastElementChild;
     beam.addEventListener('animationend', () => beam.remove(), { once: true });
     setTimeout(() => beam.remove(), MILL_BEAM_FALLBACK_MS);

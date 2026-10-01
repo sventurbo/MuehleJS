@@ -99,7 +99,10 @@ describe('Stone animations', () => {
 
   test('reduced motion collapses every animation, including these', () => {
     const reduced = mediaBlock('@media (prefers-reduced-motion: reduce)');
-    expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*animation-duration:\s*0\.001ms !important/);
+    // No !important: the rule wins because the responsive layer comes after
+    // board.css (pinned in CssModules.test.js), whatever the selectors.
+    expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*animation-duration:\s*0\.001ms;/);
+    expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*transition-duration:\s*0\.001ms;/);
   });
 });
 
@@ -127,7 +130,7 @@ describe('Mill beam', () => {
     expect(fallbackMs).toBeGreaterThan(fadeMs);
   });
 
-  test('a new game drops the previous game\'s beam', () => {
+  test("a new game drops the previous game's beam", () => {
     expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.replaceChildren\(\)/);
   });
 

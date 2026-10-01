@@ -39,7 +39,7 @@ export class DockView {
       tab.addEventListener('click', () => this.activateTab(tab.dataset.dockTab));
     });
 
-    this.chatForm.addEventListener('submit', (e) => {
+    this.chatForm.addEventListener('submit', e => {
       e.preventDefault();
       const text = this.chatInput.value.trim();
       if (text && onSend) {
@@ -68,9 +68,9 @@ export class DockView {
     this.activeTab = name;
 
     this.tabs.forEach(tab => {
-      const isActive = tab.dataset.dockTab === name;
-      tab.classList.toggle('is-active', isActive);
-      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      // aria-selected tells screen readers which tab is selected, and the
+      // stylesheet reads it too, so the state is kept in one place.
+      tab.setAttribute('aria-selected', String(tab.dataset.dockTab === name));
     });
 
     this.panels.forEach(panel => {

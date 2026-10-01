@@ -1,0 +1,14 @@
+# Prettier also skips everything in .gitignore (node_modules/, coverage/, .env).
+
+# Written by npm, never by hand.
+package-lock.json
+
+# The page stays in plain HTML syntax. Prettier would close every void element
+# XHTML-style (<meta … />), a slash the HTML standard ignores, and has no option
+# to leave it out.
+*.html
+
+# Prose, not code: Prettier pads every table cell to the widest one in its
+# column, which turns the German explanations into lines hundreds of characters
+# wide.
+*.md

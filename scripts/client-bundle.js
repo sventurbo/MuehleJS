@@ -71,7 +71,7 @@ export function listScripts() {
   const ordered = [];
   const seen = new Set();
 
-  const visit = (url) => {
+  const visit = url => {
     const urlPath = url.pathname;
     if (EXTERNAL_PREFIXES.some(prefix => urlPath.startsWith(prefix))) return;
     if (seen.has(urlPath)) return;

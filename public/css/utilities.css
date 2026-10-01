@@ -1,0 +1,15 @@
+/* ==========================================================================
+   Utilities
+   Rules that must win over every component, whatever its selector. They sit
+   in the last cascade layer: between layers the later one wins before
+   specificity is even compared, so the layer order does what !important used
+   to do, without reversing that order for everything else.
+   ========================================================================== */
+
+/* The hidden attribute switches screens and indicators off. The components it
+   hides set a display of their own in earlier layers (.screen is flex, the
+   landscape #screen-game is grid, .hud-timer is inline-flex), and all of them
+   lose to this layer. */
+[hidden] {
+  display: none;
+}
