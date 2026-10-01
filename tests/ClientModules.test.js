@@ -30,10 +30,11 @@ describe('The module graph', () => {
   });
 
   test('reaches every module in public/js, exactly once', () => {
-    const onDisk = fs.readdirSync(jsDir).filter(name => name.endsWith('.js')).sort();
-    const loaded = scripts
-      .filter(src => src.startsWith('/js/'))
-      .map(src => src.slice('/js/'.length));
+    const onDisk = fs
+      .readdirSync(jsDir)
+      .filter(name => name.endsWith('.js'))
+      .sort();
+    const loaded = scripts.filter(src => src.startsWith('/js/')).map(src => src.slice('/js/'.length));
 
     expect([...loaded].sort()).toEqual(onDisk);
     expect(new Set(loaded).size).toBe(loaded.length);
@@ -57,7 +58,7 @@ describe('The module graph', () => {
 describe('The views draw, the controller talks', () => {
   const views = ['hudView.js', 'dockView.js', 'overlays.js', 'boardRenderer.js'];
 
-  test.each(views)('%s holds no socket of its own', (name) => {
+  test.each(views)('%s holds no socket of its own', name => {
     const source = code(fs.readFileSync(path.join(jsDir, name), 'utf8'));
     expect(source).not.toMatch(/\bthis\.socket\b/);
     expect(source).not.toMatch(/\bio\(\)/);

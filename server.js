@@ -60,7 +60,7 @@ export const gameManager = new GameManager(io, {
 app.get('/api/status', (req, res) => {
   res.json({
     status: 'ok',
-    game: 'Mühle / Nine Men\'s Morris',
+    game: "Mühle / Nine Men's Morris",
     stats: gameManager.getStats()
   });
 });
@@ -81,7 +81,7 @@ app.get('/api/status', (req, res) => {
  * @param {boolean} [notify] Whether to answer the client with `serverError`.
  */
 function safeOn(socket, event, handler, notify = true) {
-  socket.on(event, (payload) => {
+  socket.on(event, payload => {
     try {
       handler(payload);
     } catch (err) {
@@ -96,27 +96,27 @@ function readText(data, field) {
   return typeof data?.[field] === 'string' ? data[field] : '';
 }
 
-io.on('connection', (socket) => {
+io.on('connection', socket => {
   // Enter matchmaking with a display name.
-  safeOn(socket, 'login', (data) => {
+  safeOn(socket, 'login', data => {
     gameManager.enqueuePlayer(socket, readText(data, 'username'));
   });
 
   // Phase 1: place a stone.
-  safeOn(socket, 'placePiece', (data) => {
+  safeOn(socket, 'placePiece', data => {
     const point = readText(data, 'point');
     if (point) gameManager.handlePlacePiece(socket, point);
   });
 
   // Phase 2 & 3: move (or jump with) a stone.
-  safeOn(socket, 'movePiece', (data) => {
+  safeOn(socket, 'movePiece', data => {
     const from = readText(data, 'from');
     const to = readText(data, 'to');
     if (from && to) gameManager.handleMovePiece(socket, from, to);
   });
 
   // Capture an opponent stone after closing a mill.
-  safeOn(socket, 'removePiece', (data) => {
+  safeOn(socket, 'removePiece', data => {
     const point = readText(data, 'point');
     if (point) gameManager.handleRemovePiece(socket, point);
   });
@@ -125,10 +125,15 @@ io.on('connection', (socket) => {
   safeOn(socket, 'forfeit', () => gameManager.handleForfeit(socket), false);
 
   // In-game chat.
-  safeOn(socket, 'chatMessage', (data) => {
-    const text = readText(data, 'text');
-    if (text) gameManager.handleChatMessage(socket, text);
-  }, false);
+  safeOn(
+    socket,
+    'chatMessage',
+    data => {
+      const text = readText(data, 'text');
+      if (text) gameManager.handleChatMessage(socket, text);
+    },
+    false
+  );
 
   // Cancel the search, or return to the lobby from a finished game.
   safeOn(socket, 'leaveGame', () => gameManager.leaveGame(socket.id), false);
@@ -149,7 +154,7 @@ io.on('connection', (socket) => {
  *     on 0.0.0.0 is added (EADDRINUSE simply means it was not needed).
  */
 function startServer() {
-  primaryServer.once('error', (errV6) => {
+  primaryServer.once('error', errV6 => {
     console.warn(`[Network] IPv6 binding on '::' failed (${errV6.code}). Falling back to IPv4 0.0.0.0...`);
 
     const v4Server = http.createServer(app);
@@ -164,7 +169,7 @@ function startServer() {
     console.log(`[Network] Web interface: http://[::1]:${PORT}`);
 
     const secondaryV4Server = http.createServer(app);
-    secondaryV4Server.once('error', (errV4) => {
+    secondaryV4Server.once('error', errV4 => {
       if (errV4.code === 'EADDRINUSE') {
         console.log(`[Network] IPv4 is active and handled by dual-stack IPv6 socket (http://127.0.0.1:${PORT})`);
       } else {
@@ -181,11 +186,11 @@ function startServer() {
 
 // Last line of defence: whatever slips past the per-event guards above must not
 // end the process while two people are playing.
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
   console.error('[CRITICAL] Uncaught exception caught safely:', err);
 });
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', reason => {
   console.error('[CRITICAL] Unhandled rejection caught safely:', reason);
 });
 

@@ -13,8 +13,8 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       expect(limiter.isLimited('user1')).toBe(false); // 1
       expect(limiter.isLimited('user1')).toBe(false); // 2
       expect(limiter.isLimited('user1')).toBe(false); // 3
-      expect(limiter.isLimited('user1')).toBe(true);  // 4 -> Blocked!
-      expect(limiter.isLimited('user1')).toBe(true);  // 5 -> Blocked!
+      expect(limiter.isLimited('user1')).toBe(true); // 4 -> Blocked!
+      expect(limiter.isLimited('user1')).toBe(true); // 5 -> Blocked!
 
       // Independent keys
       expect(limiter.isLimited('user2')).toBe(false);
@@ -33,7 +33,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     test('cleanup removes stale timestamps', () => {
       const limiter = new RateLimiter({ windowMs: 10, max: 5 });
       limiter.isLimited('tempUser');
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         setTimeout(() => {
           limiter.cleanup();
           expect(limiter.size).toBe(0);
@@ -91,9 +91,12 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       // 5th message exceeds limit!
       gm.handleChatMessage(socket1, 'Spam Message');
       expect(chatBroadcasts()).toBe(4); // NOT broadcasted!
-      expect(socket1.emit).toHaveBeenCalledWith('actionError', expect.objectContaining({
-        message: expect.stringContaining('Zu viele Nachrichten')
-      }));
+      expect(socket1.emit).toHaveBeenCalledWith(
+        'actionError',
+        expect.objectContaining({
+          message: expect.stringContaining('Zu viele Nachrichten')
+        })
+      );
     });
 
     test('disconnects abusive flooders after repeated violations', () => {
@@ -103,9 +106,12 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       }
 
       expect(socket1.disconnect).toHaveBeenCalledWith(true);
-      expect(socket1.emit).toHaveBeenCalledWith('actionError', expect.objectContaining({
-        message: expect.stringContaining('Spam')
-      }));
+      expect(socket1.emit).toHaveBeenCalledWith(
+        'actionError',
+        expect.objectContaining({
+          message: expect.stringContaining('Spam')
+        })
+      );
     });
 
     test('forwards chat text verbatim - escaping belongs to the renderer (CH-01/CH-02)', () => {
@@ -113,18 +119,24 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       // The client renders every message through textContent / escapeHtml, so
       // the payload must arrive exactly as it was typed.
       gm.handleChatMessage(socket1, '<script>alert(1)</script> Hello & Welcome!');
-      expect(roomEmitMock).toHaveBeenCalledWith('chatMessage', expect.objectContaining({
-        text: '<script>alert(1)</script> Hello & Welcome!'
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'chatMessage',
+        expect.objectContaining({
+          text: '<script>alert(1)</script> Hello & Welcome!'
+        })
+      );
     });
 
     test('strips control characters from chat messages', () => {
       const NUL = String.fromCharCode(0);
       const BEL = String.fromCharCode(7);
       gm.handleChatMessage(socket1, 'Hallo' + NUL + BEL + ' Welt');
-      expect(roomEmitMock).toHaveBeenCalledWith('chatMessage', expect.objectContaining({
-        text: 'Hallo Welt'
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'chatMessage',
+        expect.objectContaining({
+          text: 'Hallo Welt'
+        })
+      );
     });
 
     test('drops a message that is only control characters', () => {
@@ -160,9 +172,12 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
 
       // 6th attempt is throttled
       gm.enqueuePlayer(spamSocket, 'Spammer_6');
-      expect(spamSocket.emit).toHaveBeenCalledWith('actionError', expect.objectContaining({
-        message: expect.stringContaining('Zu viele Anmeldeversuche')
-      }));
+      expect(spamSocket.emit).toHaveBeenCalledWith(
+        'actionError',
+        expect.objectContaining({
+          message: expect.stringContaining('Zu viele Anmeldeversuche')
+        })
+      );
     });
 
     describe('login budget per socket and per address (issue #22)', () => {
@@ -174,9 +189,10 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         emit: jest.fn()
       });
 
-      const wasThrottled = (socket) => socket.emit.mock.calls.some(
-        ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
-      );
+      const wasThrottled = socket =>
+        socket.emit.mock.calls.some(
+          ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
+        );
 
       test('counts every login of a socket, although each one ends the previous session', () => {
         const socket = mockSocket('hopping_socket', '10.1.0.0');
@@ -195,7 +211,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         expect(wasThrottled(socket)).toBe(true);
       });
 
-      test('leaving a running game does not reset the socket\'s login count', () => {
+      test("leaving a running game does not reset the socket's login count", () => {
         const socket = mockSocket('leaving_socket', '10.2.0.0');
         const budget = gm.queueLimiter.max;
 
@@ -298,8 +314,10 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       emit: jest.fn()
     });
 
-    const wasThrottled = (socket) => socket.emit.mock.calls.some(([event, payload]) =>
-      event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche'));
+    const wasThrottled = socket =>
+      socket.emit.mock.calls.some(
+        ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
+      );
 
     // More than any per-address budget, so the limit must trip if the key holds.
     const FLOOD = 30;
@@ -396,8 +414,10 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       emit: jest.fn()
     });
 
-    const wasThrottled = (socket) => socket.emit.mock.calls.some(([event, payload]) =>
-      event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche'));
+    const wasThrottled = socket =>
+      socket.emit.mock.calls.some(
+        ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
+      );
 
     // One login per socket, so only the shared address budget can stop them.
     const floodFrom = (addresses, prefix) => {
@@ -410,9 +430,9 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       const budget = gm.queueIpLimiter.max;
       // A client owning 2001:db8:1:2::/64 picks a fresh address per connection;
       // both ends of the block must still be counted together.
-      const addresses = Array.from({ length: budget + 1 }, (_, i) => (
+      const addresses = Array.from({ length: budget + 1 }, (_, i) =>
         i % 2 === 0 ? '2001:db8:1:2::1' : '2001:db8:1:2:ffff:ffff:ffff:ffff'
-      ));
+      );
 
       const sockets = floodFrom(addresses, 'hop');
 
@@ -422,7 +442,10 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
 
     test('addresses in different /64s keep their own budget', () => {
       const budget = gm.queueIpLimiter.max;
-      floodFrom(Array.from({ length: budget }, (_, i) => `2001:db8:1:2::${(i + 1).toString(16)}`), 'blockA');
+      floodFrom(
+        Array.from({ length: budget }, (_, i) => `2001:db8:1:2::${(i + 1).toString(16)}`),
+        'blockA'
+      );
 
       // The exhausted block stays exhausted ...
       const sameBlock = makeSocket('blockA_extra', '2001:db8:1:2:ffff:ffff:ffff:ffff');
@@ -461,161 +484,164 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
   });
 
-describe('Username Validation (Issue #1)', () => {
-     let ioMock;
-     let gm;
+  describe('Username Validation (Issue #1)', () => {
+    let ioMock;
+    let gm;
 
-     beforeEach(() => {
-       ioMock = { to: jest.fn().mockReturnValue({ emit: jest.fn() }) };
-       gm = new GameManager(ioMock);
-     });
+    beforeEach(() => {
+      ioMock = { to: jest.fn().mockReturnValue({ emit: jest.fn() }) };
+      gm = new GameManager(ioMock);
+    });
 
-     test('rejects empty username from matchmaking queue', () => {
-       const socket = {
-         id: 'sock_empty',
-         connected: true,
-         join: jest.fn(),
-         emit: jest.fn()
-       };
-       gm.enqueuePlayer(socket, '');
-       expect(gm.waitingQueue.length).toBe(0);
-       expect(socket.emit).not.toHaveBeenCalled();
-     });
+    test('rejects empty username from matchmaking queue', () => {
+      const socket = {
+        id: 'sock_empty',
+        connected: true,
+        join: jest.fn(),
+        emit: jest.fn()
+      };
+      gm.enqueuePlayer(socket, '');
+      expect(gm.waitingQueue.length).toBe(0);
+      expect(socket.emit).not.toHaveBeenCalled();
+    });
 
-     test('rejects whitespace-only username from matchmaking queue', () => {
-       const socket = {
-         id: 'sock_ws',
-         connected: true,
-         join: jest.fn(),
-         emit: jest.fn()
-       };
-       gm.enqueuePlayer(socket, '   ');
-       expect(gm.waitingQueue.length).toBe(0);
-     });
+    test('rejects whitespace-only username from matchmaking queue', () => {
+      const socket = {
+        id: 'sock_ws',
+        connected: true,
+        join: jest.fn(),
+        emit: jest.fn()
+      };
+      gm.enqueuePlayer(socket, '   ');
+      expect(gm.waitingQueue.length).toBe(0);
+    });
 
-     test('truncates username longer than 12 characters', () => {
-       const socket = {
-         id: 'sock_long',
-         connected: true,
-         join: jest.fn(),
-         emit: jest.fn()
-       };
-       gm.enqueuePlayer(socket, 'ThisNameIsWayTooLong');
-       expect(gm.waitingQueue.length).toBe(1);
-       expect(gm.waitingQueue[0].username).toHaveLength(12);
-     });
+    test('truncates username longer than 12 characters', () => {
+      const socket = {
+        id: 'sock_long',
+        connected: true,
+        join: jest.fn(),
+        emit: jest.fn()
+      };
+      gm.enqueuePlayer(socket, 'ThisNameIsWayTooLong');
+      expect(gm.waitingQueue.length).toBe(1);
+      expect(gm.waitingQueue[0].username).toHaveLength(12);
+    });
 
-     test('accepts exactly 12 character username', () => {
-       const socket = {
-         id: 'sock_exact',
-         connected: true,
-         join: jest.fn(),
-         emit: jest.fn()
-       };
-       gm.enqueuePlayer(socket, '123456789012');
-       expect(gm.waitingQueue.length).toBe(1);
-       expect(gm.waitingQueue[0].username).toBe('123456789012');
-     });
+    test('accepts exactly 12 character username', () => {
+      const socket = {
+        id: 'sock_exact',
+        connected: true,
+        join: jest.fn(),
+        emit: jest.fn()
+      };
+      gm.enqueuePlayer(socket, '123456789012');
+      expect(gm.waitingQueue.length).toBe(1);
+      expect(gm.waitingQueue[0].username).toBe('123456789012');
+    });
 
-     test('accepts short username without truncation', () => {
-       const socket = {
-         id: 'sock_short',
-         connected: true,
-         join: jest.fn(),
-         emit: jest.fn()
-       };
-       gm.enqueuePlayer(socket, 'Alice');
-       expect(gm.waitingQueue.length).toBe(1);
-       expect(gm.waitingQueue[0].username).toBe('Alice');
-     });
-   });
+    test('accepts short username without truncation', () => {
+      const socket = {
+        id: 'sock_short',
+        connected: true,
+        join: jest.fn(),
+        emit: jest.fn()
+      };
+      gm.enqueuePlayer(socket, 'Alice');
+      expect(gm.waitingQueue.length).toBe(1);
+      expect(gm.waitingQueue[0].username).toBe('Alice');
+    });
+  });
 
-   describe('XSS: the client is the escaping boundary', () => {
-     // Read as one client: the escaping has to happen wherever the markup is
-     // built, which is the dock view today and may move again tomorrow.
-     const clientJs = loadClientScripts();
+  describe('XSS: the client is the escaping boundary', () => {
+    // Read as one client: the escaping has to happen wherever the markup is
+    // built, which is the dock view today and may move again tomorrow.
+    const clientJs = loadClientScripts();
 
-     test('sanitizeText keeps ampersands and angle brackets intact', () => {
-       expect(sanitizeText('Tom&Jerry')).toBe('Tom&Jerry');
-       expect(sanitizeText('a < b & c > d')).toBe('a < b & c > d');
-     });
+    test('sanitizeText keeps ampersands and angle brackets intact', () => {
+      expect(sanitizeText('Tom&Jerry')).toBe('Tom&Jerry');
+      expect(sanitizeText('a < b & c > d')).toBe('a < b & c > d');
+    });
 
-     test('sanitizeText drops control characters and non-strings', () => {
-       expect(sanitizeText('Ali' + String.fromCharCode(0) + 'ce')).toBe('Alice');
-       expect(sanitizeText(null)).toBe('');
-       expect(sanitizeText(42)).toBe('');
-     });
+    test('sanitizeText drops control characters and non-strings', () => {
+      expect(sanitizeText('Ali' + String.fromCharCode(0) + 'ce')).toBe('Alice');
+      expect(sanitizeText(null)).toBe('');
+      expect(sanitizeText(42)).toBe('');
+    });
 
-     // The server deliberately no longer escapes, so the markup the client
-     // builds by hand must run every server-supplied string through escapeHtml.
-     test('chat markup escapes both sender and text', () => {
-       expect(clientJs).toContain('escapeHtml(msg.sender)');
-       expect(clientJs).toContain('escapeHtml(msg.text)');
-     });
+    // The server deliberately no longer escapes, so the markup the client
+    // builds by hand must run every server-supplied string through escapeHtml.
+    test('chat markup escapes both sender and text', () => {
+      expect(clientJs).toContain('escapeHtml(msg.sender)');
+      expect(clientJs).toContain('escapeHtml(msg.text)');
+    });
 
-     test('player names are written with textContent, never innerHTML', () => {
-       expect(clientJs).toMatch(/panel\.name\.textContent\s*=/);
-       expect(clientJs).not.toMatch(/\.name\.innerHTML\s*=/);
-     });
+    test('player names are written with textContent, never innerHTML', () => {
+      expect(clientJs).toMatch(/panel\.name\.textContent\s*=/);
+      expect(clientJs).not.toMatch(/\.name\.innerHTML\s*=/);
+    });
 
-     test('no chat field is ever interpolated into markup raw', () => {
-       // The chat bubble is the one place that builds markup from a message.
-       const withMessageData = clientJs.match(/innerHTML\s*=\s*`[^`]*msg\.[^`]*`/g) || [];
-       expect(withMessageData.length).toBeGreaterThan(0);
-       withMessageData.forEach(assignment => {
-         expect(assignment).not.toMatch(/\$\{\s*msg\.(sender|text)\s*\}/);
-       });
-     });
-   });
+    test('no chat field is ever interpolated into markup raw', () => {
+      // The chat bubble is the one place that builds markup from a message.
+      const withMessageData = clientJs.match(/innerHTML\s*=\s*`[^`]*msg\.[^`]*`/g) || [];
+      expect(withMessageData.length).toBeGreaterThan(0);
+      withMessageData.forEach(assignment => {
+        expect(assignment).not.toMatch(/\$\{\s*msg\.(sender|text)\s*\}/);
+      });
+    });
+  });
 
-   describe('DOS-03: maxHttpBufferSize Configuration', () => {
-     test('server io configuration restricts maxHttpBufferSize to <= 10 KB', () => {
-       expect(serverIo.opts.maxHttpBufferSize).toBeDefined();
-       expect(serverIo.opts.maxHttpBufferSize).toBeLessThanOrEqual(10240); // 10 KB
-     });
-   });
+  describe('DOS-03: maxHttpBufferSize Configuration', () => {
+    test('server io configuration restricts maxHttpBufferSize to <= 10 KB', () => {
+      expect(serverIo.opts.maxHttpBufferSize).toBeDefined();
+      expect(serverIo.opts.maxHttpBufferSize).toBeLessThanOrEqual(10240); // 10 KB
+    });
+  });
 
-   describe('DOS-03: express.json body limit (Issue #21)', () => {
-     let httpServer;
-     let port;
+  describe('DOS-03: express.json body limit (Issue #21)', () => {
+    let httpServer;
+    let port;
 
-     beforeAll((done) => {
-       httpServer = http.createServer(serverApp);
-       httpServer.listen(0, '127.0.0.1', () => {
-         port = httpServer.address().port;
-         done();
-       });
-     });
+    beforeAll(done => {
+      httpServer = http.createServer(serverApp);
+      httpServer.listen(0, '127.0.0.1', () => {
+        port = httpServer.address().port;
+        done();
+      });
+    });
 
-     afterAll((done) => {
-       httpServer.close(done);
-     });
+    afterAll(done => {
+      httpServer.close(done);
+    });
 
-     const postJson = (body) => new Promise((resolve, reject) => {
-       const req = http.request({
-         host: '127.0.0.1',
-         port,
-         path: '/api/status',
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-       }, (res) => {
-         res.resume();
-         res.on('end', () => resolve(res.statusCode));
-       });
-       req.on('error', reject);
-       req.end(body);
-     });
+    const postJson = body =>
+      new Promise((resolve, reject) => {
+        const req = http.request(
+          {
+            host: '127.0.0.1',
+            port,
+            path: '/api/status',
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+          },
+          res => {
+            res.resume();
+            res.on('end', () => resolve(res.statusCode));
+          }
+        );
+        req.on('error', reject);
+        req.end(body);
+      });
 
-     test('rejects JSON bodies above 10 KB with 413', async () => {
-       const body = JSON.stringify({ padding: 'x'.repeat(11 * 1024) });
-       expect(await postJson(body)).toBe(413);
-     });
+    test('rejects JSON bodies above 10 KB with 413', async () => {
+      const body = JSON.stringify({ padding: 'x'.repeat(11 * 1024) });
+      expect(await postJson(body)).toBe(413);
+    });
 
-     test('accepts JSON bodies below 10 KB', async () => {
-       const body = JSON.stringify({ padding: 'x'.repeat(9 * 1024) });
-       // There is no POST route, so a parsed body falls through to 404.
-       expect(await postJson(body)).toBe(404);
-     });
-   });
- });
-
+    test('accepts JSON bodies below 10 KB', async () => {
+      const body = JSON.stringify({ padding: 'x'.repeat(9 * 1024) });
+      // There is no POST route, so a parsed body falls through to 404.
+      expect(await postJson(body)).toBe(404);
+    });
+  });
+});

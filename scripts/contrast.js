@@ -1,15 +1,19 @@
 /**
  * WCAG 2.1 Contrast Calculation Module
- * 
+ *
  * Provides functions for calculating relative luminance and contrast ratios
  * per WCAG 2.1 §1.4.3.
  */
 
 export function hexToRgb(hex) {
   const clean = hex.replace('#', '');
-  const expanded = clean.length === 3
-    ? clean.split('').map(c => c + c).join('')
-    : clean;
+  const expanded =
+    clean.length === 3
+      ? clean
+          .split('')
+          .map(c => c + c)
+          .join('')
+      : clean;
   const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(expanded);
   if (!result) return null;
   return {

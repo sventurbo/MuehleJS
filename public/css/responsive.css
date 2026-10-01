@@ -47,8 +47,7 @@
 
 /* ── Phones: board first, everything else condensed. Landscape phones are
       wider than 700px but just as cramped, so they get the same treatment. ── */
-@media (width <= 700px),
-       (orientation: landscape) and (height <= 560px) and (width <= 1023px) {
+@media (width <= 700px), (orientation: landscape) and (height <= 560px) and (width <= 1023px) {
   /* Header */
   .app-header {
     position: static;

@@ -159,9 +159,15 @@
   opacity: 0;
   animation: radarPulse 2.8s infinite var(--ease-out);
 
-  &.r1 { animation-delay: 0s; }
-  &.r2 { animation-delay: 0.93s; }
-  &.r3 { animation-delay: 1.86s; }
+  &.r1 {
+    animation-delay: 0s;
+  }
+  &.r2 {
+    animation-delay: 0.93s;
+  }
+  &.r3 {
+    animation-delay: 1.86s;
+  }
 }
 
 .radar-center {

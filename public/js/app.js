@@ -52,7 +52,7 @@ class MuehleApp {
     this.btnSoundToggle = document.getElementById('btn-sound-toggle');
 
     this.hud = new HudView();
-    this.dock = new DockView({ onSend: (text) => this.socket.emit('chatMessage', { text }) });
+    this.dock = new DockView({ onSend: text => this.socket.emit('chatMessage', { text }) });
     this.overlays = new Overlays({
       onPlayAgain: () => this.#handleLogin(),
       onBackToLobby: () => {
@@ -63,10 +63,7 @@ class MuehleApp {
       // command); only a confirmed answer reaches the server.
       onSurrender: () => this.socket.emit('forfeit')
     });
-    this.board = new BoardRenderer(
-      document.getElementById('board-container'),
-      (point) => this.#onPointClick(point)
-    );
+    this.board = new BoardRenderer(document.getElementById('board-container'), point => this.#onPointClick(point));
 
     this.#bindControls();
     this.#initSocket();
@@ -87,9 +84,8 @@ class MuehleApp {
   // ── Controls outside the views ────────────────────────────────────────────
 
   #bindControls() {
-    document.getElementById('btn-find-game')
-      .addEventListener('click', () => this.#handleLogin());
-    this.usernameInput.addEventListener('keydown', (e) => {
+    document.getElementById('btn-find-game').addEventListener('click', () => this.#handleLogin());
+    this.usernameInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') this.#handleLogin();
     });
 
@@ -159,27 +155,27 @@ class MuehleApp {
 
     // The server no longer knows this socket's game (opponent gone, or we
     // reconnected under a new id). Nothing is recoverable, so end the session.
-    this.socket.on('gameNotFound', (data) => {
+    this.socket.on('gameNotFound', data => {
       if (!this.sessionActive) return;
       this.#terminateSession(data?.message || 'Deine Partie ist nicht mehr aktiv.');
     });
 
-    this.socket.on('queueWaiting', (data) => {
+    this.socket.on('queueWaiting', data => {
       this.sessionActive = true;
       this.queueStatusText.textContent = data.message || 'Warte auf Mitspieler...';
       this.#switchScreen('queue');
     });
 
-    this.socket.on('gameStart', (data) => this.#startGame(data));
+    this.socket.on('gameStart', data => this.#startGame(data));
 
-    this.socket.on('gameStateUpdate', (data) => this.#applyUpdate(data));
+    this.socket.on('gameStateUpdate', data => this.#applyUpdate(data));
 
     // The server restarts the turn clock after every accepted action and says
     // how much time the player on turn has left.
-    this.socket.on('turnTimer', (data) => this.hud.startCountdown(data));
+    this.socket.on('turnTimer', data => this.hud.startCountdown(data));
 
     // The clock ran out: the server played a legal move for the player on turn.
-    this.socket.on('turnTimeout', (data) => {
+    this.socket.on('turnTimeout', data => {
       if (!data) return;
       const actor = RULES.colorName(data.player);
       this.dock.addSystemNote(data.message || `Zeit abgelaufen – für ${actor} wurde automatisch gezogen.`);
@@ -191,23 +187,23 @@ class MuehleApp {
       );
     });
 
-    this.socket.on('gameOver', (data) => this.#endGame(data));
+    this.socket.on('gameOver', data => this.#endGame(data));
 
-    this.socket.on('opponentDisconnected', (data) => {
+    this.socket.on('opponentDisconnected', data => {
       this.#endGame(data);
       // The exact cause (dropped connection vs. deliberate exit) is in winReason.
       this.overlays.toast(data.winReason || 'Die Partie wurde beendet.', 'warning');
     });
 
-    this.socket.on('actionError', (data) => {
+    this.socket.on('actionError', data => {
       this.overlays.toast(data.message || 'Ungültige Aktion', 'error');
     });
 
-    this.socket.on('serverError', (data) => {
+    this.socket.on('serverError', data => {
       this.overlays.toast(data.message || 'Serverfehler', 'error');
     });
 
-    this.socket.on('chatMessage', (msg) => this.dock.addChatMessage(msg));
+    this.socket.on('chatMessage', msg => this.dock.addChatMessage(msg));
   }
 
   /** A match was found: set up both views and show the board. */
@@ -281,8 +277,8 @@ class MuehleApp {
 
     const trigger = this.gameState.millTriggerPoint;
     if (!trigger) return;
-    const closedMill = RULES.MILLS.find(mill =>
-      mill.includes(trigger) && mill.every(pt => this.gameState.board[pt] === lastAction.player)
+    const closedMill = RULES.MILLS.find(
+      mill => mill.includes(trigger) && mill.every(pt => this.gameState.board[pt] === lastAction.player)
     );
     if (closedMill) this.board.highlightMill(closedMill);
   }
@@ -385,9 +381,7 @@ class MuehleApp {
       } else {
         const canJump = this.gameState.piecesOnBoard[this.myColor] === 3;
         this.selectedPoint = point;
-        this.validDestinations = RULES.getValidDestinations(
-          this.gameState.board, point, this.myColor, canJump
-        );
+        this.validDestinations = RULES.getValidDestinations(this.gameState.board, point, this.myColor, canJump);
       }
       this.#render();
       return;

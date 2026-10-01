@@ -6,7 +6,7 @@ describe('GameManager Matchmaking & Session Management', () => {
   let roomEmitMock;
   let gameManager;
 
-  const createMockSocket = (id) => ({
+  const createMockSocket = id => ({
     id,
     connected: true,
     join: jest.fn(),
@@ -26,9 +26,12 @@ describe('GameManager Matchmaking & Session Management', () => {
     gameManager.enqueuePlayer(socket1, 'Alice');
 
     expect(gameManager.waitingQueue.length).toBe(1);
-    expect(socket1.emit).toHaveBeenCalledWith('queueWaiting', expect.objectContaining({
-      position: 1
-    }));
+    expect(socket1.emit).toHaveBeenCalledWith(
+      'queueWaiting',
+      expect.objectContaining({
+        position: 1
+      })
+    );
   });
 
   test('enqueuing a second player creates a game and emits gameStart to both', () => {
@@ -44,12 +47,18 @@ describe('GameManager Matchmaking & Session Management', () => {
     expect(socket1.join).toHaveBeenCalled();
     expect(socket2.join).toHaveBeenCalled();
 
-    expect(socket1.emit).toHaveBeenCalledWith('gameStart', expect.objectContaining({
-      state: expect.any(Object)
-    }));
-    expect(socket2.emit).toHaveBeenCalledWith('gameStart', expect.objectContaining({
-      state: expect.any(Object)
-    }));
+    expect(socket1.emit).toHaveBeenCalledWith(
+      'gameStart',
+      expect.objectContaining({
+        state: expect.any(Object)
+      })
+    );
+    expect(socket2.emit).toHaveBeenCalledWith(
+      'gameStart',
+      expect.objectContaining({
+        state: expect.any(Object)
+      })
+    );
 
     const p1Color = socket1.emit.mock.calls.find(c => c[0] === 'gameStart')[1].yourColor;
     const p2Color = socket2.emit.mock.calls.find(c => c[0] === 'gameStart')[1].yourColor;
@@ -81,9 +90,12 @@ describe('GameManager Matchmaking & Session Management', () => {
     gameManager.handlePlayerDisconnect('sock_1');
 
     // Bob should receive opponentDisconnected
-    expect(socket2.emit).toHaveBeenCalledWith('opponentDisconnected', expect.objectContaining({
-      winReason: expect.stringContaining('Verbindung getrennt')
-    }));
+    expect(socket2.emit).toHaveBeenCalledWith(
+      'opponentDisconnected',
+      expect.objectContaining({
+        winReason: expect.stringContaining('Verbindung getrennt')
+      })
+    );
 
     // Game session is cleaned up
     expect(gameManager.games.has(gameId)).toBe(false);
@@ -116,9 +128,12 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       gameManager.leaveGame('sock_1');
 
-      expect(socket2.emit).toHaveBeenCalledWith('opponentDisconnected', expect.objectContaining({
-        winReason: expect.stringContaining('verlassen')
-      }));
+      expect(socket2.emit).toHaveBeenCalledWith(
+        'opponentDisconnected',
+        expect.objectContaining({
+          winReason: expect.stringContaining('verlassen')
+        })
+      );
       // Regression: the session used to stay in `games` forever, so a client
       // could exhaust maxActiveGames by looping login + leaveGame.
       expect(gameManager.games.has(gameId)).toBe(false);
@@ -158,10 +173,13 @@ describe('GameManager Matchmaking & Session Management', () => {
   });
 
   describe('actions on a session the server no longer knows', () => {
-    const expectGameNotFound = (socket) => {
-      expect(socket.emit).toHaveBeenCalledWith('gameNotFound', expect.objectContaining({
-        message: expect.any(String)
-      }));
+    const expectGameNotFound = socket => {
+      expect(socket.emit).toHaveBeenCalledWith(
+        'gameNotFound',
+        expect.objectContaining({
+          message: expect.any(String)
+        })
+      );
     };
 
     test('placePiece answers gameNotFound instead of staying silent', () => {
@@ -222,11 +240,11 @@ describe('GameManager Matchmaking & Session Management', () => {
         gameId,
         session,
         game: session.game,
-        socketOf: (color) => session.players[color].socket
+        socketOf: color => session.players[color].socket
       };
     };
 
-    const emittedTo = (event) => roomEmitMock.mock.calls.filter(call => call[0] === event);
+    const emittedTo = event => roomEmitMock.mock.calls.filter(call => call[0] === event);
 
     beforeEach(() => {
       // Fake timers have to be in place before the manager exists, so every
@@ -255,11 +273,14 @@ describe('GameManager Matchmaking & Session Management', () => {
       expect(session.turnTimer).not.toBeNull();
       expect(session.turnDeadline).toBe(Date.now() + 25000);
       expect(ioMock.to).toHaveBeenCalledWith(gameId);
-      expect(roomEmitMock).toHaveBeenCalledWith('turnTimer', expect.objectContaining({
-        turn: 'W',
-        durationMs: 25000,
-        remainingMs: 25000
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'turnTimer',
+        expect.objectContaining({
+          turn: 'W',
+          durationMs: 25000,
+          remainingMs: 25000
+        })
+      );
     });
 
     test('nothing happens while the 25 seconds are still running', () => {
@@ -293,11 +314,13 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       jest.advanceTimersByTime(25000);
 
-      expect(game.moveHistory[0]).toEqual(expect.objectContaining({
-        action: 'place',
-        player: 'W',
-        auto: true
-      }));
+      expect(game.moveHistory[0]).toEqual(
+        expect.objectContaining({
+          action: 'place',
+          player: 'W',
+          auto: true
+        })
+      );
     });
 
     test('both clients are told which move was played for them', () => {
@@ -307,16 +330,22 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       const point = game.moveHistory[0].point;
       expect(ioMock.to).toHaveBeenCalledWith(gameId);
-      expect(roomEmitMock).toHaveBeenCalledWith('turnTimeout', expect.objectContaining({
-        player: 'W',
-        timeoutMs: 25000,
-        autoMove: expect.objectContaining({ action: 'place', player: 'W', point }),
-        message: expect.any(String)
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'turnTimeout',
+        expect.objectContaining({
+          player: 'W',
+          timeoutMs: 25000,
+          autoMove: expect.objectContaining({ action: 'place', player: 'W', point }),
+          message: expect.any(String)
+        })
+      );
       // The state update carries the same flag, so the move log can mark it.
-      expect(roomEmitMock).toHaveBeenCalledWith('gameStateUpdate', expect.objectContaining({
-        lastAction: expect.objectContaining({ action: 'place', auto: true })
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'gameStateUpdate',
+        expect.objectContaining({
+          lastAction: expect.objectContaining({ action: 'place', auto: true })
+        })
+      );
     });
 
     test('every executed move resets the clock', () => {
@@ -372,10 +401,12 @@ describe('GameManager Matchmaking & Session Management', () => {
 
         expect(game.moveHistory).toHaveLength(historyBefore + 1);
         const played = game.moveHistory[historyBefore];
-        expect(legalBefore).toContainEqual(expect.objectContaining({
-          action: played.action,
-          ...(played.action === 'move' ? { from: played.from, to: played.to } : { point: played.point })
-        }));
+        expect(legalBefore).toContainEqual(
+          expect.objectContaining({
+            action: played.action,
+            ...(played.action === 'move' ? { from: played.from, to: played.to } : { point: played.point })
+          })
+        );
       }
 
       // The board the engine ends up with still matches its own counters.
@@ -459,10 +490,12 @@ describe('GameManager Matchmaking & Session Management', () => {
 
     gameManager.handleChatMessage(socket1, 'Hallo Bob!');
     expect(ioMock.to).toHaveBeenCalledWith(gameId);
-    expect(roomEmitMock).toHaveBeenCalledWith('chatMessage', expect.objectContaining({
-      sender: 'Alice',
-      text: 'Hallo Bob!'
-    }));
+    expect(roomEmitMock).toHaveBeenCalledWith(
+      'chatMessage',
+      expect.objectContaining({
+        sender: 'Alice',
+        text: 'Hallo Bob!'
+      })
+    );
   });
 });
-

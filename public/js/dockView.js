@@ -39,7 +39,7 @@ export class DockView {
       tab.addEventListener('click', () => this.activateTab(tab.dataset.dockTab));
     });
 
-    this.chatForm.addEventListener('submit', (e) => {
+    this.chatForm.addEventListener('submit', e => {
       e.preventDefault();
       const text = this.chatInput.value.trim();
       if (text && onSend) {

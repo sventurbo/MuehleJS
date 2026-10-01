@@ -18,7 +18,9 @@
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
   box-shadow: var(--shadow-1);
-  transition: background-color var(--dur-3) var(--ease-out), border-color var(--dur-3) var(--ease-out);
+  transition:
+    background-color var(--dur-3) var(--ease-out),
+    border-color var(--dur-3) var(--ease-out);
 
   &.active-turn {
     border-color: var(--tint-green-strong);
@@ -118,7 +120,9 @@
 .pip {
   height: 7px;
   border-radius: var(--radius-pill);
-  transition: background-color var(--dur-3) var(--ease-out), box-shadow var(--dur-3) var(--ease-out);
+  transition:
+    background-color var(--dur-3) var(--ease-out),
+    box-shadow var(--dur-3) var(--ease-out);
 
   /* Filled = still in hand, hollow = already placed. Reads the same in both
      themes and for both stone colours, unlike tinting alone. */

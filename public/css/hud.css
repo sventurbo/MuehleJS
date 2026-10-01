@@ -105,7 +105,9 @@
   stroke: currentColor;
   stroke-width: 2.5;
   stroke-linecap: round;
-  transition: stroke-dashoffset var(--dur-2) linear, stroke var(--dur-2) var(--ease-out);
+  transition:
+    stroke-dashoffset var(--dur-2) linear,
+    stroke var(--dur-2) var(--ease-out);
 }
 
 .hud-timer-value {
@@ -137,7 +139,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 
   .icon {
     width: 15px;
@@ -165,7 +170,9 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  transition: background-color var(--dur-3) var(--ease-out), border-color var(--dur-3) var(--ease-out);
+  transition:
+    background-color var(--dur-3) var(--ease-out),
+    border-color var(--dur-3) var(--ease-out);
 
   &::before {
     content: "";

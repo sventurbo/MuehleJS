@@ -246,9 +246,7 @@ export class HudView {
       'aria-label',
       `${isMine ? 'Deine Bedenkzeit' : 'Bedenkzeit des Gegners'}: noch ${seconds} Sekunden`
     );
-    this.timerBox.title = isMine
-      ? 'Deine Bedenkzeit für diesen Zug'
-      : 'Bedenkzeit des Gegners für diesen Zug';
+    this.timerBox.title = isMine ? 'Deine Bedenkzeit für diesen Zug' : 'Bedenkzeit des Gegners für diesen Zug';
 
     if (this.timerValue) this.timerValue.textContent = String(seconds);
 

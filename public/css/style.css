@@ -18,14 +18,14 @@
 
 @layer tokens, base, layout, controls, login, hud, arena, dock, board, modals, responsive;
 
-@import url("tokens.css") layer(tokens);         /* design tokens, light-dark() pairs     */
-@import url("base.css") layer(base);             /* reset, typography, scrollbars, icons  */
-@import url("layout.css") layer(layout);         /* app shell: header, screen switcher    */
-@import url("controls.css") layer(controls);     /* buttons & inputs                      */
-@import url("login.css") layer(login);           /* screen 1 & 2: login/lobby, queue      */
-@import url("hud.css") layer(hud);               /* screen 3: phase, turn badge, countdown */
-@import url("arena.css") layer(arena);           /* screen 3: player panels & board       */
-@import url("dock.css") layer(dock);             /* screen 3: move log & chat             */
-@import url("board.css") layer(board);           /* SVG board internals & stone animations */
-@import url("modals.css") layer(modals);         /* dialogs & toasts                      */
-@import url("responsive.css") layer(responsive); /* breakpoints, pointer/hover, motion    */
+@import url("tokens.css") layer(tokens); /* design tokens, light-dark() pairs */
+@import url("base.css") layer(base); /* reset, typography, scrollbars, icons */
+@import url("layout.css") layer(layout); /* app shell: header, screen switcher */
+@import url("controls.css") layer(controls); /* buttons & inputs */
+@import url("login.css") layer(login); /* screen 1 & 2: login/lobby, queue */
+@import url("hud.css") layer(hud); /* screen 3: phase, turn badge, countdown */
+@import url("arena.css") layer(arena); /* screen 3: player panels & board */
+@import url("dock.css") layer(dock); /* screen 3: move log & chat */
+@import url("board.css") layer(board); /* SVG board internals & stone animations */
+@import url("modals.css") layer(modals); /* dialogs & toasts */
+@import url("responsive.css") layer(responsive); /* breakpoints, pointer/hover, motion */

@@ -3,12 +3,24 @@
    ========================================================================== */
 
 /* Gradient stops are styled here so the board follows the active theme. */
-.plate-stop-start { stop-color: var(--board-plate); }
-.plate-stop-end { stop-color: var(--board-plate-end); }
-.stone-w-stop-hi { stop-color: var(--stone-w-hi); }
-.stone-w-stop-lo { stop-color: var(--stone-w-lo); }
-.stone-b-stop-hi { stop-color: var(--stone-b-hi); }
-.stone-b-stop-lo { stop-color: var(--stone-b-lo); }
+.plate-stop-start {
+  stop-color: var(--board-plate);
+}
+.plate-stop-end {
+  stop-color: var(--board-plate-end);
+}
+.stone-w-stop-hi {
+  stop-color: var(--stone-w-hi);
+}
+.stone-w-stop-lo {
+  stop-color: var(--stone-w-lo);
+}
+.stone-b-stop-hi {
+  stop-color: var(--stone-b-hi);
+}
+.stone-b-stop-lo {
+  stop-color: var(--stone-b-lo);
+}
 
 .board-plate {
   stroke: var(--board-plate-stroke);
@@ -25,7 +37,9 @@
 .grid-socket {
   fill: var(--board-socket);
   stroke: var(--board-socket-stroke);
-  transition: fill var(--dur-2) var(--ease-out), stroke var(--dur-2) var(--ease-out);
+  transition:
+    fill var(--dur-2) var(--ease-out),
+    stroke var(--dur-2) var(--ease-out);
 }
 
 .grid-label {
@@ -87,13 +101,21 @@
 }
 
 .piece-white {
-  .stone-body { stroke: var(--stone-w-rim); }
-  .stone-gloss { fill: var(--gloss-white); }
+  .stone-body {
+    stroke: var(--stone-w-rim);
+  }
+  .stone-gloss {
+    fill: var(--gloss-white);
+  }
 }
 
 .piece-black {
-  .stone-body { stroke: var(--stone-b-rim); }
-  .stone-gloss { fill: var(--gloss-black); }
+  .stone-body {
+    stroke: var(--stone-b-rim);
+  }
+  .stone-gloss {
+    fill: var(--gloss-black);
+  }
 }
 
 .piece-selectable {
@@ -129,14 +151,27 @@
 }
 
 @keyframes pieceEnter {
-  0% { opacity: 0; scale: 0.4; }
-  60% { opacity: 1; scale: 1.08; }
-  100% { opacity: 1; scale: 1; }
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  60% {
+    opacity: 1;
+    scale: 1.08;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
 }
 
 @keyframes pieceTravel {
-  from { translate: var(--travel-x) var(--travel-y); }
-  to { translate: 0 0; }
+  from {
+    translate: var(--travel-x) var(--travel-y);
+  }
+  to {
+    translate: 0 0;
+  }
 }
 
 @keyframes pieceLift {
@@ -147,7 +182,10 @@
 }
 
 @keyframes pieceLeave {
-  to { opacity: 0; scale: 0.5; }
+  to {
+    opacity: 0;
+    scale: 0.5;
+  }
 }
 
 /* Mill: a single gold beam that fades in and out once. */
@@ -157,8 +195,16 @@
 }
 
 @keyframes millBeam {
-  0% { opacity: 0; }
-  12% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }

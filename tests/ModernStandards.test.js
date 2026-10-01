@@ -15,10 +15,10 @@ import { loadStylesheet } from '../scripts/css-bundle.js';
 import { loadClientScripts } from '../scripts/client-bundle.js';
 
 const root = path.join(import.meta.dirname, '..');
-const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 /** Strips comments, so assertions only see what an engine would run. */
-const code = (source) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+const code = source => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 const css = loadStylesheet().replace(/\/\*[\s\S]*?\*\//g, '');
 const html = read('public/index.html');
@@ -26,13 +26,15 @@ const clientJs = code(loadClientScripts());
 const tokens = read('public/css/tokens.css');
 
 /** The opening tag of the element with the given id. */
-const tagOf = (id) => html.match(new RegExp('<[a-z]+\\b[^>]*\\bid="' + id + '"[^>]*>'))?.[0] ?? '';
+const tagOf = id => html.match(new RegExp('<[a-z]+\\b[^>]*\\bid="' + id + '"[^>]*>'))?.[0] ?? '';
 const serverFiles = [
   'server.js',
   ...['lib', 'shared', 'scripts'].flatMap(dir =>
-    fs.readdirSync(path.join(root, dir))
+    fs
+      .readdirSync(path.join(root, dir))
       .filter(name => name.endsWith('.js'))
-      .map(name => `${dir}/${name}`))
+      .map(name => `${dir}/${name}`)
+  )
 ];
 
 describe('Stylesheet', () => {
@@ -117,7 +119,7 @@ describe('Client', () => {
     expect(clientJs).not.toContain("'use strict'");
   });
 
-  test('never blocks on the browser\'s own confirm, alert or prompt boxes', () => {
+  test("never blocks on the browser's own confirm, alert or prompt boxes", () => {
     expect(clientJs).not.toMatch(/\b(?:confirm|alert|prompt)\s*\(/);
   });
 
@@ -127,18 +129,21 @@ describe('Client', () => {
 });
 
 describe('Server, shared rules and tooling', () => {
-  test.each(serverFiles)('%s is an ES module', (file) => {
+  test.each(serverFiles)('%s is an ES module', file => {
     const source = code(read(file));
     expect(source).not.toMatch(/\brequire\s*\(/);
     expect(source).not.toMatch(/\bmodule\.exports\b/);
     expect(source).not.toMatch(/\b__dirname\b/);
   });
 
-  test.each([...serverFiles, ...fs.readdirSync(path.join(root, 'public', 'js')).map(name => `public/js/${name}`)])('%s keeps its private members private (#), not by convention (_)', (file) => {
-    expect(code(read(file))).not.toMatch(/^\s+(?:static\s+)?(?:get\s+)?_[A-Za-z]\w*\s*\(/m);
-  });
+  test.each([...serverFiles, ...fs.readdirSync(path.join(root, 'public', 'js')).map(name => `public/js/${name}`)])(
+    '%s keeps its private members private (#), not by convention (_)',
+    file => {
+      expect(code(read(file))).not.toMatch(/^\s+(?:static\s+)?(?:get\s+)?_[A-Za-z]\w*\s*\(/m);
+    }
+  );
 
-  test.each(serverFiles)('%s imports Node built-ins through the node: scheme', (file) => {
+  test.each(serverFiles)('%s imports Node built-ins through the node: scheme', file => {
     const builtins = ['fs', 'path', 'http', 'https', 'crypto', 'os', 'url', 'vm'];
     const specifiers = Array.from(read(file).matchAll(/\bfrom\s+'([^']+)'/g), match => match[1]);
     specifiers.forEach(specifier => expect(builtins).not.toContain(specifier));

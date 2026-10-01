@@ -30,7 +30,8 @@ function rules(css) {
 
 describe('The manifest', () => {
   test('imports every module in public/css, exactly once', () => {
-    const onDisk = fs.readdirSync(cssDir)
+    const onDisk = fs
+      .readdirSync(cssDir)
       .filter(name => name.endsWith('.css') && name !== 'style.css')
       .sort();
     expect([...modules].sort()).toEqual(onDisk);
@@ -38,7 +39,11 @@ describe('The manifest', () => {
   });
 
   test('carries no rules of its own', () => {
-    expect(rules(manifest).replace(/@(?:import|layer)[^;{]+;/g, '').trim()).toBe('');
+    expect(
+      rules(manifest)
+        .replace(/@(?:import|layer)[^;{]+;/g, '')
+        .trim()
+    ).toBe('');
   });
 
   test('imports every module into a cascade layer of its own name', () => {
@@ -108,9 +113,7 @@ describe('The contrast checker still reaches the tokens', () => {
 
   test('every pair it asserts resolves in both themes', () => {
     for (const theme of ['dark', 'light']) {
-      const missing = CONTRAST_TESTS
-        .flatMap(t => [t.fgVar, t.bgVar])
-        .filter(name => !variables[theme][name]);
+      const missing = CONTRAST_TESTS.flatMap(t => [t.fgVar, t.bgVar]).filter(name => !variables[theme][name]);
       expect({ theme, missing: [...new Set(missing)] }).toEqual({ theme, missing: [] });
     }
   });

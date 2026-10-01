@@ -195,7 +195,9 @@ describe('Touch interaction', () => {
 
   test('dialogs keep clear of the notch and the home indicator on phones', () => {
     const phone = mediaBlock('@media (width <= 700px)');
-    expect(phone).toMatch(/\.modal\s*\{[^}]*inset-block:[^;]*env\(safe-area-inset-top\)[^;]*env\(safe-area-inset-bottom\)/);
+    expect(phone).toMatch(
+      /\.modal\s*\{[^}]*inset-block:[^;]*env\(safe-area-inset-top\)[^;]*env\(safe-area-inset-bottom\)/
+    );
   });
 });
 

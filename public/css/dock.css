@@ -181,7 +181,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: filter var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  transition:
+    filter var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 
   .icon {
     width: 16px;
@@ -219,7 +221,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
 
   .icon {
     width: 15px;

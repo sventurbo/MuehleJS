@@ -127,7 +127,7 @@ describe('Mill beam', () => {
     expect(fallbackMs).toBeGreaterThan(fadeMs);
   });
 
-  test('a new game drops the previous game\'s beam', () => {
+  test("a new game drops the previous game's beam", () => {
     expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.replaceChildren\(\)/);
   });
 

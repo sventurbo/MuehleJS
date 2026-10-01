@@ -357,10 +357,12 @@ describe('MuehleGame Rule Engine', () => {
     test('player wins when the last placed stone traps the opponent', () => {
       // Free after the final placement: a7, d7, g7, b6, d6, f6.
       // Every stone next to them is Black, so White cannot move anywhere.
-      ['a4', 'g4', 'd5', 'f4', 'a1', 'g1', 'c3', 'e3']
-        .forEach(pt => { game.board[pt] = 'B'; });
-      ['c5', 'e5', 'c4', 'e4', 'd3', 'b2', 'd2', 'f2', 'd1']
-        .forEach(pt => { game.board[pt] = 'W'; });
+      ['a4', 'g4', 'd5', 'f4', 'a1', 'g1', 'c3', 'e3'].forEach(pt => {
+        game.board[pt] = 'B';
+      });
+      ['c5', 'e5', 'c4', 'e4', 'd3', 'b2', 'd2', 'f2', 'd1'].forEach(pt => {
+        game.board[pt] = 'W';
+      });
       game.piecesOnBoard = { W: 9, B: 8 };
       game.unplacedPieces = { W: 0, B: 1 };
       game.turn = 'B';
@@ -378,79 +380,79 @@ describe('MuehleGame Rule Engine', () => {
       expect(res.state.winner).toBe('B');
     });
 
-test('forfeit gives immediate victory to opponent', () => {
-       const res = game.forfeit('W');
-       expect(res.success).toBe(true);
-       expect(game.winner).toBe('B');
-       expect(game.phase).toBe('FINISHED');
-     });
+    test('forfeit gives immediate victory to opponent', () => {
+      const res = game.forfeit('W');
+      expect(res.success).toBe(true);
+      expect(game.winner).toBe('B');
+      expect(game.phase).toBe('FINISHED');
+    });
 
-     test('placePiece return includes point coordinate', () => {
-       const result = game.placePiece('W', 'a7');
-       expect(result.success).toBe(true);
-       expect(result.point).toBe('a7');
-     });
+    test('placePiece return includes point coordinate', () => {
+      const result = game.placePiece('W', 'a7');
+      expect(result.success).toBe(true);
+      expect(result.point).toBe('a7');
+    });
 
-     test('movePiece return includes from and to coordinates', () => {
-       game.phase = 'MOVING';
-       game.board['a7'] = 'W';
-       game.board['d7'] = null;
-       const result = game.movePiece('W', 'a7', 'd7');
-       expect(result.success).toBe(true);
-       expect(result.from).toBe('a7');
-       expect(result.to).toBe('d7');
-     });
+    test('movePiece return includes from and to coordinates', () => {
+      game.phase = 'MOVING';
+      game.board['a7'] = 'W';
+      game.board['d7'] = null;
+      const result = game.movePiece('W', 'a7', 'd7');
+      expect(result.success).toBe(true);
+      expect(result.from).toBe('a7');
+      expect(result.to).toBe('d7');
+    });
 
-     test('removePiece return includes point coordinate', () => {
-       game.phase = 'MOVING';
-       game.awaitingRemoval = true;
-       game.board['a7'] = 'B';
-       game.board['d7'] = 'W';
-       game.board['g7'] = 'W';
-       const result = game.removePiece('W', 'a7');
-       expect(result.success).toBe(true);
-       expect(result.point).toBe('a7');
-     });
+    test('removePiece return includes point coordinate', () => {
+      game.phase = 'MOVING';
+      game.awaitingRemoval = true;
+      game.board['a7'] = 'B';
+      game.board['d7'] = 'W';
+      game.board['g7'] = 'W';
+      const result = game.removePiece('W', 'a7');
+      expect(result.success).toBe(true);
+      expect(result.point).toBe('a7');
+    });
 
-     // Regression: without `player` the client logged every single move as
-     // "Schwarz", because `undefined === 'W'` is always false.
-     test('placePiece names the acting player', () => {
-       expect(game.placePiece('W', 'a7').player).toBe('W');
-       expect(game.placePiece('B', 'a1').player).toBe('B');
-     });
+    // Regression: without `player` the client logged every single move as
+    // "Schwarz", because `undefined === 'W'` is always false.
+    test('placePiece names the acting player', () => {
+      expect(game.placePiece('W', 'a7').player).toBe('W');
+      expect(game.placePiece('B', 'a1').player).toBe('B');
+    });
 
-     test('placePiece names the acting player when a mill is closed', () => {
-       game.board['a7'] = 'W';
-       game.board['d7'] = 'W';
-       game.board['a1'] = 'B';
-       game.piecesOnBoard = { W: 2, B: 1 };
-       game.unplacedPieces = { W: 7, B: 8 };
-       const result = game.placePiece('W', 'g7');
-       expect(result.millFormed).toBe(true);
-       expect(result.player).toBe('W');
-     });
+    test('placePiece names the acting player when a mill is closed', () => {
+      game.board['a7'] = 'W';
+      game.board['d7'] = 'W';
+      game.board['a1'] = 'B';
+      game.piecesOnBoard = { W: 2, B: 1 };
+      game.unplacedPieces = { W: 7, B: 8 };
+      const result = game.placePiece('W', 'g7');
+      expect(result.millFormed).toBe(true);
+      expect(result.player).toBe('W');
+    });
 
-     test('movePiece names the acting player', () => {
-       game.phase = 'MOVING';
-       game.board['a7'] = 'W';
-       game.board['d7'] = null;
-       expect(game.movePiece('W', 'a7', 'd7').player).toBe('W');
-     });
+    test('movePiece names the acting player', () => {
+      game.phase = 'MOVING';
+      game.board['a7'] = 'W';
+      game.board['d7'] = null;
+      expect(game.movePiece('W', 'a7', 'd7').player).toBe('W');
+    });
 
-     test('removePiece names the acting player', () => {
-       game.phase = 'MOVING';
-       game.awaitingRemoval = true;
-       game.board['a7'] = 'B';
-       game.board['b6'] = 'B';
-       game.board['b4'] = 'B';
-       game.board['d7'] = 'W';
-       game.board['g7'] = 'W';
-       game.piecesOnBoard = { W: 2, B: 3 };
-       const result = game.removePiece('W', 'a7');
-       expect(result.success).toBe(true);
-       expect(result.player).toBe('W');
-     });
-   });
+    test('removePiece names the acting player', () => {
+      game.phase = 'MOVING';
+      game.awaitingRemoval = true;
+      game.board['a7'] = 'B';
+      game.board['b6'] = 'B';
+      game.board['b4'] = 'B';
+      game.board['d7'] = 'W';
+      game.board['g7'] = 'W';
+      game.piecesOnBoard = { W: 2, B: 3 };
+      const result = game.removePiece('W', 'a7');
+      expect(result.success).toBe(true);
+      expect(result.player).toBe('W');
+    });
+  });
 
   describe('Legal actions and the automatic move (turn timer)', () => {
     test('getLegalActions offers every free point during the setting phase', () => {
@@ -489,9 +491,7 @@ test('forfeit gives immediate victory to opponent', () => {
       game.piecesOnBoard = { W: 1, B: 1 };
 
       // a7 is adjacent to d7 (taken) and a4 (free).
-      expect(game.getLegalActions('W')).toEqual([
-        { action: 'move', player: 'W', from: 'a7', to: 'a4' }
-      ]);
+      expect(game.getLegalActions('W')).toEqual([{ action: 'move', player: 'W', from: 'a7', to: 'a4' }]);
     });
 
     test('getLegalActions is empty once the game is over', () => {
@@ -519,8 +519,7 @@ test('forfeit gives immediate victory to opponent', () => {
       // 0 picks the first legal action, and a value at the very top of the
       // range must still stay inside the list.
       expect(game.makeRandomLegalMove('W', () => 0).point).toBe(legal[0].point);
-      expect(new MuehleGame().makeRandomLegalMove('W', () => 0.999999999).point)
-        .toBe(legal[legal.length - 1].point);
+      expect(new MuehleGame().makeRandomLegalMove('W', () => 0.999999999).point).toBe(legal[legal.length - 1].point);
     });
 
     test('makeRandomLegalMove captures a stone when a mill is pending', () => {
@@ -577,5 +576,4 @@ test('forfeit gives immediate victory to opponent', () => {
       expect(autoGame.phase).not.toBe('SETTING');
     });
   });
- });
-
+});

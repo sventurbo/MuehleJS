@@ -13,7 +13,9 @@ import { MuehleGame, POINTS, MILLS, ADJACENCY } from '../lib/MuehleGame.js';
 /** Builds a game whose board holds exactly the given stones. */
 function gameWith(stones, overrides = {}) {
   const game = new MuehleGame('rules_test');
-  Object.entries(stones).forEach(([pt, color]) => { game.board[pt] = color; });
+  Object.entries(stones).forEach(([pt, color]) => {
+    game.board[pt] = color;
+  });
   game.piecesOnBoard.W = POINTS.filter(pt => game.board[pt] === 'W').length;
   game.piecesOnBoard.B = POINTS.filter(pt => game.board[pt] === 'B').length;
   Object.assign(game, overrides);
@@ -54,9 +56,13 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
   describe('getRemovablePoints agrees with MuehleGame.getRemovablePieces', () => {
     test('protects opponent stones that sit in a mill', () => {
       const game = gameWith({
-        b6: 'B', d6: 'B', f6: 'B', // closed mill, protected
-        a1: 'B',                   // loose stone
-        a7: 'W', d7: 'W', g7: 'W'
+        b6: 'B',
+        d6: 'B',
+        f6: 'B', // closed mill, protected
+        a1: 'B', // loose stone
+        a7: 'W',
+        d7: 'W',
+        g7: 'W'
       });
       expect(RULES.getRemovablePoints(game.board, 'W')).toEqual(['a1']);
       expect(RULES.getRemovablePoints(game.board, 'W')).toEqual(game.getRemovablePieces('W'));
@@ -64,8 +70,11 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
 
     test('allows any stone when every opponent stone is in a mill', () => {
       const game = gameWith({
-        b6: 'B', d6: 'B', f6: 'B',
-        a1: 'W', d1: 'W'
+        b6: 'B',
+        d6: 'B',
+        f6: 'B',
+        a1: 'W',
+        d1: 'W'
       });
       const expected = ['b6', 'd6', 'f6'];
       expect(RULES.getRemovablePoints(game.board, 'W').sort()).toEqual(expected);
@@ -75,7 +84,12 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
     test('counts a stone shared by two mills as protected only once', () => {
       // b6 belongs to b6-d6-f6 and b6-b4-b2; both are closed, plus a loose stone.
       const game = gameWith({
-        b6: 'B', d6: 'B', f6: 'B', b4: 'B', b2: 'B', e3: 'B',
+        b6: 'B',
+        d6: 'B',
+        f6: 'B',
+        b4: 'B',
+        b2: 'B',
+        e3: 'B',
         a7: 'W'
       });
       expect(RULES.getRemovablePoints(game.board, 'W')).toEqual(['e3']);
@@ -147,12 +161,21 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
 
     test('every marked stone is accepted and every unmarked one rejected', () => {
       const stones = {
-        b6: 'B', d6: 'B', f6: 'B', // protected mill
-        c5: 'B', f2: 'B',          // loose stones
-        a7: 'W', d7: 'W', g7: 'W', a1: 'W'
+        b6: 'B',
+        d6: 'B',
+        f6: 'B', // protected mill
+        c5: 'B',
+        f2: 'B', // loose stones
+        a7: 'W',
+        d7: 'W',
+        g7: 'W',
+        a1: 'W'
       };
       const state = gameWith(stones, {
-        awaitingRemoval: true, turn: 'W', millTriggerPoint: 'd7', phase: 'SETTING'
+        awaitingRemoval: true,
+        turn: 'W',
+        millTriggerPoint: 'd7',
+        phase: 'SETTING'
       }).getState();
 
       const marked = RULES.getCaptureTargets(state, 'W');
@@ -161,7 +184,10 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
       // Marked stones must be accepted by the authoritative engine.
       marked.forEach(point => {
         const game = gameWith(stones, {
-          awaitingRemoval: true, turn: 'W', millTriggerPoint: 'd7', phase: 'SETTING'
+          awaitingRemoval: true,
+          turn: 'W',
+          millTriggerPoint: 'd7',
+          phase: 'SETTING'
         });
         expect(game.removePiece('W', point).success).toBe(true);
       });
@@ -169,7 +195,10 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
       // Every other point must be rejected — so it must never carry a ring.
       POINTS.filter(pt => !marked.includes(pt)).forEach(point => {
         const game = gameWith(stones, {
-          awaitingRemoval: true, turn: 'W', millTriggerPoint: 'd7', phase: 'SETTING'
+          awaitingRemoval: true,
+          turn: 'W',
+          millTriggerPoint: 'd7',
+          phase: 'SETTING'
         });
         expect(game.removePiece('W', point).success).toBe(false);
       });
@@ -178,7 +207,10 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
     test('accepts a protected stone once all opponent stones sit in mills', () => {
       const stones = { b6: 'B', d6: 'B', f6: 'B', a7: 'W', d7: 'W', g7: 'W' };
       const state = gameWith(stones, {
-        awaitingRemoval: true, turn: 'W', millTriggerPoint: 'd7', phase: 'SETTING'
+        awaitingRemoval: true,
+        turn: 'W',
+        millTriggerPoint: 'd7',
+        phase: 'SETTING'
       }).getState();
 
       const marked = RULES.getCaptureTargets(state, 'W');
@@ -186,7 +218,10 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
 
       marked.forEach(point => {
         const game = gameWith(stones, {
-          awaitingRemoval: true, turn: 'W', millTriggerPoint: 'd7', phase: 'SETTING'
+          awaitingRemoval: true,
+          turn: 'W',
+          millTriggerPoint: 'd7',
+          phase: 'SETTING'
         });
         expect(game.removePiece('W', point).success).toBe(true);
       });
@@ -210,8 +245,7 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
         marked.forEach(point => {
           const game = gameWith(stones, setup);
           const result = game.removePiece('W', point);
-          expect({ point, stones, success: result.success })
-            .toEqual({ point, stones, success: true });
+          expect({ point, stones, success: result.success }).toEqual({ point, stones, success: true });
         });
 
         POINTS.filter(pt => !marked.includes(pt)).forEach(point => {
@@ -225,17 +259,16 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
   describe('getValidDestinations agrees with the engine', () => {
     test('follows adjacency in the normal moving phase', () => {
       const game = gameWith({ b4: 'W', b6: 'B' }, { phase: 'MOVING' });
-      expect(RULES.getValidDestinations(game.board, 'b4', 'W', false).sort())
-        .toEqual(game.getValidDestinations('b4', 'W').sort());
+      expect(RULES.getValidDestinations(game.board, 'b4', 'W', false).sort()).toEqual(
+        game.getValidDestinations('b4', 'W').sort()
+      );
     });
 
     test('allows jumping to any free point with three stones left', () => {
-      const game = gameWith(
-        { a7: 'W', d7: 'W', g7: 'W', a1: 'B', d1: 'B', g1: 'B' },
-        { phase: 'MOVING' }
+      const game = gameWith({ a7: 'W', d7: 'W', g7: 'W', a1: 'B', d1: 'B', g1: 'B' }, { phase: 'MOVING' });
+      expect(RULES.getValidDestinations(game.board, 'a7', 'W', true).sort()).toEqual(
+        game.getValidDestinations('a7', 'W').sort()
       );
-      expect(RULES.getValidDestinations(game.board, 'a7', 'W', true).sort())
-        .toEqual(game.getValidDestinations('a7', 'W').sort());
     });
 
     test('returns nothing for a point the player does not own', () => {
@@ -254,32 +287,49 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
     });
 
     test('reports a placement', () => {
-      expect(RULES.diffBoards(board({ a7: 'W' }), board({ a7: 'W', d7: 'B' })))
-        .toEqual({ moved: null, placed: ['d7'], removed: [] });
+      expect(RULES.diffBoards(board({ a7: 'W' }), board({ a7: 'W', d7: 'B' }))).toEqual({
+        moved: null,
+        placed: ['d7'],
+        removed: []
+      });
     });
 
     test('reports a capture', () => {
-      expect(RULES.diffBoards(board({ a7: 'W', d7: 'B' }), board({ a7: 'W' })))
-        .toEqual({ moved: null, placed: [], removed: ['d7'] });
+      expect(RULES.diffBoards(board({ a7: 'W', d7: 'B' }), board({ a7: 'W' }))).toEqual({
+        moved: null,
+        placed: [],
+        removed: ['d7']
+      });
     });
 
     test('reports a step and a jump as a move', () => {
-      expect(RULES.diffBoards(board({ b2: 'W', a1: 'B' }), board({ b4: 'W', a1: 'B' })))
-        .toEqual({ moved: { from: 'b2', to: 'b4' }, placed: [], removed: [] });
-      expect(RULES.diffBoards(board({ g1: 'B', a7: 'W' }), board({ c5: 'B', a7: 'W' })))
-        .toEqual({ moved: { from: 'g1', to: 'c5' }, placed: [], removed: [] });
+      expect(RULES.diffBoards(board({ b2: 'W', a1: 'B' }), board({ b4: 'W', a1: 'B' }))).toEqual({
+        moved: { from: 'b2', to: 'b4' },
+        placed: [],
+        removed: []
+      });
+      expect(RULES.diffBoards(board({ g1: 'B', a7: 'W' }), board({ c5: 'B', a7: 'W' }))).toEqual({
+        moved: { from: 'g1', to: 'c5' },
+        placed: [],
+        removed: []
+      });
     });
 
     test('does not mistake a vanished and an unrelated new stone for a move', () => {
-      expect(RULES.diffBoards(board({ a7: 'W' }), board({ g1: 'B' })))
-        .toEqual({ moved: null, placed: ['g1'], removed: ['a7'] });
-      expect(RULES.diffBoards(board({ a7: 'W' }), board({ a7: 'B' })))
-        .toEqual({ moved: null, placed: ['a7'], removed: ['a7'] });
+      expect(RULES.diffBoards(board({ a7: 'W' }), board({ g1: 'B' }))).toEqual({
+        moved: null,
+        placed: ['g1'],
+        removed: ['a7']
+      });
+      expect(RULES.diffBoards(board({ a7: 'W' }), board({ a7: 'B' }))).toEqual({
+        moved: null,
+        placed: ['a7'],
+        removed: ['a7']
+      });
     });
 
     test('treats a missing previous board as empty', () => {
-      expect(RULES.diffBoards({}, board({ d5: 'W' })))
-        .toEqual({ moved: null, placed: ['d5'], removed: [] });
+      expect(RULES.diffBoards({}, board({ d5: 'W' }))).toEqual({ moved: null, placed: ['d5'], removed: [] });
     });
 
     test('matches every action of pseudo-random engine games', () => {
@@ -301,8 +351,9 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
           } else if (game.phase === 'SETTING') {
             result = game.placePiece(player, pick(POINTS.filter(pt => game.board[pt] === null)));
           } else {
-            const moves = Object.entries(game.getLegalMoves(player))
-              .flatMap(([from, tos]) => tos.map(to => [from, to]));
+            const moves = Object.entries(game.getLegalMoves(player)).flatMap(([from, tos]) =>
+              tos.map(to => [from, to])
+            );
             const [from, to] = pick(moves);
             result = game.movePiece(player, from, to);
           }

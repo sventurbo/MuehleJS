@@ -65,7 +65,9 @@
   padding: 4px 6px;
   margin-right: var(--sp-1);
   border-radius: var(--radius-pill);
-  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+  transition:
+    color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
 
   &::before {
     content: "";
@@ -102,7 +104,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 
   &:active {
     transform: scale(0.92);
@@ -111,11 +116,17 @@
 
 /* Sound toggle holds both glyphs; app.js flips the .is-muted class. */
 .btn-sound {
-  .icon-sound-off { display: none; }
+  .icon-sound-off {
+    display: none;
+  }
 
   &.is-muted {
-    .icon-sound-on { display: none; }
-    .icon-sound-off { display: block; }
+    .icon-sound-on {
+      display: none;
+    }
+    .icon-sound-off {
+      display: block;
+    }
   }
 }
 
