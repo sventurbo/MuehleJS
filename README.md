@@ -53,7 +53,8 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
   - Native **`<dialog>`-Dialoge** für Regeln, Aufgeben und Spielende: Der Browser legt sie in den Top Layer, sperrt die Seite dahinter und schließt sie mit Esc. Regeln und Aufgeben öffnen und schließen sich über **Invoker Commands** (`command`/`commandfor`) ganz ohne JavaScript; Aufgeben fragt in einem eigenen Dialog nach statt über `confirm()`.
 - **Automatisierte Testsuite**:
-   - 304 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
+   - 334 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen, die Ton-Einstellung und die Konfiguration über `.env`.
+   - Linter (**ESLint**) und Formatter (**Prettier**) sind konfiguriert und laufen in der CI.
 
 ---
 
@@ -63,7 +64,7 @@ Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer ins
 
 Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc` (`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Erscheint eine neue Node.js-Hauptversion, werden `engines`, dieser Abschnitt und die CI-Matrix in `.github/workflows/node.js.yml` gemeinsam angehoben.
 
-npm führt Installationsskripte von Abhängigkeiten nur aus, wenn `allowScripts` in `package.json` sie erlaubt. Die beiden Jest-Abhängigkeiten `@parcel/watcher` und `unrs-resolver` sind dort ausdrücklich abgelehnt: Ihre Skripte bauen native Binärdateien nur als Fallback, wenn die mitgelieferten fehlen.
+npm führt Installationsskripte von Abhängigkeiten nur aus, wenn `allowScripts` in `package.json` sie erlaubt. Die beiden Jest-Abhängigkeiten `@parcel/watcher` und `unrs-resolver` sind dort ausdrücklich abgelehnt: Ihre Skripte bauen native Binärdateien nur als Fallback, wenn die mitgelieferten fehlen. ESLint, Prettier und ihre Abhängigkeiten bringen keine Installationsskripte mit und brauchen daher keinen Eintrag.
 
 ### 1. Abhängigkeiten installieren
 ```bash
@@ -91,6 +92,8 @@ node server.js 8080
 # oder
 PORT=8080 npm start
 ```
+
+Ein Port auf der Kommandozeile hat Vorrang vor der Umgebungsvariable `PORT`, auch vor einer `PORT`-Zeile in `.env` (siehe [Abschnitt 5](#5-einstellungen-in-env-optional)). Ohne beides gilt `3000`. Die `.env`-Datei liest nur `npm start`, nicht der direkte Aufruf `node server.js`.
 
 Anschließend ist das Spiel erreichbar unter:
 - **IPv6:** `http://[::1]:<port>` (bzw. über die öffentliche IPv6-Adresse des Servers)
@@ -120,6 +123,22 @@ Der Server liest die Kette in `X-Forwarded-For` von rechts nach links: Jeder Ein
 - Mit einer Anzahl statt Adressen darf der Node-Port nicht direkt erreichbar sein, sonst umgeht ein Client den Proxy und füllt den Header selbst. Eine Adressliste ist in diesem Punkt robuster.
 
 Die so ermittelte Adresse zählt anschließend nicht für sich allein, sondern für ihren Block: IPv4 und IPv4-mapped IPv6 (`::ffff:a.b.c.d`) werden auf die reine IPv4-Adresse abgebildet, natives IPv6 auf sein `/64`-Präfix (z. B. `2001:db8:1:2::/64`). Ein IPv6-Client verfügt in der Regel über mindestens ein ganzes `/64`; ohne diese Zusammenfassung stünden ihm pro Verbindung eine frische Adresse und damit beliebig viele Budgets zur Verfügung.
+
+### 5. Einstellungen in `.env` (optional)
+
+Alle Einstellungen des Servers sind optional und kommen aus Umgebungsvariablen. Statt sie bei jedem Start anzugeben, können sie in einer Datei `.env` im Projektverzeichnis stehen. `npm start` lädt sie mit der in Node.js eingebauten Option `--env-file-if-exists=.env`, ein zusätzliches Paket wie `dotenv` ist nicht nötig. Fehlt die Datei, meldet Node das in einer Zeile und der Server startet mit den Standardwerten.
+
+```bash
+cp .env.example .env   # Vorlage kopieren, dann die gewünschte Zeile einkommentieren
+```
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `PORT` | `3000` | Port des Servers (IPv6 und IPv4) |
+| `TRUST_PROXY` | nicht gesetzt | Vertrauenswürdige Reverse Proxys, siehe [Abschnitt 4](#4-betrieb-hinter-einem-reverse-proxy-optional) |
+| `TURN_TIMEOUT_MS` | `25000` | Bedenkzeit pro Entscheidung in Millisekunden, siehe [Zug-Timer](#-zug-timer-25-sekunden-pro-zug) |
+
+In `.env.example` ist jede Zeile auskommentiert, eine unveränderte Kopie ändert also nichts. Es gilt: ein Port auf der Kommandozeile vor Variablen aus der Shell (`PORT=8080 npm start`) vor `.env` vor dem Standardwert. `.env` steht in `.gitignore` und wird nie committet; `tests/Environment.test.js` prüft, dass `.env.example` jede Variable dokumentiert, die `server.js` liest.
 
 ---
 
@@ -162,7 +181,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest. Da alle Quellen E
 npm test
 ```
 
-Getestet werden (304 Tests in 12 Test-Dateien):
+Getestet werden (334 Tests in 13 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -177,9 +196,20 @@ Getestet werden (304 Tests in 12 Test-Dateien):
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
 - Ton-Einstellung auch bei blockiertem `localStorage` (abgeschaltete Website-Daten).
+- Konfiguration: `.env.example` dokumentiert jede Umgebungsvariable des Servers, `npm start` lädt `.env`, und ein Port auf der Kommandozeile hat Vorrang.
 - Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die Architekturregel, dass nur `app.js` mit dem Socket spricht.
 - Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine Vendor-Metatags, nur ES-Module, keine Feature-Erkennung, Node-Built-ins über `node:`.
-- Aktuelle Standards statt älterer Idiome: native Dialoge mit Invoker Commands statt `confirm()`, `hidden`-Attribut statt `.hidden`-Klasse, `light-dark()`-Tokens, Media Queries als Bereiche (`width <= 700px`), `rgb(r g b / a)`, private `#`-Methoden, Cascade Layers.
+- Aktuelle Standards statt älterer Idiome: native Dialoge mit Invoker Commands statt `confirm()`, `hidden`-Attribut statt `.hidden`-Klasse, `light-dark()`-Tokens, Media Queries als Bereiche (`width <= 700px`), Farben in `oklch()` und abgeleitete per `color-mix()`, private `#`-Methoden, Cascade Layers statt `!important`, keine Inline-Styles.
+
+### Linter und Formatter
+
+```bash
+npm run lint           # ESLint: Fehler und toter Code
+npm run format:check   # Prettier: prüft die Formatierung, ändert nichts
+npm run format         # Prettier: formatiert alle Dateien
+```
+
+ESLint (Flat Config in `eslint.config.js`) prüft mit den empfohlenen Regeln plus `no-var`, `prefer-const` und `eqeqeq`. Welche globalen Namen erlaubt sind, hängt davon ab, wo eine Datei läuft: Browser-Globals für `public/js`, nur die in Browser und Node gemeinsamen für `shared/`, Node für Server, Skripte und Konfiguration, Node und Jest für die Tests. Prettier (`prettier.config.js`) bildet den bestehenden Stil nach: einfache Anführungszeichen (im CSS doppelte), Semikolons, zwei Leerzeichen, keine Trailing Commas, 120 Zeichen pro Zeile. `index.html` und die Markdown-Dokumente nimmt `.prettierignore` aus: Prettier würde leere HTML-Elemente im XHTML-Stil (`<meta … />`) schließen und Tabellenspalten auf die breiteste Zelle auffüllen. Beide Prüfungen laufen auch in der CI.
 
 ### WCAG 2.1 AA Kontrastprüfung
 
@@ -189,14 +219,16 @@ npm run contrast-check
 ```
 Dieser prüft alle Farbpaare in den Dark- und Light-Themes des Stylesheets. Die
 Tokens liest er aus dem `:root`-Block von `public/css/tokens.css` — über
-`scripts/css-bundle.js`, das die `@import`-Kette auflöst — und teilt jedes
-`light-dark(<hell>, <dunkel>)`-Paar in seine beiden Themes auf.
+`scripts/css-bundle.js`, das die `@import`-Kette auflöst —, teilt jedes
+`light-dark(<hell>, <dunkel>)`-Paar in seine beiden Themes auf und löst
+`var()`-Verweise zwischen Tokens auf. Farben liest er als Hex, `rgb()`,
+`oklch()` und `color-mix()`.
 
 ---
 
 ## 🎨 CSS-Architektur
 
-Das Stylesheet ist in elf Module aufgeteilt, die jeweils einen Abschnitt der
+Das Stylesheet ist in zwölf Module aufgeteilt, die jeweils einen Abschnitt der
 Oberfläche abdecken. `public/css/style.css` enthält keine eigenen Regeln,
 sondern ist das Manifest: eine `@layer`-Anweisung legt die Reihenfolge der
 **Cascade Layers** fest, und jedes Modul wird per `@import … layer(<name>)` in
@@ -204,23 +236,39 @@ seinen gleichnamigen Layer geladen. Die Seite bindet nur dieses eine Stylesheet 
 
 ```
 public/css/style.css   →   tokens · base · layout · controls · login
-                           hud · arena · dock · board · modals · responsive
+                           hud · arena · dock · board · modals · responsive · utilities
 ```
 
 Die Layer-Reihenfolge ist Teil des Vertrags: `tokens` hat die niedrigste
-Priorität, `responsive` die höchste, weil seine Breakpoints die Module darunter
-überschreiben — unabhängig von der Spezifität einzelner Selektoren. Ein neues
+Priorität, `responsive` überschreibt mit seinen Breakpoints die Module darunter,
+und `utilities` kommt zuletzt. Es enthält nur die Regel für das
+`hidden`-Attribut, die jede Komponente schlagen muss. Zwischen zwei Layern
+entscheidet die Reihenfolge vor der Spezifität, deshalb braucht keine Regel
+`!important` (das die Reihenfolge der Layer sogar umkehren würde). Ein neues
 Modul gilt erst, wenn es im Manifest steht — `tests/CssModules.test.js` prüft
 genau das, zusammen mit der Regel, dass Custom Properties ausschließlich in
 `tokens.css` deklariert werden.
 
 Innerhalb der Module ist das CSS **nativ verschachtelt** (CSS Nesting): Zustände,
 Pseudo-Elemente und Kindelemente einer Komponente stehen in deren Regelblock
-(`&.is-active`, `&::before`, `.icon`). `responsive.css` bleibt bewusst flach,
+(`&.active-turn`, `&::before`, `.icon`). `responsive.css` bleibt bewusst flach,
 damit jeder Breakpoint als Liste von Überschreibungen lesbar ist; seine Media
-Queries sind als Bereiche geschrieben (`@media (width <= 700px)`). Farben
-stehen in der Syntax `rgb(r g b / a)`, Theme-abhängige Farben als
-`light-dark(<hell>, <dunkel>)`.
+Queries sind als Bereiche geschrieben (`@media (width <= 700px)`).
+
+Farben stehen als `oklch(<Helligkeit> <Chroma> <Farbton>)`, Theme-abhängige als
+`light-dark(<hell>, <dunkel>)`. Eine Farbe, die aus einem anderen Token entsteht,
+sagt das: Jeder Tint ist sein Akzent mit Transparenz gemischt
+(`color-mix(in srgb, var(--accent-blue) 10%, transparent)`), das Material des
+Headers ist die Fläche zu 72 %. Abstände, Rahmen und Positionen sind Logical
+Properties (`margin-block-end`, `padding-inline`, `inset-block-start` …). Physisch
+bleiben nur die Abstände neben `env(safe-area-inset-left/right)`, weil diese
+Insets feste Bildschirmkanten sind, während `inline-start` der Schreibrichtung
+folgt.
+
+Container Queries gibt es bewusst keine. Die einzige Komponente in mehreren
+Layouts, die Spielerkarte, wird auf dem Smartphone kompakt, weil dort die Höhe
+fehlt, nicht wegen ihrer eigenen Breite: Auf dem Desktop ist sie mit 224 px
+schmaler als die kompakte Karte auf einem 700 px breiten Smartphone (334 px).
 
 Werkzeuge, die das Stylesheet als Ganzes lesen (der Kontrast-Checker und die
 statischen CSS-Tests), gehen über `scripts/css-bundle.js`. Das Skript löst die
@@ -269,11 +317,15 @@ node scripts/client-bundle.js   # gibt den geladenen Client-Code auf stdout aus
 ```
 Web-Spiel/
 ├── package.json              # Projektkonfiguration, Abhängigkeiten & Scripts
+├── .env.example              # Vorlage für .env: PORT, TRUST_PROXY, TURN_TIMEOUT_MS (alle optional)
+├── eslint.config.js          # ESLint Flat Config (Globals je Laufzeit)
+├── prettier.config.js        # Prettier-Stil des Projekts
+├── .prettierignore           # Von Prettier ausgenommen: package-lock.json, HTML, Markdown
 ├── server.js                 # Express HTTP-Server & Socket.io Event-Orchestrierung (IPv6 & IPv4)
 ├── Systemmodel.md            # Umfassendes Systemmodell (Architektur, Domänenmodell, State Machines)
 ├── CLAUDE.md                 # Vorgaben der Portfolioaufgabe & Projektregeln für Claude Code
 ├── scripts/
-│   ├── contrast.js           # WCAG 2.1 Kontrastberechnung (relative Luminance, Kontrastverhältnis)
+│   ├── contrast.js           # WCAG 2.1 Kontrastberechnung; liest Hex, rgb(), oklch() und color-mix()
 │   ├── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
 │   ├── css-bundle.js         # Löst die @import-Kette von style.css samt Cascade Layers auf (für Checker & Tests)
 │   └── client-bundle.js      # Löst den Modul-Import-Graphen ab index.html auf (für die Client-Tests)
@@ -290,7 +342,7 @@ Web-Spiel/
 │   ├── icon.svg              # App- und Favicon
 │   ├── css/                  # Modulares Stylesheet, per @import in Cascade Layers gebündelt
 │   │   ├── style.css         # Manifest: @layer-Reihenfolge und @import-Liste, keine eigenen Regeln
-│   │   ├── tokens.css        # Design-Tokens (:root), Theme-Farben als light-dark()-Paare
+│   │   ├── tokens.css        # Design-Tokens (:root), Farben in oklch() als light-dark()-Paare, abgeleitete per color-mix()
 │   │   ├── base.css          # Reset, Typografie, Touch-Handling, Scrollbars, Icons
 │   │   ├── layout.css        # App-Shell: Header (Verbindungsstatus, Ton) & Screen-Switcher
 │   │   ├── controls.css      # Buttons & Eingabefelder
@@ -300,7 +352,8 @@ Web-Spiel/
 │   │   ├── dock.css          # Screen 3: Zugprotokoll & Chat (auf Smartphones mit Tab-Leiste)
 │   │   ├── board.css         # SVG-Brett (Gradienten, Marker, Stein-Animationen)
 │   │   ├── modals.css        # Native <dialog>-Elemente (::backdrop, Scroll-Sperre) & Toasts
-│   │   └── responsive.css    # Breakpoints, pointer/hover, prefers-reduced-motion
+│   │   ├── responsive.css    # Breakpoints, pointer/hover, prefers-reduced-motion
+│   │   └── utilities.css     # Letzter Layer: das hidden-Attribut, ohne !important
 │   └── js/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
 │       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen, Hervorhebungen & Stein-Animationen
@@ -312,7 +365,7 @@ Web-Spiel/
 │   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation
 ├── .github/
 │   └── workflows/
-│       └── node.js.yml       # CI-Pipeline (Node.js 26.x, npm ci && npm test && npm run contrast-check)
+│       └── node.js.yml       # CI-Pipeline (Node.js 26.x: npm ci, Build, Lint, Formatprüfung, Tests, Kontrastprüfung)
 ├── tests/
 │   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
 │   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
@@ -323,6 +376,7 @@ Web-Spiel/
 │   ├── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
 │   ├── BoardAnimation.test.js # Strukturtests für Stein-Animationen und Mühlen-Beam
 │   ├── AudioMute.test.js     # Ton-Einstellung bei blockiertem localStorage
+│   ├── Environment.test.js   # .env.example vollständig und auskommentiert, Port-Vorrang
 │   ├── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Cascade Layers, light-dark()-Auflösung des Kontrast-Checkers)
 │   ├── ClientModules.test.js # Guards für den Client-Modulgraphen (Vollständigkeit, Auswertungsreihenfolge, Views ohne Socket)
 │   └── ModernStandards.test.js # Guards gegen Rückwärtskompatibilität und für aktuelle Standards (Dialoge, light-dark(), #-Methoden …)
