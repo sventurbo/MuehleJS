@@ -114,7 +114,7 @@ function pointGroupsMarkup(hitRadius) {
   return Object.entries(POINT_COORDS)
     .map(
       ([pt, c]) => `
-    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">
+    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})">
       <!-- Transparent wide hit area for easy clicking / tapping -->
       <circle cx="0" cy="0" r="${hitRadius}" fill="transparent" class="hit-area" />
       <!-- Base socket, inside the group so hover/press feedback can reach it -->

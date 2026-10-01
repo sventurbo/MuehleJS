@@ -82,6 +82,13 @@ describe('Page', () => {
     expect(tagOf('screen-game')).toMatch(/\shidden[\s>]/);
   });
 
+  test('styles nothing inline, neither in the page nor in the markup the client builds', () => {
+    // Values that change at runtime (a stone's travel offset, the countdown
+    // ring) are set through element.style; fixed styles belong in the CSS.
+    expect(html).not.toMatch(/\sstyle=/);
+    expect(clientJs).not.toMatch(/\sstyle=/);
+  });
+
   test('builds every overlay as a native dialog', () => {
     expect(html).not.toContain('modal-backdrop');
     ['modal-rules', 'modal-surrender', 'modal-game-over'].forEach(id => {

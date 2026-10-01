@@ -34,6 +34,11 @@
   stroke: var(--board-line);
 }
 
+/* Every point takes a click, whether it holds a stone or not. */
+.board-point-group {
+  cursor: pointer;
+}
+
 .grid-socket {
   fill: var(--board-socket);
   stroke: var(--board-socket-stroke);
