@@ -17,7 +17,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { loadStylesheet, listModules, listImports, listLayers, bundleCss } from '../scripts/css-bundle.js';
-import { parseCssVariables, resolveScheme, runContrastCheck, CONTRAST_TESTS } from '../scripts/contrast-check.js';
+import {
+  parseCssVariables,
+  resolveScheme,
+  resolveVars,
+  runContrastCheck,
+  CONTRAST_TESTS
+} from '../scripts/contrast-check.js';
+import { resolveColor } from '../scripts/contrast.js';
 
 const cssDir = path.join(import.meta.dirname, '..', 'public', 'css');
 const manifest = fs.readFileSync(path.join(cssDir, 'style.css'), 'utf8');
@@ -178,6 +185,36 @@ describe('light-dark() pairs', () => {
 
   test('refuse a malformed pair instead of guessing', () => {
     expect(() => resolveScheme('light-dark(#ffffff)', 'dark')).toThrow(/Malformed/);
+  });
+});
+
+describe('var() between tokens', () => {
+  test('is replaced by the token it names, after light-dark() picked the theme', () => {
+    const css =
+      ':root {\n  --a: light-dark(#ffffff, #000000);\n  --b: color-mix(in srgb, var(--a) 50%, transparent);\n}\n';
+    const variables = parseCssVariables(css);
+    expect(variables.light.b).toBe('color-mix(in srgb, #ffffff 50%, transparent)');
+    expect(variables.dark.b).toBe('color-mix(in srgb, #000000 50%, transparent)');
+  });
+
+  test('follows a chain of references', () => {
+    expect(resolveVars('var(--c)', { c: 'var(--d)', d: '#123456' })).toBe('#123456');
+  });
+
+  test('leaves a name that is no token as it is', () => {
+    expect(resolveVars('var(--nope)', {})).toBe('var(--nope)');
+  });
+
+  test('refuses a reference cycle instead of looping forever', () => {
+    expect(() => resolveVars('var(--a)', { a: 'var(--b)', b: 'var(--a)' })).toThrow(/Circular/);
+  });
+
+  test('derived tokens of the real sheet read as the token they derive from', () => {
+    const { light, dark } = parseCssVariables(loadStylesheet());
+    expect(resolveColor(light['tint-blue'])).toBe(resolveColor(light['accent-blue']));
+    expect(resolveColor(dark['tint-red-strong'])).toBe(resolveColor(dark['accent-red']));
+    expect(resolveColor(dark['material-bg'])).toBe(resolveColor(dark['bg-surface']));
+    expect(resolveColor(light['btn-tool-hover'])).toBe(resolveColor(light['btn-secondary-bg']));
   });
 });
 

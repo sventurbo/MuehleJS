@@ -34,7 +34,7 @@
     grid-area: board;
     width: 100%;
     max-width: 540px;
-    margin: 0 auto;
+    margin-inline: auto;
   }
   .game-bottom-dock {
     grid-template-columns: 1fr;
@@ -53,7 +53,7 @@
     position: static;
     height: auto;
     min-height: 48px;
-    padding-top: env(safe-area-inset-top);
+    padding-block-start: env(safe-area-inset-top);
     padding-left: max(var(--sp-4), env(safe-area-inset-left));
     padding-right: max(var(--sp-4), env(safe-area-inset-right));
   }
@@ -64,23 +64,24 @@
     gap: var(--sp-1);
   }
   .conn-status {
-    margin-right: 0;
+    margin-inline-end: 0;
   }
 
   /* Login */
   #screen-login {
     padding: var(--sp-4);
-    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+    padding-block-end: calc(var(--sp-4) + env(safe-area-inset-bottom));
   }
   .login-card {
-    padding: var(--sp-8) var(--sp-5) var(--sp-6);
+    padding-block: var(--sp-8) var(--sp-6);
+    padding-inline: var(--sp-5);
     border-radius: var(--radius-lg);
   }
   .login-hero h2 {
     font-size: 1.375rem;
   }
   .login-hero .subtitle {
-    margin-bottom: var(--sp-6);
+    margin-block-end: var(--sp-6);
   }
   .preview-stone {
     width: 28px;
@@ -108,7 +109,7 @@
   /* Queue */
   #screen-queue {
     padding: var(--sp-4);
-    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+    padding-block-end: calc(var(--sp-4) + env(safe-area-inset-bottom));
   }
   .queue-card {
     padding: var(--sp-8) var(--sp-5);
@@ -120,8 +121,8 @@
 
   /* Game screen */
   #screen-game {
-    padding-top: var(--sp-2);
-    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+    padding-block-start: var(--sp-2);
+    padding-block-end: calc(var(--sp-4) + env(safe-area-inset-bottom));
     padding-left: max(var(--sp-3), env(safe-area-inset-left));
     padding-right: max(var(--sp-3), env(safe-area-inset-right));
   }
@@ -129,7 +130,7 @@
   .game-hud-top {
     flex-wrap: wrap;
     gap: var(--sp-2);
-    margin-bottom: var(--sp-2);
+    margin-block-end: var(--sp-2);
   }
   .hud-phase-box {
     min-width: 0;
@@ -156,17 +157,20 @@
     font-size: 0.75rem;
   }
   .hud-game-actions {
-    margin-left: auto;
+    margin-inline-start: auto;
     flex: none;
   }
   .hud-status-banner {
     font-size: 0.8125rem;
     padding: var(--sp-2) var(--sp-3);
-    margin-bottom: var(--sp-2);
+    margin-block-end: var(--sp-2);
     border-radius: var(--radius-sm);
   }
 
-  /* Arena: both player panels share one compact row above the board. */
+  /* Arena: both player panels share one compact row above the board. The
+     compact card is a media query, not a container query, on purpose: it
+     answers the lack of height on a phone, not the card's own width. A
+     desktop card (224px) is narrower than a compact one at 700px (334px). */
   .game-arena {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -175,7 +179,7 @@
       "board board";
     align-items: stretch;
     gap: var(--sp-2);
-    margin-bottom: var(--sp-3);
+    margin-block-end: var(--sp-3);
   }
   #player-w-card {
     grid-area: player-w;
@@ -197,8 +201,8 @@
   }
   .player-header {
     gap: var(--sp-2);
-    margin-bottom: 6px;
-    padding-bottom: 6px;
+    margin-block-end: 6px;
+    padding-block-end: 6px;
   }
   .stone-avatar {
     width: 24px;
@@ -299,9 +303,8 @@
 
   /* Toasts span the width so long messages stay readable */
   .toast-container {
-    left: var(--sp-3);
-    right: var(--sp-3);
-    bottom: calc(var(--sp-3) + env(safe-area-inset-bottom));
+    inset-inline: var(--sp-3);
+    inset-block-end: calc(var(--sp-3) + env(safe-area-inset-bottom));
     align-items: stretch;
   }
   .toast {
@@ -328,8 +331,7 @@
   }
   .login-card,
   .queue-card {
-    padding-left: var(--sp-4);
-    padding-right: var(--sp-4);
+    padding-inline: var(--sp-4);
   }
   .color-tag {
     display: none;
@@ -346,7 +348,7 @@
   }
   .login-card,
   .queue-card {
-    margin: var(--sp-4) 0;
+    margin-block: var(--sp-4);
   }
   .app-header {
     min-height: 44px;
@@ -366,11 +368,11 @@
   .game-hud-top {
     grid-area: hud;
     flex-wrap: nowrap;
-    margin-bottom: 0;
+    margin-block-end: 0;
   }
   .hud-status-banner {
     grid-area: banner;
-    margin-bottom: 0;
+    margin-block-end: 0;
   }
   .game-arena {
     grid-area: arena;
@@ -378,7 +380,7 @@
     grid-template-areas: "player-w board player-b";
     align-items: center;
     gap: var(--sp-3);
-    margin-bottom: 0;
+    margin-block-end: 0;
   }
   .game-bottom-dock {
     grid-area: dock;
@@ -386,7 +388,7 @@
   .board-wrapper {
     width: min(46vw, calc(100dvh - 120px));
     max-width: none;
-    margin: 0 auto;
+    margin-inline: auto;
   }
   .dock-panel {
     height: 132px;

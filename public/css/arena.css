@@ -8,7 +8,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-5);
-  margin-bottom: var(--sp-4);
+  margin-block-end: var(--sp-4);
 }
 
 .player-panel {
@@ -32,9 +32,9 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  margin-bottom: var(--sp-4);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid var(--hairline);
+  margin-block-end: var(--sp-4);
+  padding-block-end: var(--sp-3);
+  border-block-end: 1px solid var(--hairline);
 }
 
 /* Avatars are real discs matching the board stones, not glyphs. */
@@ -114,7 +114,7 @@
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   gap: 3px;
-  padding: var(--sp-1) 0 var(--sp-2);
+  padding-block: var(--sp-1) var(--sp-2);
 }
 
 .pip {

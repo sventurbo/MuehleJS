@@ -34,8 +34,23 @@ export function resolveScheme(value, scheme) {
 }
 
 /**
+ * Replaces every var(--name) in `value` with the value of that token, so a
+ * token may be derived from another one, e.g.
+ * color-mix(in oklch, var(--accent-blue) 10%, transparent). A name that is
+ * not a token stays as it is; the value is then no colour the checker can
+ * read, and the checks in tests/CssModules.test.js report it.
+ */
+export function resolveVars(value, tokens, seen = []) {
+  return value.replace(/var\(\s*--([\w-]+)\s*\)/g, (reference, name) => {
+    if (seen.includes(name)) throw new SyntaxError(`Circular var(): --${[...seen, name].join(' -> --')}`);
+    return name in tokens ? resolveVars(tokens[name], tokens, [...seen, name]) : reference;
+  });
+}
+
+/**
  * The design tokens of the :root block, once per theme: every light-dark()
- * pair resolved to the side that theme shows, every other value as it is.
+ * pair resolved to the side that theme shows and every var() reference
+ * replaced by the token it names, every other value as it is.
  */
 export function parseCssVariables(cssContent) {
   const variables = { dark: {}, light: {} };
@@ -47,6 +62,9 @@ export function parseCssVariables(cssContent) {
     for (const scheme of Object.keys(variables)) {
       variables[scheme][name] = resolveScheme(value.trim(), scheme);
     }
+  }
+  for (const tokens of Object.values(variables)) {
+    for (const name of Object.keys(tokens)) tokens[name] = resolveVars(tokens[name], tokens);
   }
   return variables;
 }
@@ -140,7 +158,7 @@ export const CONTRAST_TESTS = [
   },
   {
     name: 'Button text on primary button',
-    fgVar: 'white-stone-color',
+    fgVar: 'text-on-accent',
     bgVar: 'accent-blue',
     aaThreshold: 4.5,
     description: 'Primärer Button-Text auf Button-Hintergrund'

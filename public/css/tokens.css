@@ -5,77 +5,110 @@
    differs between them is a light-dark(<light>, <dark>) pair, resolved by the
    browser against the color-scheme below. Everything else holds for both.
 
-   NOTE: scripts/contrast-check.js reads this :root block and splits every
-   light-dark() pair into its two themes. Keep every colour a literal hex or
-   rgb() value — var() indirection is not resolvable by that checker.
+   Colours are oklch(<lightness> <chroma> <hue>): lightness from 0% (black)
+   to 100% (white), chroma 0 for a grey, hue in degrees. A colour that is
+   another token in a different role is a var() of it; a translucent variant
+   of a token (tints, the header material) is a color-mix() of the token with
+   transparent. Mixing with transparent in srgb keeps the colour exactly and
+   only lowers its alpha; in oklch the browser drops the hue of near-greys.
+
+   NOTE: scripts/contrast-check.js reads this :root block, splits every
+   light-dark() pair into its two themes and resolves var() between tokens.
+   It reads hex, rgb(), oklch() and color-mix(); any other colour syntax here
+   would make the checked pairs unreadable to it.
    ========================================================================== */
 
 :root {
   color-scheme: light dark;
   /* ── Surfaces ── */
-  --bg-main: light-dark(#f2f2f7, #0a0a0c);
-  --bg-surface: light-dark(#ffffff, #16161a);
-  --bg-card: light-dark(#ffffff, #1f1f24);
-  --input-bg: light-dark(#f2f2f7, #121216);
-  --border-color: light-dark(#d8d8de, #2e2e35);
+  --bg-main: light-dark(oklch(96.26% 0.0066 286.27), oklch(14.57% 0.0043 285.86));
+  --bg-surface: light-dark(oklch(100% 0 0), oklch(20.2% 0.0079 285.67));
+  --bg-card: light-dark(oklch(100% 0 0), oklch(24.14% 0.0095 285.67));
+  --input-bg: light-dark(oklch(96.26% 0.0066 286.27), oklch(18.4% 0.0081 285.58));
+  --border-color: light-dark(oklch(88.4% 0.0082 286.23), oklch(30.4% 0.0125 285.63));
   /* ── Text ── */
-  --text-main: light-dark(#1c1c1e, #f2f2f7);
-  --text-muted: light-dark(#5c5c66, #9a9aa4);
-  --rules-body-color: light-dark(#3a3a40, #d4d4dc);
-  --opponent-turn-color: light-dark(#3a3a40, #c7c7d1);
+  --text-main: light-dark(oklch(22.73% 0.0038 286.09), oklch(96.26% 0.0066 286.27));
+  --text-muted: light-dark(oklch(47.83% 0.0159 285.78), oklch(68.94% 0.0145 286.01));
+  --rules-body-color: light-dark(oklch(35.07% 0.0103 285.86), oklch(87.23% 0.0109 286.17));
+  --opponent-turn-color: light-dark(oklch(35.07% 0.0103 285.86), oklch(83.27% 0.0138 286.1));
   /* ── Accents: blue is the only brand accent, green/red are state only.
      --accent-cyan is unused by the design but kept because contrast-check.js
      asserts it by name; dropping it would silently weaken that gate. ── */
-  --accent-blue: light-dark(#0b62d6, #2f6fe0);
-  --accent-green: light-dark(#12813f, #30d158);
-  --accent-red: light-dark(#c9221c, #ff453a);
-  --accent-gold: light-dark(#9a5b00, #ff9f0a);
-  --accent-cyan: light-dark(#0d6a86, #64d2ff);
+  --accent-blue: light-dark(oklch(52.23% 0.1936 258.83), oklch(56.44% 0.1847 260.82));
+  --accent-green: light-dark(oklch(53% 0.1372 150.76), oklch(75.56% 0.2082 146.98));
+  --accent-red: light-dark(oklch(53.9% 0.2015 28.55), oklch(66.33% 0.2236 28.29));
+  --accent-gold: light-dark(oklch(53.1% 0.119 65.12), oklch(78.24% 0.1711 67.22));
+  --accent-cyan: light-dark(oklch(48.87% 0.0892 225.15), oklch(81.66% 0.1185 227.75));
   /* ── Controls ── */
-  --btn-secondary-bg: light-dark(#e8e8ed, #26262c);
-  --btn-secondary-hover: light-dark(#dcdce2, #30303a);
-  --btn-icon-hover: light-dark(#e8e8ed, #26262c);
-  --btn-tool-hover: light-dark(#e8e8ed, #26262c);
-  --opponent-turn-bg: light-dark(#e8e8ed, #26262c);
-  --badge-my-turn-color: light-dark(#ffffff, #06230f);
-  --badge-finished-bg: light-dark(#ffffff, #2a1a02);
-  --pip-inactive: light-dark(#83838d, #6c6c78);
-  --pip-black-active: light-dark(#3a3a42, #4a4a55);
-  --chat-bubble-me: light-dark(#d4dcea, #2b3a52);
-  --chat-bubble-me-border: light-dark(#d4dcea, #2b3a52);
-  --hover-socket: light-dark(#e0e0e6, #33333c);
+  --btn-secondary-bg: light-dark(oklch(93.24% 0.0067 286.27), oklch(27.11% 0.011 285.64));
+  --btn-secondary-hover: light-dark(oklch(89.62% 0.0081 286.23), oklch(31.33% 0.0178 285.33));
+  --btn-icon-hover: var(--btn-secondary-bg);
+  --btn-tool-hover: var(--btn-secondary-bg);
+  --opponent-turn-bg: var(--btn-secondary-bg);
+  /* Text and icons on an --accent-blue fill (primary button, chat send). */
+  --text-on-accent: oklch(100% 0 0);
+  --badge-my-turn-color: light-dark(oklch(100% 0 0), oklch(22.79% 0.0518 150.66));
+  --badge-finished-bg: light-dark(oklch(100% 0 0), oklch(23.3% 0.0458 75.14));
+  --pip-inactive: light-dark(oklch(61.33% 0.0149 285.95), oklch(53.54% 0.0186 285.76));
+  --pip-black-active: light-dark(oklch(35.16% 0.0138 285.67), oklch(41.32% 0.0182 285.58));
+  --chat-bubble-me: light-dark(oklch(89.26% 0.0211 261.77), oklch(34.65% 0.0467 259.58));
+  --chat-bubble-me-border: var(--chat-bubble-me);
+  --hover-socket: light-dark(oklch(90.84% 0.0081 286.24), oklch(32.47% 0.0158 285.49));
   /* ── Stones: identical in both themes, they are objects and not chrome ── */
-  --white-stone-color: #ffffff;
-  --stone-w-hi: #ffffff;
-  --stone-w-lo: #dcdce4;
-  --stone-w-rim: light-dark(#b8b8c2, #ffffff);
-  --stone-b-hi: #54545f;
-  --stone-b-lo: #15151a;
-  --stone-b-rim: #3a3a44;
+  --white-stone-color: oklch(100% 0 0);
+  --stone-w-hi: oklch(100% 0 0);
+  --stone-w-lo: oklch(89.68% 0.0108 286.18);
+  --stone-w-rim: light-dark(oklch(78.57% 0.014 286.07), oklch(100% 0 0));
+  --stone-b-hi: oklch(44.99% 0.0178 285.66);
+  --stone-b-lo: oklch(19.8% 0.01 285.46);
+  --stone-b-rim: oklch(35.24% 0.0172 285.48);
   /* ── Board: follows the theme ── */
-  --board-plate: light-dark(#ffffff, #26262c);
-  --board-plate-end: light-dark(#e9e9ef, #141418);
-  --board-plate-inner: light-dark(#eeeef3, #2e2e36);
-  --board-plate-stroke: light-dark(#dcdce2, #31313a);
-  --board-line: light-dark(#b8b8c0, #55555f);
-  --board-socket: light-dark(#e4e4ea, #17171b);
-  --board-socket-stroke: light-dark(#c2c2ca, #4a4a55);
-  --board-label: light-dark(#3a3a40, #ffffff);
-  /* ── Tints & materials (pre-baked alpha, never var() indirection) ── */
-  --hairline: light-dark(rgb(0 0 0 / 0.09), rgb(255 255 255 / 0.09));
-  --material-bg: light-dark(rgb(255 255 255 / 0.72), rgb(22 22 26 / 0.72));
-  --scrim: light-dark(rgb(0 0 0 / 0.32), rgb(0 0 0 / 0.45));
-  --zebra-stripe: light-dark(rgb(0 0 0 / 0.025), rgb(255 255 255 / 0.025));
-  --tint-blue: light-dark(rgb(11 98 214 / 0.1), rgb(47 111 224 / 0.14));
-  --tint-blue-ring: light-dark(rgb(11 98 214 / 0.24), rgb(47 111 224 / 0.3));
-  --tint-green: light-dark(rgb(18 129 63 / 0.1), rgb(48 209 88 / 0.12));
-  --tint-green-strong: light-dark(rgb(18 129 63 / 0.2), rgb(48 209 88 / 0.22));
-  --tint-red: light-dark(rgb(201 34 28 / 0.1), rgb(255 69 58 / 0.14));
-  --tint-red-strong: light-dark(rgb(201 34 28 / 0.22), rgb(255 69 58 / 0.26));
-  --tint-gold: light-dark(rgb(154 91 0 / 0.1), rgb(255 159 10 / 0.12));
-  --piece-shadow: light-dark(rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.55));
-  --gloss-white: light-dark(rgb(255 255 255 / 0.45), rgb(255 255 255 / 0.3));
-  --gloss-black: light-dark(rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.14));
+  --board-plate: light-dark(oklch(100% 0 0), oklch(27.11% 0.011 285.64));
+  --board-plate-end: light-dark(oklch(93.57% 0.008 286.24), oklch(19.31% 0.008 285.63));
+  --board-plate-inner: light-dark(oklch(95.05% 0.0067 286.27), oklch(30.44% 0.0143 285.52));
+  --board-plate-stroke: light-dark(oklch(89.62% 0.0081 286.23), oklch(31.68% 0.0159 285.46));
+  --board-line: light-dark(oklch(78.5% 0.0112 286.14), oklch(45.31% 0.0161 285.74));
+  --board-socket: light-dark(oklch(92.06% 0.0081 286.24), oklch(20.64% 0.0079 285.69));
+  --board-socket-stroke: light-dark(oklch(81.65% 0.0111 286.15), oklch(41.32% 0.0182 285.58));
+  --board-label: light-dark(oklch(35.07% 0.0103 285.86), oklch(100% 0 0));
+  /* ── Tints & materials. The header material is the surface at 72%. A tint
+     is its accent at a low alpha, a little stronger in the dark theme, which
+     is why each one names its two percentages in a light-dark() pair. ── */
+  --hairline: light-dark(oklch(0% 0 0 / 0.09), oklch(100% 0 0 / 0.09));
+  --material-bg: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  --scrim: light-dark(oklch(0% 0 0 / 0.32), oklch(0% 0 0 / 0.45));
+  --zebra-stripe: light-dark(oklch(0% 0 0 / 0.025), oklch(100% 0 0 / 0.025));
+  --tint-blue: light-dark(
+    color-mix(in srgb, var(--accent-blue) 10%, transparent),
+    color-mix(in srgb, var(--accent-blue) 14%, transparent)
+  );
+  --tint-blue-ring: light-dark(
+    color-mix(in srgb, var(--accent-blue) 24%, transparent),
+    color-mix(in srgb, var(--accent-blue) 30%, transparent)
+  );
+  --tint-green: light-dark(
+    color-mix(in srgb, var(--accent-green) 10%, transparent),
+    color-mix(in srgb, var(--accent-green) 12%, transparent)
+  );
+  --tint-green-strong: light-dark(
+    color-mix(in srgb, var(--accent-green) 20%, transparent),
+    color-mix(in srgb, var(--accent-green) 22%, transparent)
+  );
+  --tint-red: light-dark(
+    color-mix(in srgb, var(--accent-red) 10%, transparent),
+    color-mix(in srgb, var(--accent-red) 14%, transparent)
+  );
+  --tint-red-strong: light-dark(
+    color-mix(in srgb, var(--accent-red) 22%, transparent),
+    color-mix(in srgb, var(--accent-red) 26%, transparent)
+  );
+  --tint-gold: light-dark(
+    color-mix(in srgb, var(--accent-gold) 10%, transparent),
+    color-mix(in srgb, var(--accent-gold) 12%, transparent)
+  );
+  --piece-shadow: light-dark(oklch(0% 0 0 / 0.22), oklch(0% 0 0 / 0.55));
+  --gloss-white: light-dark(oklch(100% 0 0 / 0.45), oklch(100% 0 0 / 0.3));
+  --gloss-black: light-dark(oklch(100% 0 0 / 0.16), oklch(100% 0 0 / 0.14));
   /* ── Typography ── */
   --font-stack: system-ui;
   --tracking-tight: -0.021em;
@@ -97,13 +130,13 @@
   --radius-xl: 28px;
   --radius-pill: 980px;
   /* ── Elevation: never coloured ── */
-  --shadow-1: 0 1px 2px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.45));
+  --shadow-1: 0 1px 2px light-dark(oklch(0% 0 0 / 0.05), oklch(0% 0 0 / 0.45));
   --shadow-2:
-    0 1px 2px light-dark(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.5)),
-    0 8px 24px light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.45));
+    0 1px 2px light-dark(oklch(0% 0 0 / 0.04), oklch(0% 0 0 / 0.5)),
+    0 8px 24px light-dark(oklch(0% 0 0 / 0.07), oklch(0% 0 0 / 0.45));
   --shadow-3:
-    0 2px 4px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.5)),
-    0 24px 60px light-dark(rgb(0 0 0 / 0.14), rgb(0 0 0 / 0.6));
+    0 2px 4px light-dark(oklch(0% 0 0 / 0.06), oklch(0% 0 0 / 0.5)),
+    0 24px 60px light-dark(oklch(0% 0 0 / 0.14), oklch(0% 0 0 / 0.6));
   /* ── Motion ── */
   --dur-1: 120ms;
   --dur-2: 200ms;

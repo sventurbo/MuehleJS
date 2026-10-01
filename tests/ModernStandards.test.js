@@ -6,7 +6,7 @@
  * formats, feature detection for APIs every supported engine ships — and pin
  * the current standards that replaced the older idioms: native dialogs driven
  * by invoker commands, the hidden attribute, light-dark() tokens, media query
- * ranges, space-separated rgb() and private class members.
+ * ranges, oklch() and color-mix() colours and private class members.
  */
 
 import fs from 'node:fs';
@@ -55,8 +55,12 @@ describe('Stylesheet', () => {
     expect(css).not.toMatch(/@media[^{]*\((?:min|max)-(?:width|height)\s*:/);
   });
 
-  test('writes colours in the space-separated rgb() syntax', () => {
-    expect(css).not.toMatch(/rgba\(|rgb\(\s*\d+\s*,/);
+  test('writes colours as oklch(), and derived ones with color-mix()', () => {
+    expect(css).not.toMatch(/\b(?:rgba?|hsla?)\(/);
+    // A hex colour in a declaration; ids in selectors are not matched.
+    expect(css).not.toMatch(/(?:^|[;{])\s*[\w-]+\s*:[^;{}]*#[\da-f]{3,8}\b/im);
+    expect(tokens).toContain('oklch(');
+    expect(tokens).toMatch(/color-mix\(in srgb, var\(--[\w-]+\) \d+%, transparent\)/);
   });
 
   test('serves both themes from one token block through light-dark()', () => {

@@ -21,7 +21,7 @@
 
 .panel-header {
   padding: var(--sp-2) var(--sp-4);
-  border-bottom: 1px solid var(--hairline);
+  border-block-end: 1px solid var(--hairline);
 
   h4 {
     font-size: 0.8125rem;
@@ -95,7 +95,7 @@
 .chat-meta {
   font-size: 0.6875rem;
   color: var(--text-muted);
-  margin-bottom: 2px;
+  margin-block-end: 2px;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -129,13 +129,13 @@
   line-height: 1.4;
 
   .chat-other & {
-    border-bottom-left-radius: 5px;
+    border-end-start-radius: 5px;
   }
 
   .chat-me & {
     background: var(--chat-bubble-me);
     border-color: var(--chat-bubble-me-border);
-    border-bottom-right-radius: 5px;
+    border-end-end-radius: 5px;
   }
 }
 
@@ -143,8 +143,9 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
-  border-top: 1px solid var(--hairline);
+  padding: var(--sp-2);
+  padding-inline-start: var(--sp-3);
+  border-block-start: 1px solid var(--hairline);
 
   input {
     flex: 1;
@@ -171,7 +172,7 @@
 
 .btn-chat-send {
   background: var(--accent-blue);
-  color: #ffffff;
+  color: var(--text-on-accent);
   border: none;
   width: 28px;
   height: 28px;
@@ -200,7 +201,7 @@
 .dock-tabs {
   display: none;
   gap: var(--sp-2);
-  margin-bottom: var(--sp-2);
+  margin-block-end: var(--sp-2);
 }
 
 .dock-tab {
@@ -230,7 +231,8 @@
     height: 15px;
   }
 
-  &.is-active {
+  /* The selected tab, read from the ARIA state dockView.js sets anyway. */
+  &[aria-selected="true"] {
     background: var(--bg-surface);
     border-color: var(--border-color);
     color: var(--text-main);

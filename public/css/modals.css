@@ -58,7 +58,7 @@ body:has(dialog:modal) {
 .game-over-title {
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-block-end: 6px;
   color: var(--text-main);
 
   &.win {
@@ -73,20 +73,20 @@ body:has(dialog:modal) {
 .confirm-title {
   font-size: 1.3125rem;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-block-end: 6px;
 }
 
 .winner-subtitle {
   font-size: 1rem;
   font-weight: 500;
   color: var(--text-main);
-  margin-bottom: 6px;
+  margin-block-end: 6px;
 }
 
 .reason-text {
   font-size: 0.875rem;
   color: var(--text-muted);
-  margin-bottom: var(--sp-8);
+  margin-block-end: var(--sp-8);
 }
 
 .modal-btn-row {
@@ -116,7 +116,7 @@ body:has(dialog:modal) {
   justify-content: space-between;
   gap: var(--sp-4);
   padding: var(--sp-5) var(--sp-6);
-  border-bottom: 1px solid var(--hairline);
+  border-block-end: 1px solid var(--hairline);
 
   h2 {
     font-size: 1.1875rem;
@@ -166,16 +166,16 @@ body:has(dialog:modal) {
   h3 {
     color: var(--text-main);
     font-size: 1rem;
-    margin-bottom: var(--sp-1);
+    margin-block-end: var(--sp-1);
   }
 
   p + p {
-    margin-top: var(--sp-2);
+    margin-block-start: var(--sp-2);
   }
 
   ul {
-    padding-left: var(--sp-5);
-    margin-top: var(--sp-2);
+    padding-inline-start: var(--sp-5);
+    margin-block-start: var(--sp-2);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -190,8 +190,8 @@ body:has(dialog:modal) {
 /* ── Toasts ── */
 .toast-container {
   position: fixed;
-  bottom: var(--sp-6);
-  right: var(--sp-6);
+  inset-block-end: var(--sp-6);
+  inset-inline-end: var(--sp-6);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
