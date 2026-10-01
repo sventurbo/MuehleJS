@@ -271,6 +271,7 @@ Web-Spiel/
 ├── package.json              # Projektkonfiguration, Abhängigkeiten & Scripts
 ├── server.js                 # Express HTTP-Server & Socket.io Event-Orchestrierung (IPv6 & IPv4)
 ├── Systemmodel.md            # Umfassendes Systemmodell (Architektur, Domänenmodell, State Machines)
+├── CLAUDE.md                 # Vorgaben der Portfolioaufgabe & Projektregeln für Claude Code
 ├── scripts/
 │   ├── contrast.js           # WCAG 2.1 Kontrastberechnung (relative Luminance, Kontrastverhältnis)
 │   ├── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
