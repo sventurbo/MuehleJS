@@ -15,17 +15,16 @@
   white-space: nowrap;
   flex-shrink: 1;
   min-width: 0;
-  -webkit-appearance: none;
   appearance: none;
   display: inline-flex;
   justify-content: center;
   align-items: center;
   gap: var(--sp-2);
   text-align: center;
-}
 
-.btn:active {
-  transform: scale(0.97);
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
 .btn-primary {
@@ -36,6 +35,14 @@
 .btn-secondary {
   background: var(--btn-secondary-bg);
   color: var(--text-main);
+}
+
+/* Destructive action: red text on the surface it sits on. A red fill would
+   need white text, and that misses 4.5:1 against the dark theme's red. */
+.btn-destructive {
+  background: transparent;
+  color: var(--accent-red);
+  box-shadow: inset 0 0 0 1px var(--border-color);
 }
 
 .text-input {
@@ -52,13 +59,13 @@
   letter-spacing: var(--tracking-body);
   outline: none;
   transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
-}
 
-.text-input::placeholder {
-  color: var(--text-muted);
-}
+  &::placeholder {
+    color: var(--text-muted);
+  }
 
-.text-input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 4px var(--tint-blue-ring);
+  &:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 4px var(--tint-blue-ring);
+  }
 }

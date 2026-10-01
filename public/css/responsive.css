@@ -10,7 +10,7 @@
 
 /* ── Tablets and small laptops: both player panels share one row above the
       board, so the board stays as close to the top of the screen as possible ── */
-@media (max-width: 1023px) {
+@media (width <= 1023px) {
   .game-arena {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -47,8 +47,8 @@
 
 /* ── Phones: board first, everything else condensed. Landscape phones are
       wider than 700px but just as cramped, so they get the same treatment. ── */
-@media (max-width: 700px),
-       (orientation: landscape) and (max-height: 560px) and (max-width: 1023px) {
+@media (width <= 700px),
+       (orientation: landscape) and (height <= 560px) and (width <= 1023px) {
   /* Header */
   .app-header {
     position: static;
@@ -268,23 +268,22 @@
     border-radius: var(--radius-sm);
   }
 
-  /* Modals become near-full-height sheets */
-  .modal-backdrop {
-    padding: var(--sp-4);
-    padding-top: max(var(--sp-4), env(safe-area-inset-top));
-    padding-bottom: max(var(--sp-4), env(safe-area-inset-bottom));
-  }
-  .modal-card {
+  /* Dialogs become near-full-height sheets that keep clear of the notch and
+     the home indicator */
+  .modal {
+    width: calc(100% - 2 * var(--sp-4));
+    inset-block: max(var(--sp-4), env(safe-area-inset-top)) max(var(--sp-4), env(safe-area-inset-bottom));
+    max-height: calc(100% - max(var(--sp-4), env(safe-area-inset-top)) - max(var(--sp-4), env(safe-area-inset-bottom)));
     border-radius: var(--radius-lg);
   }
-  .game-over-box {
+  .game-over-box,
+  .confirm-box {
     padding: var(--sp-8) var(--sp-5);
   }
   .game-over-title {
     font-size: 1.3125rem;
   }
   .rules-card {
-    max-height: 88vh;
     max-height: 88dvh;
   }
   .rules-header {
@@ -312,7 +311,7 @@
 }
 
 /* ── Narrow phones (<= 360px, e.g. iPhone SE 1st gen): trim the last pixels ── */
-@media (max-width: 360px) {
+@media (width <= 360px) {
   .conn-status {
     /* Only the state dot remains; the label would crowd the brand out. */
     font-size: 0;
@@ -340,7 +339,7 @@
 
 /* ── Phones in landscape: player panels flank the board, which is sized by
       the short edge so as much of it as possible stays on screen ── */
-@media (orientation: landscape) and (max-height: 560px) and (max-width: 1023px) {
+@media (orientation: landscape) and (height <= 560px) and (width <= 1023px) {
   /* Centring would push the top of a tall card out of reach when it overflows. */
   #screen-login,
   #screen-queue {
@@ -394,7 +393,6 @@
     height: 132px;
   }
   .rules-card {
-    max-height: 92vh;
     max-height: 92dvh;
   }
 }
@@ -444,6 +442,10 @@
     background: var(--btn-secondary-hover);
   }
 
+  .btn-destructive:hover {
+    background: var(--tint-red);
+  }
+
   .btn-tool:hover {
     background: var(--btn-tool-hover);
   }
@@ -479,7 +481,8 @@
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  *::backdrop {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;

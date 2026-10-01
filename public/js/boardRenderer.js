@@ -13,7 +13,9 @@
  * to a handful of class toggles.
  */
 
-const POINT_COORDS = {
+import * as RULES from '/shared/muehleRules.js';
+
+export const POINT_COORDS = {
   // Outer square
   'a7': { x: 60, y: 60 },
   'd7': { x: 300, y: 60 },
@@ -122,7 +124,7 @@ function pointGroupsMarkup(hitRadius) {
   `).join('');
 }
 
-class BoardRenderer {
+export class BoardRenderer {
   constructor(containerElement, onPointClick) {
     this.container = containerElement;
     this.onPointClick = onPointClick;
@@ -136,10 +138,10 @@ class BoardRenderer {
     this.pieces = new Map();
     this.gameId = null;
 
-    this._initSvg();
+    this.#initSvg();
   }
 
-  _initSvg() {
+  #initSvg() {
     this.container.innerHTML = `
       <svg viewBox="0 0 600 600" class="muehle-svg" preserveAspectRatio="xMidYMid meet">
         <title>Mühle-Spielbrett mit 24 Feldern</title>
@@ -201,16 +203,9 @@ class BoardRenderer {
     // One delegated listener: the groups outlive every render, and a stone that
     // is still fading out lets the click through to its point.
     this.interactiveLayer.addEventListener('click', (e) => {
-      const group = e.target.closest('.board-point-group');
-      const pt = group && group.getAttribute('data-point');
-      if (pt && this.onPointClick) {
-        this.onPointClick(pt);
-      }
+      const pt = e.target.closest('.board-point-group')?.getAttribute('data-point');
+      if (pt) this.onPointClick?.(pt);
     });
-
-    // iOS Safari only applies :active to elements that have a touch listener;
-    // the socket press feedback in board.css depends on it.
-    this.interactiveLayer.addEventListener('touchstart', () => {}, { passive: true });
   }
 
   /**
@@ -228,12 +223,12 @@ class BoardRenderer {
   render(gameState, playerColor, selectedPoint = null, validDestinations = []) {
     this.selectedPoint = selectedPoint;
     this.validDestinations = validDestinations;
-    this.removablePoints = window.MuehleRules.getCaptureTargets(gameState, playerColor);
+    this.removablePoints = RULES.getCaptureTargets(gameState, playerColor);
 
     const isMyTurn = gameState.turn === playerColor && !gameState.winner;
     const canSelect = isMyTurn && gameState.phase === 'MOVING' && !gameState.awaitingRemoval;
 
-    this._syncPieces(gameState);
+    this.#syncPieces(gameState);
 
     Object.keys(POINT_COORDS).forEach(pt => {
       const isRemovable = this.removablePoints.includes(pt);
@@ -262,41 +257,41 @@ class BoardRenderer {
    * board instead of animating the previous game's stones away, and without
    * the last game's mill beam.
    */
-  _syncPieces(gameState) {
+  #syncPieces(gameState) {
     const board = gameState.board;
     const sameGame = gameState.gameId === this.gameId;
 
     if (!sameGame) {
       this.interactiveLayer.querySelectorAll('.game-piece').forEach(el => el.remove());
       this.pieces.clear();
-      this.millGlowLayer.innerHTML = '';
+      this.millGlowLayer.replaceChildren();
       this.gameId = gameState.gameId;
     }
 
     const shown = {};
     this.pieces.forEach((piece, pt) => { shown[pt] = piece.color; });
-    const { moved, placed, removed } = window.MuehleRules.diffBoards(shown, board);
+    const { moved, placed, removed } = RULES.diffBoards(shown, board);
 
     if (moved) {
-      this._removePiece(moved.from, false);
-      this._addPiece(moved.to, board[moved.to], { from: moved.from });
+      this.#removePiece(moved.from, false);
+      this.#addPiece(moved.to, board[moved.to], { from: moved.from });
     }
-    removed.forEach(pt => this._removePiece(pt, sameGame));
-    placed.forEach(pt => this._addPiece(pt, board[pt], sameGame ? { enter: true } : {}));
+    removed.forEach(pt => this.#removePiece(pt, sameGame));
+    placed.forEach(pt => this.#addPiece(pt, board[pt], sameGame ? { enter: true } : {}));
   }
 
   /**
    * Puts a stone on `pt`. `from` makes it travel there from another point,
    * `enter` lets it pop in; with neither it simply appears.
    */
-  _addPiece(pt, color, { from = null, enter = false } = {}) {
+  #addPiece(pt, color, { from = null, enter = false } = {}) {
     const group = this.pointGroups[pt];
     const isWhite = color === 'W';
     const fillGrad = isWhite ? 'url(#whitePieceGrad)' : 'url(#blackPieceGrad)';
 
     if (from) {
       // Paint the travelling stone above every point it crosses on the way.
-      this.interactiveLayer.appendChild(group);
+      this.interactiveLayer.append(group);
     }
 
     group.insertAdjacentHTML('beforeend', `
@@ -313,9 +308,9 @@ class BoardRenderer {
       // Start offset in local user units; the keyframes glide it back to 0.
       el.style.setProperty('--travel-x', `${POINT_COORDS[from].x - POINT_COORDS[pt].x}px`);
       el.style.setProperty('--travel-y', `${POINT_COORDS[from].y - POINT_COORDS[pt].y}px`);
-      BoardRenderer._playOnce(el, 'piece-arriving');
+      BoardRenderer.#playOnce(el, 'piece-arriving');
     } else if (enter) {
-      BoardRenderer._playOnce(el, 'piece-entering');
+      BoardRenderer.#playOnce(el, 'piece-entering');
     }
 
     this.pieces.set(pt, { color, el });
@@ -326,7 +321,7 @@ class BoardRenderer {
    * It leaves `this.pieces` immediately, so the next render already treats the
    * point as empty while the old node finishes its exit.
    */
-  _removePiece(pt, animate) {
+  #removePiece(pt, animate) {
     const piece = this.pieces.get(pt);
     if (!piece) return;
     this.pieces.delete(pt);
@@ -346,7 +341,7 @@ class BoardRenderer {
    * afterwards so the animation cannot replay when the node is re-inserted
    * or its screen is shown again.
    */
-  static _playOnce(el, className) {
+  static #playOnce(el, className) {
     el.classList.add(className);
     el.addEventListener('animationend', () => el.classList.remove(className), { once: true });
   }
@@ -355,10 +350,7 @@ class BoardRenderer {
    * Coarse pointers (fingers) need a larger target than a mouse cursor.
    */
   static hitRadius() {
-    const coarse = typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(pointer: coarse)').matches;
-    return coarse ? HIT_RADIUS_TOUCH : HIT_RADIUS_POINTER;
+    return window.matchMedia('(pointer: coarse)').matches ? HIT_RADIUS_TOUCH : HIT_RADIUS_POINTER;
   }
 
   /**
@@ -369,7 +361,7 @@ class BoardRenderer {
    */
   highlightMill(millPoints) {
     if (!millPoints || millPoints.length < 3) {
-      this.millGlowLayer.innerHTML = '';
+      this.millGlowLayer.replaceChildren();
       return;
     }
 
@@ -386,6 +378,3 @@ class BoardRenderer {
     setTimeout(() => beam.remove(), MILL_BEAM_FALLBACK_MS);
   }
 }
-
-window.BoardRenderer = BoardRenderer;
-window.POINT_COORDS = POINT_COORDS;

@@ -1,12 +1,13 @@
 {
   "name": "muehle-web-spiel",
   "version": "1.0.0",
+  "type": "module",
   "description": "Multiplayer Web-Spiel Mühle (Nine Men's Morris) mit HTML5, CSS3, JavaScript, Express und Socket.io",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "build": "echo 'Build step completed (vanilla frontend, no bundle required)'",
-    "test": "jest --verbose",
+    "test": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --verbose",
     "contrast-check": "node scripts/contrast-check.js"
   },
   "keywords": [
@@ -22,7 +23,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "dependencies": {
     "express": "^5.2.1",
@@ -33,5 +34,15 @@
   "devDependencies": {
     "jest": "^30.5.2",
     "socket.io-client": "^4.8.4"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js"
+    ],
+    "transform": {}
+  },
+  "allowScripts": {
+    "@parcel/watcher": false,
+    "unrs-resolver": false
   }
 }

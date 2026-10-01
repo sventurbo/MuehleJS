@@ -12,14 +12,25 @@
  * modules stays a refactor and never a silent loss of coverage.
  *
  * This is deliberately a resolver, not a preprocessor: imports are inlined at
- * their own position, everything else is passed through byte for byte.
+ * their own position — inside an `@layer <name> { … }` block when they are
+ * imported into a cascade layer, exactly as the browser applies them — and
+ * everything else is passed through byte for byte.
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
 
-/** `@import "a.css";` and `@import url("a.css");`, with either quote style. */
-const IMPORT_RE = /@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*;/g;
+/** The project's stylesheet entry point: the manifest of public/css. */
+const ENTRY = path.join(import.meta.dirname, '..', 'public', 'css', 'style.css');
+
+/**
+ * `@import "a.css";` and `@import url("a.css");`, with either quote style and
+ * optionally into a cascade layer: `@import url("a.css") layer(a);`.
+ */
+export const IMPORT_RE = /@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?(?:\s+layer\(\s*([\w.-]+)\s*\))?\s*;/g;
+
+/** The `@layer a, b, c;` statement that fixes the order of the cascade layers. */
+export const LAYER_ORDER_RE = /@layer\s+([\w.-]+(?:\s*,\s*[\w.-]+)*)\s*;/;
 
 /**
  * Reads `entryFile` and replaces every @import with the (recursively resolved)
@@ -29,7 +40,7 @@ const IMPORT_RE = /@import\s+(?:url\(\s*)?["']([^"']+)["']\s*\)?\s*;/g;
  * @param {Set<string>} [seen] Guards against import cycles.
  * @returns {string} The concatenated stylesheet.
  */
-function bundleCss(entryFile, seen = new Set()) {
+export function bundleCss(entryFile, seen = new Set()) {
   const absolute = path.resolve(entryFile);
   if (seen.has(absolute)) {
     throw new Error(`Circular @import: ${absolute}`);
@@ -37,31 +48,44 @@ function bundleCss(entryFile, seen = new Set()) {
   seen.add(absolute);
 
   const dir = path.dirname(absolute);
-  return fs.readFileSync(absolute, 'utf8').replace(IMPORT_RE, (_match, href) => {
+  return fs.readFileSync(absolute, 'utf8').replace(IMPORT_RE, (_match, href, layer) => {
     const target = path.resolve(dir, href);
     if (!fs.existsSync(target)) {
       throw new Error(`@import target missing: ${href} (imported by ${absolute})`);
     }
-    return bundleCss(target, seen);
+    const content = bundleCss(target, seen);
+    return layer ? `@layer ${layer} {\n${content}\n}` : content;
   });
 }
 
 /** The project's own stylesheet entry point, resolved and concatenated. */
-function loadStylesheet() {
-  return bundleCss(path.join(__dirname, '..', 'public', 'css', 'style.css'));
+export function loadStylesheet() {
+  return bundleCss(ENTRY);
 }
 
-/** The module paths listed in style.css, in cascade order. */
-function listModules() {
-  const entry = path.join(__dirname, '..', 'public', 'css', 'style.css');
-  const source = fs.readFileSync(entry, 'utf8');
-  return Array.from(source.matchAll(IMPORT_RE), match => match[1]);
+/** The manifest itself: public/css/style.css, unresolved. */
+function readManifest() {
+  return fs.readFileSync(ENTRY, 'utf8');
 }
 
-module.exports = { bundleCss, loadStylesheet, listModules, IMPORT_RE };
+/** The imports listed in style.css, in import order: `{ href, layer }`. */
+export function listImports() {
+  return Array.from(readManifest().matchAll(IMPORT_RE), ([, href, layer]) => ({ href, layer: layer ?? null }));
+}
+
+/** The module paths listed in style.css, in import order. */
+export function listModules() {
+  return listImports().map(({ href }) => href);
+}
+
+/** The layer names of the manifest's `@layer` statement, lowest precedence first. */
+export function listLayers() {
+  const statement = readManifest().match(LAYER_ORDER_RE);
+  return statement ? statement[1].split(',').map(name => name.trim()) : [];
+}
 
 // Called directly (`node scripts/css-bundle.js`): print the resolved sheet, so
 // the bundle can be piped into any external CSS tool.
-if (require.main === module) {
+if (import.meta.main) {
   process.stdout.write(loadStylesheet());
 }

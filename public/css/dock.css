@@ -22,20 +22,20 @@
 .panel-header {
   padding: var(--sp-2) var(--sp-4);
   border-bottom: 1px solid var(--hairline);
-}
 
-.panel-header h4 {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+  h4 {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
-.panel-header .icon {
-  width: 15px;
-  height: 15px;
+  .icon {
+    width: 15px;
+    height: 15px;
+  }
 }
 
 /* Move log */
@@ -48,21 +48,21 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
 
-.move-log-list li {
-  padding: 3px 6px;
-  border-radius: 6px;
-  color: var(--text-muted);
-}
+  li {
+    padding: 3px 6px;
+    border-radius: 6px;
+    color: var(--text-muted);
 
-.move-log-list li:nth-child(even) {
-  background: var(--zebra-stripe);
-}
+    &:nth-child(even) {
+      background: var(--zebra-stripe);
+    }
+  }
 
-.move-log-list .log-system {
-  color: var(--text-main);
-  font-weight: 500;
+  .log-system {
+    color: var(--text-main);
+    font-weight: 500;
+  }
 }
 
 /* Chat */
@@ -80,16 +80,16 @@
   display: flex;
   flex-direction: column;
   max-width: 82%;
-}
 
-.chat-msg.chat-me {
-  align-self: flex-end;
-  align-items: flex-end;
-}
+  &.chat-me {
+    align-self: flex-end;
+    align-items: flex-end;
+  }
 
-.chat-msg.chat-other {
-  align-self: flex-start;
-  align-items: flex-start;
+  &.chat-other {
+    align-self: flex-start;
+    align-items: flex-start;
+  }
 }
 
 .chat-meta {
@@ -125,18 +125,18 @@
   padding: 5px var(--sp-3);
   border-radius: 16px;
   border: 1px solid var(--hairline);
-  word-break: break-word;
+  overflow-wrap: anywhere;
   line-height: 1.4;
-}
 
-.chat-other .chat-bubble {
-  border-bottom-left-radius: 5px;
-}
+  .chat-other & {
+    border-bottom-left-radius: 5px;
+  }
 
-.chat-me .chat-bubble {
-  background: var(--chat-bubble-me);
-  border-color: var(--chat-bubble-me-border);
-  border-bottom-right-radius: 5px;
+  .chat-me & {
+    background: var(--chat-bubble-me);
+    border-color: var(--chat-bubble-me-border);
+    border-bottom-right-radius: 5px;
+  }
 }
 
 .chat-form {
@@ -145,28 +145,28 @@
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
   border-top: 1px solid var(--hairline);
-}
 
-.chat-form input {
-  flex: 1;
-  min-width: 0;
-  background: var(--input-bg);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-pill);
-  padding: 6px var(--sp-3);
-  color: var(--text-main);
-  font-family: inherit;
-  font-size: 0.8125rem;
-  outline: none;
-  transition: border-color var(--dur-2) var(--ease-out);
-}
+  input {
+    flex: 1;
+    min-width: 0;
+    background: var(--input-bg);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-pill);
+    padding: 6px var(--sp-3);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color var(--dur-2) var(--ease-out);
 
-.chat-form input::placeholder {
-  color: var(--text-muted);
-}
+    &::placeholder {
+      color: var(--text-muted);
+    }
 
-.chat-form input:focus {
-  border-color: var(--accent-blue);
+    &:focus {
+      border-color: var(--accent-blue);
+    }
+  }
 }
 
 .btn-chat-send {
@@ -182,16 +182,16 @@
   justify-content: center;
   cursor: pointer;
   transition: filter var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
-}
 
-.btn-chat-send .icon {
-  width: 16px;
-  height: 16px;
-  stroke-width: 2;
-}
+  .icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+  }
 
-.btn-chat-send:active {
-  transform: scale(0.92);
+  &:active {
+    transform: scale(0.92);
+  }
 }
 
 /* Dock tab bar: hidden on desktop, where log and chat sit side by side. */
@@ -220,21 +220,21 @@
   justify-content: center;
   gap: 6px;
   transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
-}
 
-.dock-tab .icon {
-  width: 15px;
-  height: 15px;
-}
+  .icon {
+    width: 15px;
+    height: 15px;
+  }
 
-.dock-tab.is-active {
-  background: var(--bg-surface);
-  border-color: var(--border-color);
-  color: var(--text-main);
-}
+  &.is-active {
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+    color: var(--text-main);
+  }
 
-.dock-tab:active {
-  transform: scale(0.98);
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 /* Unread marker on the inactive chat tab. */

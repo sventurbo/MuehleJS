@@ -5,7 +5,7 @@
  * per WCAG 2.1 §1.4.3.
  */
 
-function hexToRgb(hex) {
+export function hexToRgb(hex) {
   const clean = hex.replace('#', '');
   const expanded = clean.length === 3
     ? clean.split('').map(c => c + c).join('')
@@ -19,12 +19,12 @@ function hexToRgb(hex) {
   };
 }
 
-function sRGBtoLinear(c) {
+export function sRGBtoLinear(c) {
   const v = c / 255;
-  return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 }
 
-function relativeLuminance(hex) {
+export function relativeLuminance(hex) {
   const rgb = hexToRgb(hex);
   if (!rgb) return 0;
   const r = sRGBtoLinear(rgb.r);
@@ -33,7 +33,7 @@ function relativeLuminance(hex) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-function contrastRatio(hex1, hex2) {
+export function contrastRatio(hex1, hex2) {
   const l1 = relativeLuminance(hex1);
   const l2 = relativeLuminance(hex2);
   const lighter = Math.max(l1, l2);
@@ -41,8 +41,12 @@ function contrastRatio(hex1, hex2) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function parseRgba(rgba) {
-  const result = /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/.exec(rgba);
+/**
+ * Reads `rgb(r g b)` or `rgb(r g b / alpha)` into a hex colour. The alpha is
+ * dropped: every translucent token is checked as if it were opaque.
+ */
+export function parseRgb(rgb) {
+  const result = /^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*(?:\/\s*[\d.]+%?\s*)?\)$/.exec(rgb);
   if (!result) return null;
   const r = parseInt(result[1], 10).toString(16).padStart(2, '0');
   const g = parseInt(result[2], 10).toString(16).padStart(2, '0');
@@ -50,13 +54,10 @@ function parseRgba(rgba) {
   return `#${r}${g}${b}`;
 }
 
-function resolveColor(value, themeVars) {
+/** A token value as a hex colour, or null when it is not a literal colour. */
+export function resolveColor(value) {
   if (!value) return null;
   if (/^#[0-9a-fA-F]{3,8}$/.test(value)) return value;
-  if (value.startsWith('rgba(')) return parseRgba(value);
-  if (value.startsWith('rgb(')) return parseRgba(value.replace('rgb(', 'rgba(').replace(')', ', 1)'));
-  if (value.startsWith('var(')) return null;
+  if (value.startsWith('rgb(')) return parseRgb(value);
   return null;
 }
-
-module.exports = { hexToRgb, sRGBtoLinear, relativeLuminance, contrastRatio, parseRgba, resolveColor };

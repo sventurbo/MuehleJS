@@ -14,10 +14,16 @@
  * and asks for what the player clicked.
  */
 
+import { io } from '/socket.io/socket.io.esm.min.js';
 // Board geometry and capture rules come from the module the server engine is
 // built on, so the markers this client draws and the moves it offers are
 // validated by the very same code that will judge them.
-const RULES = window.MuehleRules;
+import * as RULES from '/shared/muehleRules.js';
+import { soundController } from './audio.js';
+import { BoardRenderer } from './boardRenderer.js';
+import { HudView } from './hudView.js';
+import { DockView } from './dockView.js';
+import { Overlays } from './overlays.js';
 
 class MuehleApp {
   constructor() {
@@ -45,83 +51,80 @@ class MuehleApp {
     this.queueStatusText = document.getElementById('queue-status-text');
     this.btnSoundToggle = document.getElementById('btn-sound-toggle');
 
-    this.hud = new window.HudView();
-    this.dock = new window.DockView({ onSend: (text) => this.socket.emit('chatMessage', { text }) });
-    this.overlays = new window.Overlays({
-      onPlayAgain: () => this._handleLogin(),
+    this.hud = new HudView();
+    this.dock = new DockView({ onSend: (text) => this.socket.emit('chatMessage', { text }) });
+    this.overlays = new Overlays({
+      onPlayAgain: () => this.#handleLogin(),
       onBackToLobby: () => {
         this.socket.emit('leaveGame');
-        this._terminateSession(null);
-      }
+        this.#terminateSession(null);
+      },
+      // The flag button opens the surrender dialog on its own (invoker
+      // command); only a confirmed answer reaches the server.
+      onSurrender: () => this.socket.emit('forfeit')
     });
-    this.board = new window.BoardRenderer(
+    this.board = new BoardRenderer(
       document.getElementById('board-container'),
-      (point) => this._onPointClick(point)
+      (point) => this.#onPointClick(point)
     );
 
-    this._bindControls();
-    this._initSocket();
+    this.#bindControls();
+    this.#initSocket();
   }
 
   /**
    * The opponent stones this client may capture right now.
    *
    * Derived from the current server state on every read instead of being cached
-   * in a field: the renderer and _onPointClick therefore always see the same
+   * in a field: the renderer and #onPointClick therefore always see the same
    * set, and no branch can leave a stale one behind (which used to draw capture
    * rings the click handler then refused).
    */
-  get removablePoints() {
+  get #removablePoints() {
     return RULES.getCaptureTargets(this.gameState, this.myColor);
   }
 
   // ── Controls outside the views ────────────────────────────────────────────
 
-  _bindControls() {
+  #bindControls() {
     document.getElementById('btn-find-game')
-      .addEventListener('click', () => this._handleLogin());
+      .addEventListener('click', () => this.#handleLogin());
     this.usernameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this._handleLogin();
+      if (e.key === 'Enter') this.#handleLogin();
     });
 
     document.getElementById('btn-cancel-queue').addEventListener('click', () => {
       this.socket.emit('leaveGame');
       this.sessionActive = false;
-      this._switchScreen('login');
+      this.#switchScreen('login');
     });
 
-    document.getElementById('btn-surrender').addEventListener('click', () => {
-      if (confirm('Möchtest du diese Partie wirklich aufgeben?')) {
-        this.socket.emit('forfeit');
-      }
-    });
+    this.btnSoundToggle.addEventListener('click', () => this.#toggleSound());
+    this.#markSoundButton(soundController.isMuted());
 
-    this.btnSoundToggle.addEventListener('click', () => this._toggleSound());
-    this._markSoundButton(window.soundController.isMuted());
-
-    // Audio has to be unlocked from a user gesture on iOS; the first game
-    // sound is fired by a socket event, which would be too late.
+    // Audio may only start with user activation; the first game sound is fired
+    // by a socket event, which would be too late. pointerup is the pointer
+    // event that grants activation for touch and pen (a mouse already has it
+    // from pointerdown), keydown covers the keyboard.
+    const unlock = new AbortController();
     const unlockAudio = () => {
-      window.soundController.unlock();
-      document.removeEventListener('pointerdown', unlockAudio);
-      document.removeEventListener('touchend', unlockAudio);
-      document.removeEventListener('keydown', unlockAudio);
+      soundController.unlock();
+      unlock.abort();
     };
-    document.addEventListener('pointerdown', unlockAudio, { passive: true });
-    document.addEventListener('touchend', unlockAudio, { passive: true });
-    document.addEventListener('keydown', unlockAudio);
+    document.addEventListener('pointerup', unlockAudio, { signal: unlock.signal });
+    document.addEventListener('keydown', unlockAudio, { signal: unlock.signal });
   }
 
-  _toggleSound() {
-    this._markSoundButton(window.soundController.toggleMute());
+  #toggleSound() {
+    this.#markSoundButton(soundController.toggleMute());
   }
 
-  _markSoundButton(isMuted) {
+  #markSoundButton(isMuted) {
     this.btnSoundToggle.classList.toggle('is-muted', isMuted);
     this.btnSoundToggle.title = isMuted ? 'Ton aktivieren' : 'Ton stummschalten';
   }
 
-  _handleLogin() {
+  #handleLogin() {
     const username = this.usernameInput.value.trim().substring(0, 12);
     if (!username) return;
     this.myName = username;
@@ -130,7 +133,7 @@ class MuehleApp {
 
   // ── Server events ─────────────────────────────────────────────────────────
 
-  _initSocket() {
+  #initSocket() {
     this.socket = io();
 
     this.socket.on('connect', () => {
@@ -142,7 +145,7 @@ class MuehleApp {
       if (this.connectionLost) {
         this.connectionLost = false;
         if (this.sessionActive) {
-          this._terminateSession('Die Verbindung wurde unterbrochen – die Partie wurde beendet.');
+          this.#terminateSession('Die Verbindung wurde unterbrochen – die Partie wurde beendet.');
         }
       }
     });
@@ -158,18 +161,18 @@ class MuehleApp {
     // reconnected under a new id). Nothing is recoverable, so end the session.
     this.socket.on('gameNotFound', (data) => {
       if (!this.sessionActive) return;
-      this._terminateSession((data && data.message) || 'Deine Partie ist nicht mehr aktiv.');
+      this.#terminateSession(data?.message || 'Deine Partie ist nicht mehr aktiv.');
     });
 
     this.socket.on('queueWaiting', (data) => {
       this.sessionActive = true;
       this.queueStatusText.textContent = data.message || 'Warte auf Mitspieler...';
-      this._switchScreen('queue');
+      this.#switchScreen('queue');
     });
 
-    this.socket.on('gameStart', (data) => this._startGame(data));
+    this.socket.on('gameStart', (data) => this.#startGame(data));
 
-    this.socket.on('gameStateUpdate', (data) => this._applyUpdate(data));
+    this.socket.on('gameStateUpdate', (data) => this.#applyUpdate(data));
 
     // The server restarts the turn clock after every accepted action and says
     // how much time the player on turn has left.
@@ -188,10 +191,10 @@ class MuehleApp {
       );
     });
 
-    this.socket.on('gameOver', (data) => this._endGame(data));
+    this.socket.on('gameOver', (data) => this.#endGame(data));
 
     this.socket.on('opponentDisconnected', (data) => {
-      this._endGame(data);
+      this.#endGame(data);
       // The exact cause (dropped connection vs. deliberate exit) is in winReason.
       this.overlays.toast(data.winReason || 'Die Partie wurde beendet.', 'warning');
     });
@@ -208,7 +211,7 @@ class MuehleApp {
   }
 
   /** A match was found: set up both views and show the board. */
-  _startGame(data) {
+  #startGame(data) {
     this.sessionActive = true;
     this.myColor = data.yourColor;
     this.myName = data.yourName;
@@ -226,16 +229,16 @@ class MuehleApp {
     });
     this.dock.reset(this.myName);
 
-    this._switchScreen('game');
+    this.#switchScreen('game');
     this.dock.addSystemNote(`Spiel gestartet! Du spielst als ${RULES.colorName(this.myColor)}.`);
 
-    window.soundController.playPlace();
-    this._render();
+    soundController.playPlace();
+    this.#render();
   }
 
   /** An accepted action: log it, play its sound, then redraw. */
-  _applyUpdate(data) {
-    const previousTurn = this.gameState && this.gameState.turn;
+  #applyUpdate(data) {
+    const previousTurn = this.gameState?.turn;
     this.gameState = data.state;
     const lastAction = data.lastAction;
 
@@ -246,14 +249,14 @@ class MuehleApp {
     }
 
     if (lastAction) {
-      this._reportAction(lastAction);
+      this.#reportAction(lastAction);
     }
 
-    this._render();
+    this.#render();
   }
 
   /** Move log entry, sound and mill beam for one accepted action. */
-  _reportAction(lastAction) {
+  #reportAction(lastAction) {
     const actor = RULES.colorName(lastAction.player);
 
     // A move the server played after the turn timer expired is marked, so
@@ -261,19 +264,19 @@ class MuehleApp {
     const autoSuffix = lastAction.auto ? ' (automatisch)' : '';
 
     if (lastAction.action === 'place') {
-      window.soundController.playPlace();
+      soundController.playPlace();
       this.dock.addMove(`${actor} setzt auf ${lastAction.point}${autoSuffix}`);
     } else if (lastAction.action === 'move') {
-      window.soundController.playMove();
+      soundController.playMove();
       this.dock.addMove(`${actor} zieht ${lastAction.from} → ${lastAction.to}${autoSuffix}`);
     } else if (lastAction.action === 'remove') {
-      window.soundController.playRemove();
+      soundController.playRemove();
       this.dock.addMove(`${actor} schlägt Stein auf ${lastAction.point}${autoSuffix}`);
     }
 
     if (!lastAction.millFormed) return;
 
-    window.soundController.playMill();
+    soundController.playMill();
     this.dock.addSystemNote(`Mühle geschlossen von ${actor}!`);
 
     const trigger = this.gameState.millTriggerPoint;
@@ -285,10 +288,10 @@ class MuehleApp {
   }
 
   /** The game is decided — by a win, a forfeit or a lost opponent. */
-  _endGame(data) {
+  #endGame(data) {
     this.gameState = data.state;
     this.hud.stopCountdown();
-    this._render();
+    this.#render();
 
     // The server is done with this game, so a later reconnect or `gameNotFound`
     // must not tear the result screen away before it has been read.
@@ -296,9 +299,9 @@ class MuehleApp {
 
     const isWin = data.winner === this.myColor;
     if (isWin) {
-      window.soundController.playWin();
+      soundController.playWin();
     } else {
-      window.soundController.playLose();
+      soundController.playLose();
     }
     this.overlays.showGameOver({
       winner: data.winner,
@@ -316,7 +319,7 @@ class MuehleApp {
    * connection error simply terminates the game; without this the client kept
    * showing a board that silently swallowed every click.
    */
-  _terminateSession(message) {
+  #terminateSession(message) {
     this.sessionActive = false;
     this.hud.reset();
     this.gameState = null;
@@ -324,8 +327,8 @@ class MuehleApp {
     this.selectedPoint = null;
     this.validDestinations = [];
 
-    this.overlays.hideGameOver();
-    this._switchScreen('login');
+    this.overlays.closeGameDialogs();
+    this.#switchScreen('login');
     if (message) this.overlays.toast(message, 'warning');
   }
 
@@ -336,7 +339,7 @@ class MuehleApp {
    * the one request it can be right now, and the server answers with the new
    * state (or an `actionError`).
    */
-  _onPointClick(point) {
+  #onPointClick(point) {
     if (!this.gameState || this.gameState.winner) return;
     if (this.gameState.turn !== this.myColor) {
       this.overlays.toast('Der Gegner ist am Zug!', 'info');
@@ -344,17 +347,17 @@ class MuehleApp {
     }
 
     if (this.gameState.awaitingRemoval) {
-      this._tryCapture(point);
+      this.#tryCapture(point);
     } else if (this.gameState.phase === 'SETTING') {
-      this._tryPlace(point);
+      this.#tryPlace(point);
     } else if (this.gameState.phase === 'MOVING') {
-      this._trySelectOrMove(point);
+      this.#trySelectOrMove(point);
     }
   }
 
   /** A mill was closed: the click has to name a capturable opponent stone. */
-  _tryCapture(point) {
-    if (this.removablePoints.includes(point)) {
+  #tryCapture(point) {
+    if (this.#removablePoints.includes(point)) {
       this.socket.emit('removePiece', { point });
     } else {
       this.overlays.toast('Wähle einen gültigen gegnerischen Stein zum Schlagen (nicht in einer Mühle)!', 'warning');
@@ -362,7 +365,7 @@ class MuehleApp {
   }
 
   /** Phase 1: any free point takes a stone. */
-  _tryPlace(point) {
+  #tryPlace(point) {
     if (this.gameState.board[point] === null) {
       this.socket.emit('placePiece', { point });
     } else {
@@ -371,7 +374,7 @@ class MuehleApp {
   }
 
   /** Phase 2 & 3: first click selects a stone, second click moves it. */
-  _trySelectOrMove(point) {
+  #trySelectOrMove(point) {
     const piece = this.gameState.board[point];
 
     // Own stone: select it, or deselect the one already selected.
@@ -386,7 +389,7 @@ class MuehleApp {
           this.gameState.board, point, this.myColor, canJump
         );
       }
-      this._render();
+      this.#render();
       return;
     }
 
@@ -395,7 +398,7 @@ class MuehleApp {
       this.socket.emit('movePiece', { from: this.selectedPoint, to: point });
       this.selectedPoint = null;
       this.validDestinations = [];
-      this._render();
+      this.#render();
       return;
     }
 
@@ -406,32 +409,20 @@ class MuehleApp {
 
   // ── Screens ───────────────────────────────────────────────────────────────
 
-  _switchScreen(screenName) {
-    window.scrollTo(0, 0);
+  #switchScreen(screenName) {
+    window.scrollTo({ top: 0 });
     Object.entries(this.screens).forEach(([name, section]) => {
-      section.classList.toggle('hidden', name !== screenName);
+      section.hidden = name !== screenName;
     });
   }
 
   /** Redraws everything that depends on the current game state. */
-  _render() {
+  #render() {
     if (!this.gameState) return;
     this.hud.render(this.gameState);
     this.board.render(this.gameState, this.myColor, this.selectedPoint, this.validDestinations);
   }
 }
 
-// Start application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  window.app = new MuehleApp();
-});
-
-// React to system theme changes at runtime
-if (window.matchMedia) {
-  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  const handleThemeChange = () => {
-    document.documentElement.classList.toggle('dark-theme', darkModeQuery.matches);
-  };
-  darkModeQuery.addEventListener('change', handleThemeChange);
-  handleThemeChange();
-}
+// Module scripts run once the document is parsed, so the DOM is complete here.
+new MuehleApp();

@@ -1,10 +1,10 @@
-const http = require('http');
-const express = require('express');
-const { Server } = require('socket.io');
-const { io: Client } = require('socket.io-client');
-const { GameManager } = require('../lib/GameManager');
-const fs = require('fs');
-const path = require('path');
+import http from 'node:http';
+import express from 'express';
+import { Server } from 'socket.io';
+import { io as Client } from 'socket.io-client';
+import { GameManager } from '../lib/GameManager.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 describe('Full Server & Socket.io Integration Flow', () => {
   let httpServer;
@@ -246,9 +246,9 @@ describe('Turn timer UI', () => {
   let hudJs;
 
   beforeAll(() => {
-    htmlContent = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-    appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
-    hudJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'hudView.js'), 'utf8');
+    htmlContent = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'index.html'), 'utf8');
+    appJs = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+    hudJs = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'js', 'hudView.js'), 'utf8');
   });
 
   test('the HUD carries a countdown element', () => {
@@ -281,7 +281,7 @@ describe('Game Over Modal UI (Issue #8)', () => {
   let htmlContent;
 
   beforeAll(() => {
-    htmlContent = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    htmlContent = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'index.html'), 'utf8');
   });
 
   test('Button "Erneut Spielen" label exists and old label is removed', () => {

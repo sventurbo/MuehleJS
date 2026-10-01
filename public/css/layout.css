@@ -10,7 +10,6 @@
   top: 0;
   height: 52px;
   background: var(--material-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--hairline);
   display: flex;
@@ -40,13 +39,13 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-}
 
-.brand-title span {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: 0.9375rem;
-  letter-spacing: var(--tracking-body);
+  span {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 0.9375rem;
+    letter-spacing: var(--tracking-body);
+  }
 }
 
 .header-controls {
@@ -67,29 +66,29 @@
   margin-right: var(--sp-1);
   border-radius: var(--radius-pill);
   transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
-}
 
-.conn-status::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: none;
-}
+  &::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
 
-.conn-status.online {
-  color: var(--text-muted);
-}
+  &.online {
+    color: var(--text-muted);
 
-.conn-status.online::before {
-  background: var(--accent-green);
-}
+    &::before {
+      background: var(--accent-green);
+    }
+  }
 
-.conn-status.offline {
-  color: var(--accent-red);
-  background: var(--tint-red);
-  padding: 4px 10px;
+  &.offline {
+    color: var(--accent-red);
+    background: var(--tint-red);
+    padding: 4px 10px;
+  }
 }
 
 .btn-icon {
@@ -104,18 +103,23 @@
   justify-content: center;
   cursor: pointer;
   transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
-}
 
-.btn-icon:active {
-  transform: scale(0.92);
+  &:active {
+    transform: scale(0.92);
+  }
 }
 
 /* Sound toggle holds both glyphs; app.js flips the .is-muted class. */
-.btn-sound .icon-sound-off { display: none; }
-.btn-sound.is-muted .icon-sound-on { display: none; }
-.btn-sound.is-muted .icon-sound-off { display: block; }
+.btn-sound {
+  .icon-sound-off { display: none; }
 
-/* ── Screen switcher ── */
+  &.is-muted {
+    .icon-sound-on { display: none; }
+    .icon-sound-off { display: block; }
+  }
+}
+
+/* ── Screen switcher: app.js sets the hidden attribute on all but one ── */
 .app-main {
   flex: 1;
   display: flex;
@@ -127,8 +131,4 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.hidden {
-  display: none !important;
 }

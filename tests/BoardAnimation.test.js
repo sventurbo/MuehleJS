@@ -9,11 +9,11 @@
  * cannot quietly bring back a board that just jumps.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { loadStylesheet } = require('../scripts/css-bundle');
+import fs from 'node:fs';
+import path from 'node:path';
+import { loadStylesheet } from '../scripts/css-bundle.js';
 
-const publicDir = path.join(__dirname, '..', 'public');
+const publicDir = path.join(import.meta.dirname, '..', 'public');
 const css = loadStylesheet();
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
 
@@ -56,7 +56,8 @@ describe('Board renderer keeps its nodes', () => {
   });
 
   test('changes are classified by the shared, tested board diff', () => {
-    expect(boardJs).toContain('window.MuehleRules.diffBoards(');
+    expect(boardJs).toContain("import * as RULES from '/shared/muehleRules.js';");
+    expect(boardJs).toContain('RULES.diffBoards(');
   });
 });
 
@@ -127,7 +128,7 @@ describe('Mill beam', () => {
   });
 
   test('a new game drops the previous game\'s beam', () => {
-    expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.innerHTML = ''/);
+    expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.replaceChildren\(\)/);
   });
 
   test('reduced motion shows the beam without a fade instead of one that ends at opacity 0', () => {

@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Mühle">
   <title>Mühle / Nine Men's Morris – Multiplayer Web-Spiel</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%230a0a0c%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23f2f2f7%22%20stroke-width%3D%221.8%22%3E%3Crect%20x%3D%225%22%20y%3D%225%22%20width%3D%2222%22%20height%3D%2222%22%20rx%3D%223%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2211%22%20width%3D%2210%22%20height%3D%2210%22%20rx%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M16%205v6M16%2021v6M5%2016h6M21%2016h6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/style.css">
+  <!-- The controller is the only entry point; it imports the shared rules, the
+       sound controller and the views itself. -->
+  <script type="module" src="js/app.js"></script>
 </head>
 <body>
   <div class="app-wrapper">
@@ -46,7 +46,7 @@
             <path d="M21 10l-5 4"/>
           </svg>
         </button>
-        <button id="btn-rules-header" class="btn-icon btn-rules-trigger" title="Spielregeln" aria-label="Spielregeln">
+        <button id="btn-rules-header" class="btn-icon btn-rules-trigger" commandfor="modal-rules" command="show-modal" title="Spielregeln" aria-label="Spielregeln">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9"/>
             <path d="M9.3 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.1-2.7 3.9"/>
@@ -88,7 +88,7 @@
           </div>
 
           <div class="login-actions">
-            <button id="btn-rules-login" class="btn btn-secondary">
+            <button id="btn-rules-login" class="btn btn-secondary" commandfor="modal-rules" command="show-modal">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 6.8C10 5.3 7.6 4.7 5 4.7v13c2.6 0 5 .6 7 2.1 2-1.5 4.4-2.1 7-2.1v-13c-2.6 0-5 .6-7 2.1z"/>
                 <path d="M12 6.8v13"/>
@@ -109,7 +109,7 @@
       </section>
 
       <!-- SCREEN 2: MATCHMAKING QUEUE -->
-      <section id="screen-queue" class="screen hidden">
+      <section id="screen-queue" class="screen" hidden>
         <div class="queue-card">
           <div class="radar-container">
             <div class="radar-ring r1"></div>
@@ -132,7 +132,7 @@
       </section>
 
       <!-- SCREEN 3: ACTIVE GAMEPLAY -->
-      <section id="screen-game" class="screen hidden">
+      <section id="screen-game" class="screen" hidden>
         <!-- Top Game Status Banner -->
         <div class="game-hud-top">
           <div class="hud-phase-box">
@@ -141,7 +141,7 @@
           <div id="hud-turn-badge" class="hud-badge my-turn">Du bist am Zug</div>
           <!-- Countdown for the server-side turn timer. Pure display: the clock
                that counts is the one in GameManager. -->
-          <div id="hud-turn-timer" class="hud-timer hidden" role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
+          <div id="hud-turn-timer" class="hud-timer" hidden role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
             <svg class="hud-timer-ring" viewBox="0 0 36 36" aria-hidden="true">
               <circle class="hud-timer-track" cx="18" cy="18" r="15.5"/>
               <circle id="hud-timer-arc" class="hud-timer-arc" cx="18" cy="18" r="15.5"/>
@@ -149,14 +149,14 @@
             <span id="hud-timer-value" class="hud-timer-value">25</span>
           </div>
           <div class="hud-game-actions">
-            <button id="btn-rules-game" class="btn-tool" title="Regeln" aria-label="Spielregeln">
+            <button id="btn-rules-game" class="btn-tool" commandfor="modal-rules" command="show-modal" title="Regeln" aria-label="Spielregeln">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 6.8C10 5.3 7.6 4.7 5 4.7v13c2.6 0 5 .6 7 2.1 2-1.5 4.4-2.1 7-2.1v-13c-2.6 0-5 .6-7 2.1z"/>
                 <path d="M12 6.8v13"/>
               </svg>
               <span class="btn-tool-label">Regeln</span>
             </button>
-            <button id="btn-surrender" class="btn-tool btn-danger" title="Partie aufgeben" aria-label="Partie aufgeben">
+            <button id="btn-surrender" class="btn-tool btn-danger" commandfor="modal-surrender" command="show-modal" title="Partie aufgeben" aria-label="Partie aufgeben">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5.5 21V3.5"/>
                 <path d="M5.5 4h12.5l-2.6 4.2 2.6 4.3H5.5z"/>
@@ -247,7 +247,7 @@
                 <path d="M20.5 11.8a7.5 7.5 0 0 1-7.5 7.5H9.2L4 21.8l1.4-4.1a7.5 7.5 0 0 1 6.1-11.9h1.5a7.5 7.5 0 0 1 7.5 6z"/>
               </svg>
               Chat
-              <span id="chat-unread-dot" class="tab-unread-dot hidden" aria-hidden="true"></span>
+              <span id="chat-unread-dot" class="tab-unread-dot" hidden aria-hidden="true"></span>
             </button>
           </div>
 
@@ -294,80 +294,77 @@
       </section>
     </main>
 
-    <!-- MODAL: GAME OVER -->
-    <div id="modal-game-over" class="modal-backdrop hidden">
-      <div class="modal-card game-over-box">
-        <h2 id="game-over-title" class="game-over-title win">Partie Beendet</h2>
-        <div id="game-over-winner-name" class="winner-subtitle">Gewinner: Spieler</div>
-        <p id="game-over-reason" class="reason-text">Begründung</p>
+    <!-- DIALOG: GAME OVER. The buttons close it with the player's choice as its
+         returnValue; Escape counts as going back to the lobby. -->
+    <dialog id="modal-game-over" class="modal game-over-box" aria-labelledby="game-over-title">
+      <h2 id="game-over-title" class="game-over-title win">Partie Beendet</h2>
+      <div id="game-over-winner-name" class="winner-subtitle">Gewinner: Spieler</div>
+      <p id="game-over-reason" class="reason-text">Begründung</p>
 
-        <div class="modal-btn-row">
-          <button id="btn-play-again" class="btn btn-primary">Erneut Spielen</button>
-          <button id="btn-back-to-lobby" class="btn btn-secondary">Zurück zur Startseite</button>
-        </div>
+      <form method="dialog" class="modal-btn-row">
+        <button id="btn-play-again" class="btn btn-primary" value="again">Erneut Spielen</button>
+        <button id="btn-back-to-lobby" class="btn btn-secondary" value="lobby">Zurück zur Startseite</button>
+      </form>
+    </dialog>
+
+    <!-- DIALOG: RULES. Opened and closed by the invoker commands on its buttons;
+         a click beside it closes it too (closedby). -->
+    <dialog id="modal-rules" class="modal rules-card" aria-labelledby="rules-title" closedby="any">
+      <div class="rules-header">
+        <h2 id="rules-title">Offizielle Mühle-Regeln</h2>
+        <button id="btn-close-rules" class="btn-close-modal" commandfor="modal-rules" command="close" aria-label="Regeln schließen" title="Schließen">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.5 6.5l11 11"/>
+            <path d="M17.5 6.5l-11 11"/>
+          </svg>
+        </button>
       </div>
-    </div>
+      <div class="rules-body">
+        <section class="rule-section">
+          <h3>1. Das Spielfeld und Ziel</h3>
+          <p>Das Spielfeld besteht aus drei ineinanderliegenden Quadraten mit 24 Punkten (Schnittpunkten). Beide Spieler starten mit je 9 Spielsteinen. Ziel ist es, den Gegner so weit zu dezimieren (auf 2 Steine), dass er keine Mühle mehr bilden kann, oder ihn vollständig einzusperren.</p>
+        </section>
 
-    <!-- MODAL: RULES EXPLANATION -->
-    <div id="modal-rules" class="modal-backdrop hidden">
-      <div class="modal-card rules-card">
-        <div class="rules-header">
-          <h2>Offizielle Mühle-Regeln</h2>
-          <button id="btn-close-rules" class="btn-close-modal" aria-label="Regeln schließen" title="Schließen">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6.5 6.5l11 11"/>
-              <path d="M17.5 6.5l-11 11"/>
-            </svg>
-          </button>
-        </div>
-        <div class="rules-body">
-          <section class="rule-section">
-            <h3>1. Das Spielfeld und Ziel</h3>
-            <p>Das Spielfeld besteht aus drei ineinanderliegenden Quadraten mit 24 Punkten (Schnittpunkten). Beide Spieler starten mit je 9 Spielsteinen. Ziel ist es, den Gegner so weit zu dezimieren (auf 2 Steine), dass er keine Mühle mehr bilden kann, oder ihn vollständig einzusperren.</p>
-          </section>
+        <section class="rule-section">
+          <h3>2. Die drei Spielphasen</h3>
+          <ul>
+            <li><strong>Phase 1: Setzphase:</strong> Die Spieler setzen abwechselnd je einen ihrer 9 Steine auf ein freies Feld auf dem Brett.</li>
+            <li><strong>Phase 2: Zugphase:</strong> Wenn alle 18 Steine gesetzt sind, wird abwechselnd ein eigener Stein entlang einer markierten Linie auf ein freies Nachbarfeld gezogen.</li>
+            <li><strong>Phase 3: Endphase (Springen):</strong> Hat ein Spieler nur noch genau 3 Steine auf dem Feld, darf er mit seinen Steinen auf jedes beliebige freie Feld springen (auch ohne Linienverbindung).</li>
+          </ul>
+        </section>
 
-          <section class="rule-section">
-            <h3>2. Die drei Spielphasen</h3>
-            <ul>
-              <li><strong>Phase 1: Setzphase:</strong> Die Spieler setzen abwechselnd je einen ihrer 9 Steine auf ein freies Feld auf dem Brett.</li>
-              <li><strong>Phase 2: Zugphase:</strong> Wenn alle 18 Steine gesetzt sind, wird abwechselnd ein eigener Stein entlang einer markierten Linie auf ein freies Nachbarfeld gezogen.</li>
-              <li><strong>Phase 3: Endphase (Springen):</strong> Hat ein Spieler nur noch genau 3 Steine auf dem Feld, darf er mit seinen Steinen auf jedes beliebige freie Feld springen (auch ohne Linienverbindung).</li>
-            </ul>
-          </section>
+        <section class="rule-section">
+          <h3>3. Mühle bilden und Steine schlagen</h3>
+          <p>Gelingt es einem Spieler, drei eigene Steine in einer geraden Linie anzuordnen, hat er eine <strong>Mühle</strong> geschlossen.</p>
+          <p>Der Spieler darf daraufhin sofort einen beliebigen gegnerischen Stein vom Brett entfernen.</p>
+          <p><strong>Mühlenschutz-Regel:</strong> Steine, die sich in einer geschlossenen gegnerischen Mühle befinden, dürfen <em>nicht</em> geschlagen werden – es sei denn, der Gegner hat ausschließlich Steine in Mühlen.</p>
+        </section>
 
-          <section class="rule-section">
-            <h3>3. Mühle bilden und Steine schlagen</h3>
-            <p>Gelingt es einem Spieler, drei eigene Steine in einer geraden Linie anzuordnen, hat er eine <strong>Mühle</strong> geschlossen.</p>
-            <p>Der Spieler darf daraufhin sofort einen beliebigen gegnerischen Stein vom Brett entfernen.</p>
-            <p><strong>Mühlenschutz-Regel:</strong> Steine, die sich in einer geschlossenen gegnerischen Mühle befinden, dürfen <em>nicht</em> geschlagen werden – es sei denn, der Gegner hat ausschließlich Steine in Mühlen.</p>
-          </section>
-
-          <section class="rule-section">
-            <h3>4. Spielende &amp; Sieg</h3>
-            <ul>
-              <li>Ein Spieler <strong>verliert</strong>, wenn er auf <strong>2 Steine</strong> reduziert wird.</li>
-              <li>Ein Spieler <strong>verliert</strong>, wenn er am Zug ist und <strong>keinen legalen Zug</strong> mehr ausführen kann (eingesperrt ist).</li>
-            </ul>
-          </section>
-        </div>
+        <section class="rule-section">
+          <h3>4. Spielende &amp; Sieg</h3>
+          <ul>
+            <li>Ein Spieler <strong>verliert</strong>, wenn er auf <strong>2 Steine</strong> reduziert wird.</li>
+            <li>Ein Spieler <strong>verliert</strong>, wenn er am Zug ist und <strong>keinen legalen Zug</strong> mehr ausführen kann (eingesperrt ist).</li>
+          </ul>
+        </section>
       </div>
-    </div>
+    </dialog>
+
+    <!-- DIALOG: SURRENDER. Opened by the flag button in the HUD; only the
+         "surrender" choice gives the game up. -->
+    <dialog id="modal-surrender" class="modal confirm-box" aria-labelledby="surrender-title" closedby="any">
+      <h2 id="surrender-title" class="confirm-title">Partie aufgeben?</h2>
+      <p class="reason-text">Dein Gegner gewinnt die Partie damit sofort.</p>
+
+      <form method="dialog" class="modal-btn-row">
+        <button class="btn btn-destructive" value="surrender">Aufgeben</button>
+        <button class="btn btn-secondary" value="cancel" autofocus>Weiterspielen</button>
+      </form>
+    </dialog>
 
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
   </div>
-
-  <!-- Socket.io client script provided by Express server -->
-  <script src="/socket.io/socket.io.js"></script>
-  <!-- Application scripts, in dependency order: the shared rules and the
-       stand-alone services first, then the views, then the controller that
-       wires them together. -->
-  <script src="/shared/muehleRules.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/boardRenderer.js"></script>
-  <script src="js/hudView.js"></script>
-  <script src="js/dockView.js"></script>
-  <script src="js/overlays.js"></script>
-  <script src="js/app.js"></script>
 </body>
 </html>

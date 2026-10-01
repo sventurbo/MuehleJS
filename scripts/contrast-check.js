@@ -1,39 +1,61 @@
 #!/usr/bin/env node
 
-const { contrastRatio, resolveColor } = require('./contrast');
-const { loadStylesheet } = require('./css-bundle');
+import { contrastRatio, resolveColor } from './contrast.js';
+import { loadStylesheet } from './css-bundle.js';
 
 // ── CSS Variable Parser ──
 
-function parseCssVariables(cssContent) {
+const LIGHT_DARK = 'light-dark(';
+
+/**
+ * The side of every light-dark(<light>, <dark>) pair in `value` that the
+ * browser would pick in `scheme` ('light' or 'dark'). Pairs may sit inside a
+ * longer value (a shadow list) and may themselves hold functions such as rgb().
+ */
+export function resolveScheme(value, scheme) {
+  let out = '';
+  let cursor = 0;
+  for (let start = value.indexOf(LIGHT_DARK); start !== -1; start = value.indexOf(LIGHT_DARK, cursor)) {
+    let depth = 0;
+    let comma = -1;
+    let end = -1;
+    for (let i = start + LIGHT_DARK.length - 1; i < value.length && end === -1; i++) {
+      if (value[i] === '(') depth++;
+      else if (value[i] === ')' && --depth === 0) end = i;
+      else if (value[i] === ',' && depth === 1 && comma === -1) comma = i;
+    }
+    if (comma === -1 || end === -1) throw new SyntaxError(`Malformed light-dark(): ${value}`);
+
+    const side = scheme === 'light'
+      ? value.slice(start + LIGHT_DARK.length, comma)
+      : value.slice(comma + 1, end);
+    out += value.slice(cursor, start) + resolveScheme(side.trim(), scheme);
+    cursor = end + 1;
+  }
+  return (out + value.slice(cursor)).trim();
+}
+
+/**
+ * The design tokens of the :root block, once per theme: every light-dark()
+ * pair resolved to the side that theme shows, every other value as it is.
+ */
+export function parseCssVariables(cssContent) {
   const variables = { dark: {}, light: {} };
 
   const rootMatch = cssContent.match(/:root\s*\{([\s\S]*?)\n\}/);
-  if (rootMatch) {
-    const rootBody = rootMatch[1];
-    const varRegex = /--([\w-]+)\s*:\s*([^;]+);/g;
-    let match;
-    while ((match = varRegex.exec(rootBody)) !== null) {
-      variables.dark[match[1].trim()] = match[2].trim();
+  if (!rootMatch) return variables;
+
+  for (const [, name, value] of rootMatch[1].matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) {
+    for (const scheme of Object.keys(variables)) {
+      variables[scheme][name] = resolveScheme(value.trim(), scheme);
     }
   }
-
-  const lightMatch = cssContent.match(/@media\s*\(prefers-color-scheme:\s*light\)\s*\{[\s\S]*?:root\s*\{([\s\S]*?)\n\s*\}\s*\}/);
-  if (lightMatch) {
-    const lightBody = lightMatch[1];
-    const varRegex = /--([\w-]+)\s*:\s*([^;]+);/g;
-    let match;
-    while ((match = varRegex.exec(lightBody)) !== null) {
-      variables.light[match[1].trim()] = match[2].trim();
-    }
-  }
-
   return variables;
 }
 
 // ── Contrast Test Definitions ──
 
-const CONTRAST_TESTS = [
+export const CONTRAST_TESTS = [
   { name: 'Body text on main background', fgVar: 'text-main', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Fließtext auf Hintergrund' },
   { name: 'Secondary text on main background', fgVar: 'text-muted', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Sekundärtext auf Hintergrund' },
   { name: 'Body text on card background', fgVar: 'text-main', bgVar: 'bg-card', aaThreshold: 4.5, description: 'Fließtext auf Karten-Hintergrund' },
@@ -50,15 +72,16 @@ const CONTRAST_TESTS = [
   { name: 'Secondary button text on secondary background', fgVar: 'text-main', bgVar: 'btn-secondary-bg', aaThreshold: 4.5, description: 'Sekundärer Button-Text auf Hintergrund' },
   { name: 'Pip on background', fgVar: 'pip-inactive', bgVar: 'bg-main', aaThreshold: 3, description: 'Pip auf Hintergrund' },
   { name: 'Opponent turn text on background', fgVar: 'opponent-turn-color', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Gegner-am-Zug-Text auf Hintergrund' },
-    { name: 'Chat bubble text on bubble background', fgVar: 'text-main', bgVar: 'chat-bubble-me', aaThreshold: 4.5, description: 'Chat-Bubble-Text auf Bubble-Hintergrund' },
+  { name: 'Chat bubble text on bubble background', fgVar: 'text-main', bgVar: 'chat-bubble-me', aaThreshold: 4.5, description: 'Chat-Bubble-Text auf Bubble-Hintergrund' },
   { name: 'Toast text on toast background', fgVar: 'text-main', bgVar: 'bg-card', aaThreshold: 4.5, description: 'Toast-Text auf Toast-Hintergrund' },
   { name: 'Board label on board plate', fgVar: 'board-label', bgVar: 'board-plate', aaThreshold: 3, description: 'Spielfeld-Labels auf Brett' },
   { name: 'Board label on board plate-end', fgVar: 'board-label', bgVar: 'board-plate-end', aaThreshold: 3, description: 'Spielfeld-Labels auf Brett-Ende' },
+  { name: 'Destructive button text on dialog surface', fgVar: 'accent-red', bgVar: 'bg-surface', aaThreshold: 4.5, description: 'Aufgeben-Button-Text auf Dialog' },
 ];
 
 // ── Main Check Function ──
 
-function runContrastCheck(cssContent) {
+export function runContrastCheck(cssContent) {
   const variables = parseCssVariables(cssContent);
   const results = [];
   let allPassed = true;
@@ -68,8 +91,8 @@ function runContrastCheck(cssContent) {
       const fgValue = themeVars[test.fgVar];
       const bgValue = themeVars[test.bgVar];
       if (!fgValue || !bgValue) continue;
-      const fgColor = resolveColor(fgValue, themeVars);
-      const bgColor = resolveColor(bgValue, themeVars);
+      const fgColor = resolveColor(fgValue);
+      const bgColor = resolveColor(bgValue);
       if (!fgColor || !bgColor) continue;
       const ratio = contrastRatio(fgColor, bgColor);
       const passed = ratio >= test.aaThreshold;
@@ -129,8 +152,6 @@ function main() {
   }
 }
 
-module.exports = { parseCssVariables, runContrastCheck, CONTRAST_TESTS };
-
-if (require.main === module) {
+if (import.meta.main) {
   main();
 }

@@ -2,12 +2,13 @@
    Mühle (Nine Men's Morris) — Minimal Design System
    One accent colour, neutral surfaces, hairline borders, materials over glows.
    Responsive from 320px phones up to desktop (>= 1024x768), touch-first below
-   the 700px breakpoint. Chrome, Firefox, Safari (incl. iOS Safari).
+   the 700px breakpoint. Current Chrome, Firefox and Safari (incl. iOS) only:
+   no vendor prefixes, no fallbacks for older engines.
 
-   This file is the manifest and holds no rules of its own: it pulls in the
-   modules below, in cascade order. The order is significant — tokens have to
-   come first, and the device adaptations last, because they override the
-   modules above them.
+   This file is the manifest and holds no rules of its own: it pulls every
+   module into a cascade layer of the same name. The @layer statement fixes the
+   precedence — tokens lowest, the device adaptations highest, because they
+   override the modules below them — independently of selector specificity.
 
    Anything that reads the stylesheet as a whole (scripts/contrast-check.js,
    the static CSS tests) goes through scripts/css-bundle.js, which resolves
@@ -15,14 +16,16 @@
    nor those checks.
    ========================================================================== */
 
-@import url("tokens.css");     /* design tokens: dark :root + light override  */
-@import url("base.css");       /* reset, typography, scrollbars, icons        */
-@import url("layout.css");     /* app shell: header, screen switcher          */
-@import url("controls.css");   /* buttons & inputs                            */
-@import url("login.css");      /* screen 1 & 2: login/lobby, queue            */
-@import url("hud.css");        /* screen 3: phase, turn badge, countdown      */
-@import url("arena.css");      /* screen 3: player panels & board             */
-@import url("dock.css");       /* screen 3: move log & chat                   */
-@import url("board.css");      /* SVG board internals & stone animations      */
-@import url("modals.css");     /* dialogs & toasts                            */
-@import url("responsive.css"); /* breakpoints, pointer/hover, reduced motion  */
+@layer tokens, base, layout, controls, login, hud, arena, dock, board, modals, responsive;
+
+@import url("tokens.css") layer(tokens);         /* design tokens, light-dark() pairs     */
+@import url("base.css") layer(base);             /* reset, typography, scrollbars, icons  */
+@import url("layout.css") layer(layout);         /* app shell: header, screen switcher    */
+@import url("controls.css") layer(controls);     /* buttons & inputs                      */
+@import url("login.css") layer(login);           /* screen 1 & 2: login/lobby, queue      */
+@import url("hud.css") layer(hud);               /* screen 3: phase, turn badge, countdown */
+@import url("arena.css") layer(arena);           /* screen 3: player panels & board       */
+@import url("dock.css") layer(dock);             /* screen 3: move log & chat             */
+@import url("board.css") layer(board);           /* SVG board internals & stone animations */
+@import url("modals.css") layer(modals);         /* dialogs & toasts                      */
+@import url("responsive.css") layer(responsive); /* breakpoints, pointer/hover, motion    */

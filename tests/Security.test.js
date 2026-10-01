@@ -1,7 +1,10 @@
-const { RateLimiter } = require('../lib/RateLimiter');
-const { GameManager, sanitizeText } = require('../lib/GameManager');
-const { compileTrustProxy, getClientAddress, rateLimitKey } = require('../lib/clientAddress');
-const { io: serverIo, app: serverApp } = require('../server');
+import { jest } from '@jest/globals';
+import { RateLimiter } from '../lib/RateLimiter.js';
+import { GameManager, sanitizeText } from '../lib/GameManager.js';
+import { compileTrustProxy, getClientAddress, rateLimitKey } from '../lib/clientAddress.js';
+import http from 'node:http';
+import { io as serverIo, app as serverApp } from '../server.js';
+import { loadClientScripts } from '../scripts/client-bundle.js';
 
 describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
   describe('RateLimiter Unit Tests', () => {
@@ -530,7 +533,6 @@ describe('Username Validation (Issue #1)', () => {
    describe('XSS: the client is the escaping boundary', () => {
      // Read as one client: the escaping has to happen wherever the markup is
      // built, which is the dock view today and may move again tomorrow.
-     const { loadClientScripts } = require('../scripts/client-bundle');
      const clientJs = loadClientScripts();
 
      test('sanitizeText keeps ampersands and angle brackets intact', () => {
@@ -574,7 +576,6 @@ describe('Username Validation (Issue #1)', () => {
    });
 
    describe('DOS-03: express.json body limit (Issue #21)', () => {
-     const http = require('http');
      let httpServer;
      let port;
 

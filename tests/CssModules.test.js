@@ -2,8 +2,9 @@
  * CssModules.test.js
  * Guards for the split stylesheet.
  *
- * public/css/style.css is a manifest: it holds no rules, only the @import
- * list that defines the cascade order. These assertions keep that contract
+ * public/css/style.css is a manifest: it holds no rules, only the @layer
+ * statement that fixes the cascade order and the @import list that puts every
+ * module into its layer. These assertions keep that contract
  * intact — a module that is never imported would silently stop applying, and
  * a rule that creeps back into the manifest would sit outside the modules.
  *
@@ -12,13 +13,13 @@
  * find, so a sheet it stops understanding would pass CI reporting nothing.
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { loadStylesheet, listModules, bundleCss } = require('../scripts/css-bundle');
-const { parseCssVariables, runContrastCheck, CONTRAST_TESTS } = require('../scripts/contrast-check');
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { loadStylesheet, listModules, listImports, listLayers, bundleCss } from '../scripts/css-bundle.js';
+import { parseCssVariables, resolveScheme, runContrastCheck, CONTRAST_TESTS } from '../scripts/contrast-check.js';
 
-const cssDir = path.join(__dirname, '..', 'public', 'css');
+const cssDir = path.join(import.meta.dirname, '..', 'public', 'css');
 const manifest = fs.readFileSync(path.join(cssDir, 'style.css'), 'utf8');
 const modules = listModules();
 
@@ -37,7 +38,17 @@ describe('The manifest', () => {
   });
 
   test('carries no rules of its own', () => {
-    expect(rules(manifest).replace(/@import[^;]+;/g, '').trim()).toBe('');
+    expect(rules(manifest).replace(/@(?:import|layer)[^;{]+;/g, '').trim()).toBe('');
+  });
+
+  test('imports every module into a cascade layer of its own name', () => {
+    listImports().forEach(({ href, layer }) => {
+      expect({ href, layer }).toEqual({ href, layer: href.replace(/\.css$/, '') });
+    });
+  });
+
+  test('declares the layer order once, matching the import order', () => {
+    expect(listLayers()).toEqual(listImports().map(({ layer }) => layer));
   });
 
   test('loads the tokens first and the device adaptations last', () => {
@@ -46,7 +57,7 @@ describe('The manifest', () => {
   });
 
   test('is the only stylesheet the page links', () => {
-    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const html = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'index.html'), 'utf8');
     const hrefs = Array.from(html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g), m => m[1]);
     expect(hrefs).toEqual(['css/style.css']);
   });
@@ -110,12 +121,47 @@ describe('The contrast checker still reaches the tokens', () => {
   });
 });
 
+describe('light-dark() pairs', () => {
+  test('resolve to the side of the requested theme', () => {
+    expect(resolveScheme('light-dark(#ffffff, #16161a)', 'light')).toBe('#ffffff');
+    expect(resolveScheme('light-dark(#ffffff, #16161a)', 'dark')).toBe('#16161a');
+  });
+
+  test('may hold functions with their own commas and slashes', () => {
+    const value = 'light-dark(rgb(0 0 0 / 0.09), rgb(255 255 255 / 0.09))';
+    expect(resolveScheme(value, 'light')).toBe('rgb(0 0 0 / 0.09)');
+    expect(resolveScheme(value, 'dark')).toBe('rgb(255 255 255 / 0.09)');
+  });
+
+  test('are resolved one by one inside a longer value', () => {
+    const shadow = '0 1px 2px light-dark(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.5)), 0 8px 24px light-dark(#111111, #222222)';
+    expect(resolveScheme(shadow, 'light')).toBe('0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px #111111');
+    expect(resolveScheme(shadow, 'dark')).toBe('0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px #222222');
+  });
+
+  test('leave a value without a pair untouched', () => {
+    expect(resolveScheme('#54545f', 'light')).toBe('#54545f');
+  });
+
+  test('refuse a malformed pair instead of guessing', () => {
+    expect(() => resolveScheme('light-dark(#ffffff)', 'dark')).toThrow(/Malformed/);
+  });
+});
+
 describe('The resolver', () => {
   test('refuses an import cycle instead of looping forever', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'css-cycle-'));
     fs.writeFileSync(path.join(dir, 'a.css'), '@import url("b.css");\n');
     fs.writeFileSync(path.join(dir, 'b.css'), '@import url("a.css");\n');
     expect(() => bundleCss(path.join(dir, 'a.css'))).toThrow(/Circular @import/);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('wraps a layered import in its @layer block', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'css-layer-'));
+    fs.writeFileSync(path.join(dir, 'a.css'), '@layer b;\n@import url("b.css") layer(b);\n');
+    fs.writeFileSync(path.join(dir, 'b.css'), '.x { color: red; }');
+    expect(bundleCss(path.join(dir, 'a.css'))).toBe('@layer b;\n@layer b {\n.x { color: red; }\n}\n');
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

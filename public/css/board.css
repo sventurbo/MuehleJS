@@ -86,11 +86,15 @@
   transition: filter var(--dur-2) var(--ease-out);
 }
 
-.piece-white .stone-body { stroke: var(--stone-w-rim); }
-.piece-black .stone-body { stroke: var(--stone-b-rim); }
+.piece-white {
+  .stone-body { stroke: var(--stone-w-rim); }
+  .stone-gloss { fill: var(--gloss-white); }
+}
 
-.piece-white .stone-gloss { fill: var(--gloss-white); }
-.piece-black .stone-gloss { fill: var(--gloss-black); }
+.piece-black {
+  .stone-body { stroke: var(--stone-b-rim); }
+  .stone-gloss { fill: var(--gloss-black); }
+}
 
 .piece-selectable {
   cursor: pointer;
