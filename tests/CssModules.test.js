@@ -56,9 +56,10 @@ describe('The manifest', () => {
     expect(listLayers()).toEqual(listImports().map(({ layer }) => layer));
   });
 
-  test('loads the tokens first and the device adaptations last', () => {
+  test('loads the tokens first, the device adaptations after every component, the utilities last', () => {
     expect(modules[0]).toBe('tokens.css');
-    expect(modules[modules.length - 1]).toBe('responsive.css');
+    expect(modules.at(-2)).toBe('responsive.css');
+    expect(modules.at(-1)).toBe('utilities.css');
   });
 
   test('is the only stylesheet the page links', () => {
@@ -97,6 +98,35 @@ describe('The resolved stylesheet', () => {
       const local = [...declaredIn(name)].filter(v => !v.startsWith('--travel-'));
       expect({ module: name, declared: local }).toEqual({ module: name, declared: [] });
     }
+  });
+});
+
+describe('Precedence comes from the layer order, not from !important', () => {
+  // Inside cascade layers !important turns the layer order upside down, so
+  // the sheet does without it: whatever has to win sits in a later layer.
+  const css = rules(loadStylesheet());
+
+  test('no declaration is marked !important', () => {
+    expect(css).not.toContain('!important');
+  });
+
+  test('the hidden attribute is enforced by the last layer, and only there', () => {
+    const utilities = rules(fs.readFileSync(path.join(cssDir, 'utilities.css'), 'utf8'));
+    expect(listLayers().at(-1)).toBe('utilities');
+    expect(utilities).toMatch(/\[hidden\]\s*\{\s*display:\s*none;\s*\}/);
+    expect(css.match(/\[hidden\]\s*\{/g)).toHaveLength(1);
+  });
+
+  test('reduced motion lives in the layer after every module that animates', () => {
+    const responsive = rules(fs.readFileSync(path.join(cssDir, 'responsive.css'), 'utf8'));
+    expect(responsive).toContain('@media (prefers-reduced-motion: reduce)');
+    const animating = modules.filter(name =>
+      /\b(?:animation|transition)\s*:/.test(rules(fs.readFileSync(path.join(cssDir, name), 'utf8')))
+    );
+    const layers = listLayers();
+    animating
+      .filter(name => name !== 'responsive.css')
+      .forEach(name => expect(layers.indexOf(name.replace(/\.css$/, ''))).toBeLessThan(layers.indexOf('responsive')));
   });
 });
 

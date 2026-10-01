@@ -476,16 +476,19 @@
   }
 }
 
-/* ── Reduced motion ── */
+/* ── Reduced motion: every animation and transition collapses to an instant.
+      The universal selector is enough, because this layer comes after every
+      module that animates something. Within this layer only the mill beam
+      below sets an animation, and it switches its own off on purpose. ── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after,
   *::backdrop {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+    animation-duration: 0.001ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.001ms;
+    scroll-behavior: auto;
   }
   .radar-ring {
     opacity: 0.3;
