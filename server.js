@@ -17,9 +17,20 @@ import express from 'express';
 import { Server } from 'socket.io';
 import { GameManager } from './lib/GameManager.js';
 
-// Port from CLI argument ("node server.js 8080" / "npm start -- 8080") or environment.
-const cliPort = process.argv.slice(2).find(arg => /^\d+$/.test(arg));
-const PORT = parseInt(process.env.PORT || cliPort || '3000', 10);
+/**
+ * The port to listen on: a number on the command line ("npm start 8080",
+ * "node server.js 8080") wins, then PORT from the environment, then 3000.
+ *
+ * `npm start` loads .env into the environment (see .env.example), so the
+ * command line has to come first: otherwise a PORT line in .env would quietly
+ * replace the port the server was explicitly started with.
+ */
+export function resolvePort(args = process.argv.slice(2), env = process.env) {
+  const cliPort = args.find(arg => /^\d+$/.test(arg));
+  return parseInt(cliPort || env.PORT || '3000', 10);
+}
+
+const PORT = resolvePort();
 
 // ── Express: static client + status endpoint ────────────────────────────────
 export const app = express();
