@@ -8,6 +8,9 @@
     "start": "node server.js",
     "build": "echo 'Build step completed (vanilla frontend, no bundle required)'",
     "test": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --verbose",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "contrast-check": "node scripts/contrast-check.js"
   },
   "keywords": [
@@ -32,7 +35,11 @@
     "socket.io": "^4.8.4"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.13.0",
     "jest": "^30.5.2",
+    "prettier": "^3.9.9",
     "socket.io-client": "^4.8.4"
   },
   "jest": {
