@@ -260,7 +260,6 @@ function main() {
   let failCount = 0;
   for (const r of results) {
     const status = r.passed ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m';
-    const theme = r.theme === 'Dunkel' ? '\x1b[90mDunkel\x1b[0m' : '\x1b[94mHell\x1b[0m';
     const row = [r.description.substring(0, 38), r.theme, r.fgColor, r.bgColor, `${r.ratio}:1`, status]
       .map((v, i) => {
         const widths = [40, 8, 10, 10, 10, 6];
