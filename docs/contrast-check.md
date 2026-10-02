@@ -14,83 +14,71 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 - **Thresholds**:
   - Normal text (< 18pt / < 14pt bold): ≥ 4.5:1
   - Large text (≥ 18pt / ≥ 14pt bold) and UI graphics: ≥ 3:1
-- **Date**: 2026-09-10
+- **Date**: 2026-10-02
 - **Script version**: `scripts/contrast-check.js` (Node.js, no external dependencies)
 - **Source**: the `:root` block of `public/css/tokens.css`, reached through `scripts/css-bundle.js`, which resolves the layered `@import` chain of `public/css/style.css`. Every `light-dark(<light>, <dark>)` pair is split into its two themes; `rgb(r g b / a)` colours are checked without their alpha
 
 ## Results
 
+The tables are the output of `npm run contrast-check` (`runContrastCheck()` in `scripts/contrast-check.js`) under Node.js 26. FG and BG are the token values resolved to sRGB hex; ratios are rounded to two decimals, as the checker reports them.
+
 ### Dark Mode (`prefers-color-scheme: dark`)
 
-| Color Pair | FG | BG | Ratio | AA | Status |
+| Color Pair | FG | BG | Ratio | Required | Status |
 |---|---|---|---|---|---|
-| Body text on main background | #d8dce4 | #181c22 | 12.44:1 | 4.5:1 | ✅ Pass |
-| Secondary text on main background | #90a0b0 | #181c22 | 6.39:1 | 4.5:1 | ✅ Pass |
-| Body text on card background | #d8dce4 | #262d38 | 10.08:1 | 4.5:1 | ✅ Pass |
-| Secondary text on card background | #90a0b0 | #262d38 | 5.18:1 | 4.5:1 | ✅ Pass |
-| Body text on surface background | #d8dce4 | #1e232c | 11.47:1 | 4.5:1 | ✅ Pass |
-| Secondary text on surface background | #90a0b0 | #1e232c | 5.89:1 | 4.5:1 | ✅ Pass |
-| Gold accent on background | #ffa502 | #181c22 | 8.66:1 | 3:1 | ✅ Pass |
-| Blue accent on background | #5a70d0 | #181c22 | 3.80:1 | 3:1 | ✅ Pass |
-| Green accent on background | #2ed573 | #181c22 | 8.86:1 | 3:1 | ✅ Pass |
-| Red accent on background | #ff4757 | #181c22 | 5.12:1 | 3:1 | ✅ Pass |
-| Cyan accent on background | #00d2d3 | #181c22 | 9.09:1 | 3:1 | ✅ Pass |
-| Input text on input background | #d8dce4 | #1a1f28 | 12.02:1 | 4.5:1 | ✅ Pass |
-| Primary button text on button | #ffffff | #5a70d0 | 4.50:1 | 4.5:1 | ✅ Pass |
-| Secondary button text on background | #d8dce4 | #2a313c | 9.53:1 | 4.5:1 | ✅ Pass |
-| Pip on background | #6a7080 | #181c22 | 3.45:1 | 3:1 | ✅ Pass |
-| Opponent turn text on background | #cad1df | #181c22 | 11.15:1 | 4.5:1 | ✅ Pass |
-| Chat bubble text on card | #8a9ab0 | #262d38 | 4.84:1 | 4.5:1 | ✅ Pass |
-| Toast text on toast background | #d8dce4 | #262d38 | 10.08:1 | 4.5:1 | ✅ Pass |
-| Board label on board plate | #ffffff | #2a2e39 | 8.91:1 | 3:1 | ✅ Pass |
-| Board label on board plate-end | #ffffff | #181b22 | 11.80:1 | 3:1 | ✅ Pass |
+| Body text on main background | #f2f2f7 | #0a0a0c | 17.73:1 | 4.5:1 | ✅ Pass |
+| Secondary text on main background | #9a9aa4 | #0a0a0c | 7.10:1 | 4.5:1 | ✅ Pass |
+| Body text on card background | #f2f2f7 | #1f1f24 | 14.71:1 | 4.5:1 | ✅ Pass |
+| Secondary text on card background | #9a9aa4 | #1f1f24 | 5.89:1 | 4.5:1 | ✅ Pass |
+| Body text on surface background | #f2f2f7 | #16161a | 16.17:1 | 4.5:1 | ✅ Pass |
+| Secondary text on surface background | #9a9aa4 | #16161a | 6.47:1 | 4.5:1 | ✅ Pass |
+| Accent gold on main background | #ff9f0a | #0a0a0c | 9.62:1 | 3:1 | ✅ Pass |
+| Accent blue on main background | #2f6fe0 | #0a0a0c | 4.21:1 | 3:1 | ✅ Pass |
+| Accent green on main background | #30d158 | #0a0a0c | 9.78:1 | 3:1 | ✅ Pass |
+| Accent red on main background | #ff453a | #0a0a0c | 5.81:1 | 3:1 | ✅ Pass |
+| Accent cyan on main background | #64d2ff | #0a0a0c | 11.50:1 | 3:1 | ✅ Pass |
+| Input text on input background | #f2f2f7 | #121216 | 16.75:1 | 4.5:1 | ✅ Pass |
+| Button text on primary button | #ffffff | #2f6fe0 | 4.70:1 | 4.5:1 | ✅ Pass |
+| Secondary button text on secondary background | #f2f2f7 | #26262c | 13.48:1 | 4.5:1 | ✅ Pass |
+| Pip on background | #6c6c78 | #0a0a0c | 3.82:1 | 3:1 | ✅ Pass |
+| Opponent turn text on background | #c7c7d1 | #0a0a0c | 11.79:1 | 4.5:1 | ✅ Pass |
+| Chat bubble text on bubble background | #f2f2f7 | #2b3a52 | 10.29:1 | 4.5:1 | ✅ Pass |
+| Toast text on toast background | #f2f2f7 | #1f1f24 | 14.71:1 | 4.5:1 | ✅ Pass |
+| Board label on board plate | #ffffff | #26262c | 15.04:1 | 3:1 | ✅ Pass |
+| Board label on board plate-end | #ffffff | #141418 | 18.37:1 | 3:1 | ✅ Pass |
+| Destructive button text on dialog surface | #ff453a | #16161a | 5.30:1 | 4.5:1 | ✅ Pass |
 
 ### Light Mode (`prefers-color-scheme: light`)
 
-| Color Pair | FG | BG | Ratio | AA | Status |
+| Color Pair | FG | BG | Ratio | Required | Status |
 |---|---|---|---|---|---|
-| Body text on main background | #1a1a2e | #f0f2f5 | 15.21:1 | 4.5:1 | ✅ Pass |
-| Secondary text on main background | #555770 | #f0f2f5 | 6.28:1 | 4.5:1 | ✅ Pass |
-| Body text on card background | #1a1a2e | #ffffff | 17.06:1 | 4.5:1 | ✅ Pass |
-| Secondary text on card background | #555770 | #ffffff | 7.04:1 | 4.5:1 | ✅ Pass |
-| Body text on surface background | #1a1a2e | #ffffff | 17.06:1 | 4.5:1 | ✅ Pass |
-| Secondary text on surface background | #555770 | #ffffff | 7.04:1 | 4.5:1 | ✅ Pass |
-| Gold accent on background | #b06800 | #f0f2f5 | 3.88:1 | 3:1 | ✅ Pass |
-| Blue accent on background | #1e4a94 | #f0f2f5 | 7.60:1 | 3:1 | ✅ Pass |
-| Green accent on background | #1a8045 | #f0f2f5 | 4.44:1 | 3:1 | ✅ Pass |
-| Red accent on background | #c02a38 | #f0f2f5 | 5.16:1 | 3:1 | ✅ Pass |
-| Cyan accent on background | #087575 | #f0f2f5 | 4.91:1 | 3:1 | ✅ Pass |
-| Input text on input background | #1a1a2e | #f5f6f8 | 15.77:1 | 4.5:1 | ✅ Pass |
-| Primary button text on button | #ffffff | #1e4a94 | 8.53:1 | 4.5:1 | ✅ Pass |
-| Secondary button text on background | #1a1a2e | #e8ecf0 | 14.37:1 | 4.5:1 | ✅ Pass |
-| Pip on background | #606874 | #f0f2f5 | 5.02:1 | 3:1 | ✅ Pass |
-| Opponent turn text on background | #3a3a5c | #f0f2f5 | 9.65:1 | 4.5:1 | ✅ Pass |
-| Chat bubble text on card | #4a6080 | #ffffff | 6.41:1 | 4.5:1 | ✅ Pass |
-| Toast text on toast background | #1a1a2e | #ffffff | 17.06:1 | 4.5:1 | ✅ Pass |
-| Board label on board plate | #ffffff | #2a2e39 | 8.91:1 | 3:1 | ✅ Pass |
-| Board label on board plate-end | #ffffff | #181b22 | 11.80:1 | 3:1 | ✅ Pass |
+| Body text on main background | #1c1c1e | #f2f2f7 | 15.25:1 | 4.5:1 | ✅ Pass |
+| Secondary text on main background | #5c5c66 | #f2f2f7 | 5.92:1 | 4.5:1 | ✅ Pass |
+| Body text on card background | #1c1c1e | #ffffff | 17.01:1 | 4.5:1 | ✅ Pass |
+| Secondary text on card background | #5c5c66 | #ffffff | 6.61:1 | 4.5:1 | ✅ Pass |
+| Body text on surface background | #1c1c1e | #ffffff | 17.01:1 | 4.5:1 | ✅ Pass |
+| Secondary text on surface background | #5c5c66 | #ffffff | 6.61:1 | 4.5:1 | ✅ Pass |
+| Accent gold on main background | #9a5b00 | #f2f2f7 | 4.86:1 | 3:1 | ✅ Pass |
+| Accent blue on main background | #0b62d6 | #f2f2f7 | 5.04:1 | 3:1 | ✅ Pass |
+| Accent green on main background | #12813f | #f2f2f7 | 4.44:1 | 3:1 | ✅ Pass |
+| Accent red on main background | #c9221c | #f2f2f7 | 5.05:1 | 3:1 | ✅ Pass |
+| Accent cyan on main background | #0d6a86 | #f2f2f7 | 5.50:1 | 3:1 | ✅ Pass |
+| Input text on input background | #1c1c1e | #f2f2f7 | 15.25:1 | 4.5:1 | ✅ Pass |
+| Button text on primary button | #ffffff | #0b62d6 | 5.63:1 | 4.5:1 | ✅ Pass |
+| Secondary button text on secondary background | #1c1c1e | #e8e8ed | 13.93:1 | 4.5:1 | ✅ Pass |
+| Pip on background | #83838d | #f2f2f7 | 3.36:1 | 3:1 | ✅ Pass |
+| Opponent turn text on background | #3a3a40 | #f2f2f7 | 10.12:1 | 4.5:1 | ✅ Pass |
+| Chat bubble text on bubble background | #1c1c1e | #d4dcea | 12.34:1 | 4.5:1 | ✅ Pass |
+| Toast text on toast background | #1c1c1e | #ffffff | 17.01:1 | 4.5:1 | ✅ Pass |
+| Board label on board plate | #3a3a40 | #ffffff | 11.30:1 | 3:1 | ✅ Pass |
+| Board label on board plate-end | #3a3a40 | #e9e9ef | 9.34:1 | 3:1 | ✅ Pass |
+| Destructive button text on dialog surface | #c9221c | #ffffff | 5.63:1 | 4.5:1 | ✅ Pass |
 
 ## Summary
 
-- **Total tested pairs**: 40 (20 dark + 20 light)
-- **Passed**: 40/40 (100%)
+- **Total tested pairs**: 42 (21 dark + 21 light)
+- **Passed**: 42/42 (100%)
 - **Failed**: 0
+- **Smallest margins**: Button text on primary button (dark) at 4.70:1 against 4.5:1, and Pip on background (light) at 3.36:1 against 3:1
 
-All color pairs meet WCAG 2.1 AA requirements in both light and dark themes. The game board coordinate labels use hardcoded white (#ffffff) fill to ensure visibility on the dark board plate, as the board plate is theme-independent per Commit 75cd06d.
-
-## Adjusted Colors
-
-The following colors were adjusted from their original values to meet AA contrast:
-
-| Variable | Original | Adjusted | Reason |
-|---|---|---|---|
-| `--accent-blue` | #3867d6 | #5a70d0 (dark) / #1e4a94 (light) | Dark mode 3.32:1 → 3.80:1; Light mode already 7.60:1 |
-| `--accent-gold` | #ffa502 | #b06800 (light only) | Light mode 2.24:1 → 3.88:1 |
-| `--accent-green` | #1f9d5a | #1a8045 (light only) | Light mode 3.11:1 → 4.44:1 |
-| `--accent-red` | #dc3545 | #c02a38 (light only) | Light mode 4.04:1 → 5.16:1 |
-| `--accent-cyan` | #0a9192 | #087575 (light only) | Light mode 3.42:1 → 4.91:1 |
-| `--chat-bubble-me` | #253966 (dark) / #dbe4f7 (light) | #8a9ab0 (dark) / #4a6080 (light) | Both modes were <4.5:1 |
-| `--pip-inactive` | #3a4250 (dark) / #c8ccd4 (light) | #6a7080 (dark) / #606874 (light) | Both modes were <3:1 |
-| `--border-color` | #2e374a (dark) / #c8ccd4 (light) | #3d4658 (dark) / #b0b8c4 (light) | Separated from pip-inactive |
-| `--opponent-turn-color` | #576574 (dark) / #555770 (light) | #cad1df (dark) / #3a3a5c (light) | Improved contrast |
-| `--black-stone-color` | #1e2129 | #2a3240 (dark) / #1e2530 (light) | Graduated grays |
+All color pairs meet WCAG 2.1 AA requirements in both light and dark themes. The board plate follows the theme, and so does `--board-label`: the coordinate labels are #3a3a40 on the light plate and #ffffff on the dark one.
