@@ -1,7 +1,8 @@
 /**
  * hudView.js
- * Everything around the board that shows *state*: the phase label, the turn
- * badge, the instruction banner, both player panels and the turn countdown.
+ * Everything around the board that shows *state*: the status row (phase and
+ * what to do now), both player panels and the turn clock on the panel of the
+ * player on turn.
  *
  * The view is a pure function of the state it is handed — it never talks to the
  * socket and never decides anything. In particular the countdown only draws the
@@ -21,20 +22,11 @@ const URGENT_MS = 5000;
 /** How often the ring is redrawn. Four steps per second is smooth enough. */
 const TICK_MS = 200;
 
-/** The one instruction that carries markup; everything else is plain text. */
-const CAPTURE_INSTRUCTION =
-  '<strong>Mühle geschlossen!</strong> Klicke auf einen gegnerischen Stein, um ihn zu schlagen.';
-
 export class HudView {
   constructor() {
     this.phaseText = document.getElementById('hud-phase-text');
-    this.turnBadge = document.getElementById('hud-turn-badge');
     this.statusBanner = document.getElementById('hud-status-banner');
     this.instructionText = document.getElementById('hud-instruction-text');
-
-    this.timerBox = document.getElementById('hud-turn-timer');
-    this.timerValue = document.getElementById('hud-timer-value');
-    this.timerArc = document.getElementById('hud-timer-arc');
 
     // Both player panels share one shape, so they are addressed by colour
     // instead of being written out twice.
@@ -53,7 +45,7 @@ export class HudView {
     this.tick = null;
   }
 
-  /** Collects one panel's nodes and creates its pips once and for all. */
+  /** Collects one panel's nodes, its clock included, and creates its pips once and for all. */
   #panel(idPart, colorClass) {
     const pipsContainer = document.getElementById(`player-${idPart}-pips`);
     const pips = [];
@@ -64,12 +56,19 @@ export class HudView {
       pips.push(pip);
     }
 
+    const clock = document.getElementById(`player-${idPart}-clock`);
+
     return {
       card: document.getElementById(`player-${idPart}-card`),
       name: document.getElementById(`player-${idPart}-name`),
       piecesLeft: document.getElementById(`player-${idPart}-pieces-left`),
       captured: document.getElementById(`player-${idPart}-captured`),
-      pips
+      pips,
+      clock: {
+        box: clock,
+        value: clock.querySelector('.turn-clock-value'),
+        arc: clock.querySelector('.turn-clock-arc')
+      }
     };
   }
 
@@ -93,7 +92,7 @@ export class HudView {
     if (!state) return;
     this.state = state;
 
-    const isMyTurn = state.turn === this.myColor && !state.winner;
+    const isMyTurn = state.turn === this.myColor && !RULES.isGameOver(state);
 
     this.#renderPanels(state);
     this.#renderPhase(state);
@@ -107,7 +106,7 @@ export class HudView {
       const panel = this.panels[color];
       const isMine = color === this.myColor;
 
-      panel.card.classList.toggle('active-turn', state.turn === color && !state.winner);
+      panel.card.classList.toggle('active-turn', state.turn === color && !RULES.isGameOver(state));
       panel.name.textContent = isMine ? `${this.myName} (Du)` : this.opponentName;
       panel.piecesLeft.textContent = state.unplacedPieces[color];
       // What this player captured is what their opponent lost.
@@ -121,64 +120,56 @@ export class HudView {
     });
   }
 
-  /** "Phase 1: Setzen" / "Phase 2: Ziehen" / "Phase 3: Springen". */
+  /** "Setzphase" / "Zugphase" / "Springphase", the lead of the status row. */
   #renderPhase(state) {
     if (state.phase === 'SETTING') {
-      this.phaseText.textContent = 'Phase 1: Setzen';
+      this.phaseText.textContent = 'Setzphase';
     } else if (state.phase === 'MOVING') {
       const jumping = state.piecesOnBoard.W === 3 || state.piecesOnBoard.B === 3;
-      this.phaseText.textContent = jumping ? 'Phase 3: Springen' : 'Phase 2: Ziehen';
+      this.phaseText.textContent = jumping ? 'Springphase' : 'Zugphase';
     } else {
-      this.phaseText.textContent = 'Partie Beendet';
-    }
-  }
-
-  /** The turn badge and the tinted instruction banner below it. */
-  #renderStatus(state, isMyTurn) {
-    let tone;
-    let badge;
-
-    if (state.winner) {
-      tone = 'finished';
-      badge = 'Spiel Beendet';
-    } else if (isMyTurn) {
-      tone = 'my-turn';
-      badge = 'Du bist am Zug';
-    } else {
-      tone = 'opponent-turn';
-      badge = 'Gegner ist am Zug';
-    }
-
-    this.turnBadge.textContent = badge;
-    this.turnBadge.className = `hud-badge ${tone}`;
-    this.statusBanner.className = `hud-status-banner ${tone}`;
-
-    if (isMyTurn && state.awaitingRemoval) {
-      this.instructionText.innerHTML = CAPTURE_INSTRUCTION;
-    } else {
-      this.instructionText.textContent = this.#instructionFor(state, isMyTurn);
+      this.phaseText.textContent = 'Partie beendet';
     }
   }
 
   /**
-   * What the player should do (or wait for) right now, in one sentence.
+   * The status row, tinted by whose turn it is. It is the one place on screen
+   * that says so in words; the highlighted player panel and its clock repeat
+   * it at a glance.
+   */
+  #renderStatus(state, isMyTurn) {
+    let tone = 'opponent-turn';
+    if (RULES.isGameOver(state)) tone = 'finished';
+    else if (isMyTurn) tone = 'my-turn';
+
+    this.statusBanner.className = `hud-status-banner ${tone}`;
+    this.instructionText.textContent = this.#instructionFor(state, isMyTurn);
+  }
+
+  /**
+   * What the player should do (or wait for) right now, in one sentence. The
+   * phase already leads the row, so the sentence does not repeat it.
    */
   #instructionFor(state, isMyTurn) {
-    if (state.winner) return state.winReason || 'Partie abgeschlossen.';
+    if (RULES.isGameOver(state)) return state.endReason || 'Partie abgeschlossen.';
 
     if (!isMyTurn) {
-      if (state.awaitingRemoval) return 'Gegner hat eine Mühle geschlossen und wählt einen Stein zum Schlagen...';
-      if (state.phase === 'SETTING') return 'Gegner setzt einen Stein...';
-      return 'Gegner überlegt seinen nächsten Zug...';
+      const opponent = this.opponentName || 'Der Gegner';
+      if (state.awaitingRemoval) return `${opponent} hat eine Mühle geschlossen und wählt einen Stein zum Schlagen …`;
+      if (state.phase === 'SETTING') return `${opponent} setzt einen Stein …`;
+      return `${opponent} überlegt den nächsten Zug …`;
     }
 
+    if (state.awaitingRemoval) {
+      return 'Mühle! Schlage einen rot markierten Stein des Gegners.';
+    }
     if (state.phase === 'SETTING') {
-      return `Setzphase: Platziere einen Stein auf ein freies Feld (${state.unplacedPieces[this.myColor]} übrig).`;
+      return `Du bist am Zug: Setze einen Stein (${state.unplacedPieces[this.myColor]} übrig).`;
     }
     if (state.piecesOnBoard[this.myColor] === 3) {
-      return 'Endphase (Springen): Du hast nur noch 3 Steine! Du darfst auf jedes freie Feld springen.';
+      return 'Du bist am Zug: Mit 3 Steinen darfst du auf jedes freie Feld springen.';
     }
-    return 'Zugphase: Wähle einen deiner Steine aus und ziehe auf ein benachbartes freies Feld.';
+    return 'Du bist am Zug: Ziehe einen Stein auf ein freies Nachbarfeld.';
   }
 
   /**
@@ -220,44 +211,42 @@ export class HudView {
   }
 
   /**
-   * Draws the remaining seconds and the shrinking ring.
+   * Draws the remaining seconds and the shrinking ring on the panel of the
+   * player on turn, like a chess clock; the other panel's clock is hidden.
    *
    * Once it hits zero the display stays at 0 until the server has played the
    * automatic move and announced the next turn — the client never decides that
    * a turn is over.
    */
   #renderCountdown() {
-    if (!this.timerBox) return;
-
     const timer = this.countdown;
-    if (!timer || !this.state || this.state.winner) {
-      this.timerBox.hidden = true;
-      return;
-    }
+    const running = timer && this.state && !RULES.isGameOver(this.state);
 
+    ['W', 'B'].forEach(color => {
+      this.panels[color].clock.box.hidden = !running || timer.turn !== color;
+    });
+    if (!running) return;
+
+    const { box, value, arc } = this.panels[timer.turn].clock;
     const remainingMs = Math.max(0, timer.endsAt - Date.now());
     const seconds = Math.ceil(remainingMs / 1000);
     const isMine = timer.turn === this.myColor;
 
-    this.timerBox.hidden = false;
-    this.timerBox.classList.toggle('is-mine', isMine);
-    this.timerBox.classList.toggle('is-urgent', remainingMs <= URGENT_MS);
-    this.timerBox.setAttribute(
+    box.classList.toggle('is-mine', isMine);
+    box.classList.toggle('is-urgent', remainingMs <= URGENT_MS);
+    box.setAttribute(
       'aria-label',
       `${isMine ? 'Deine Bedenkzeit' : 'Bedenkzeit des Gegners'}: noch ${seconds} Sekunden`
     );
-    this.timerBox.title = isMine
+    box.title = isMine
       ? 'Deine Bedenkzeit für diesen Zug'
       : 'Bedenkzeit des Gegners für diesen Zug';
+    value.textContent = String(seconds);
 
-    if (this.timerValue) this.timerValue.textContent = String(seconds);
-
-    if (this.timerArc) {
-      const radius = Number(this.timerArc.getAttribute('r')) || 0;
-      const circumference = 2 * Math.PI * radius;
-      const fraction = Math.max(0, Math.min(1, remainingMs / timer.durationMs));
-      this.timerArc.style.strokeDasharray = String(circumference);
-      this.timerArc.style.strokeDashoffset = String(circumference * (1 - fraction));
-    }
+    const radius = Number(arc.getAttribute('r')) || 0;
+    const circumference = 2 * Math.PI * radius;
+    const fraction = Math.max(0, Math.min(1, remainingMs / timer.durationMs));
+    arc.style.strokeDasharray = String(circumference);
+    arc.style.strokeDashoffset = String(circumference * (1 - fraction));
   }
 }

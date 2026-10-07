@@ -14,7 +14,7 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 - **Thresholds**:
   - Normal text (< 18pt / < 14pt bold): ≥ 4.5:1
   - Large text (≥ 18pt / ≥ 14pt bold) and UI graphics: ≥ 3:1
-- **Date**: 2026-10-02
+- **Date**: 2026-10-07
 - **Script version**: `scripts/contrast-check.js` (Node.js, no external dependencies)
 - **Source**: the `:root` block of `public/css/tokens.css`, reached through `scripts/css-bundle.js`, which resolves the layered `@import` chain of `public/css/style.css`. Every `light-dark(<light>, <dark>)` pair is split into its two themes; `rgb(r g b / a)` colours are checked without their alpha
 
@@ -41,7 +41,6 @@ The tables are the output of `npm run contrast-check` (`runContrastCheck()` in `
 | Button text on primary button | #ffffff | #2f6fe0 | 4.70:1 | 4.5:1 | ✅ Pass |
 | Secondary button text on secondary background | #f2f2f7 | #26262c | 13.48:1 | 4.5:1 | ✅ Pass |
 | Pip on background | #6c6c78 | #0a0a0c | 3.82:1 | 3:1 | ✅ Pass |
-| Opponent turn text on background | #c7c7d1 | #0a0a0c | 11.79:1 | 4.5:1 | ✅ Pass |
 | Chat bubble text on bubble background | #f2f2f7 | #2b3a52 | 10.29:1 | 4.5:1 | ✅ Pass |
 | Toast text on toast background | #f2f2f7 | #1f1f24 | 14.71:1 | 4.5:1 | ✅ Pass |
 | Board label on board plate | #ffffff | #26262c | 15.04:1 | 3:1 | ✅ Pass |
@@ -67,7 +66,6 @@ The tables are the output of `npm run contrast-check` (`runContrastCheck()` in `
 | Button text on primary button | #ffffff | #0b62d6 | 5.63:1 | 4.5:1 | ✅ Pass |
 | Secondary button text on secondary background | #1c1c1e | #e8e8ed | 13.93:1 | 4.5:1 | ✅ Pass |
 | Pip on background | #83838d | #f2f2f7 | 3.36:1 | 3:1 | ✅ Pass |
-| Opponent turn text on background | #3a3a40 | #f2f2f7 | 10.12:1 | 4.5:1 | ✅ Pass |
 | Chat bubble text on bubble background | #1c1c1e | #d4dcea | 12.34:1 | 4.5:1 | ✅ Pass |
 | Toast text on toast background | #1c1c1e | #ffffff | 17.01:1 | 4.5:1 | ✅ Pass |
 | Board label on board plate | #3a3a40 | #ffffff | 11.30:1 | 3:1 | ✅ Pass |
@@ -76,8 +74,8 @@ The tables are the output of `npm run contrast-check` (`runContrastCheck()` in `
 
 ## Summary
 
-- **Total tested pairs**: 42 (21 dark + 21 light)
-- **Passed**: 42/42 (100%)
+- **Total tested pairs**: 40 (20 dark + 20 light)
+- **Passed**: 40/40 (100%)
 - **Failed**: 0
 - **Smallest margins**: Button text on primary button (dark) at 4.70:1 against 4.5:1, and Pip on background (light) at 3.36:1 against 3:1
 

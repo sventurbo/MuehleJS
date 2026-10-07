@@ -25,6 +25,32 @@ import { HudView } from './hudView.js';
 import { DockView } from './dockView.js';
 import { Overlays } from './overlays.js';
 
+/** localStorage key of the name typed last time. */
+const PLAYER_NAME_KEY = 'muehle_player_name';
+
+/**
+ * Reads the name typed last time, so the next game is one click away.
+ *
+ * Blocked site data makes the very access to localStorage throw, in current
+ * browsers too (see audio.js). The field then simply starts empty.
+ */
+function loadPlayerName() {
+  try {
+    return localStorage.getItem(PLAYER_NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Remembers the name; a blocked or full store just means it is not remembered. */
+function storePlayerName(name) {
+  try {
+    localStorage.setItem(PLAYER_NAME_KEY, name);
+  } catch {
+    // The name stays in the field for this visit only.
+  }
+}
+
 class MuehleApp {
   constructor() {
     this.socket = null;
@@ -87,10 +113,12 @@ class MuehleApp {
   // ── Controls outside the views ────────────────────────────────────────────
 
   #bindControls() {
-    document.getElementById('btn-find-game')
-      .addEventListener('click', () => this.#handleLogin());
-    this.usernameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.#handleLogin();
+    // A real form: the browser checks the name (required, pattern) and submits
+    // on Enter, so neither needs code of its own.
+    this.usernameInput.value = loadPlayerName();
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.#handleLogin();
     });
 
     document.getElementById('btn-cancel-queue').addEventListener('click', () => {
@@ -128,6 +156,7 @@ class MuehleApp {
     const username = this.usernameInput.value.trim().substring(0, 12);
     if (!username) return;
     this.myName = username;
+    storePlayerName(username);
     this.socket.emit('login', { username });
   }
 
@@ -183,20 +212,28 @@ class MuehleApp {
       if (!data) return;
       const actor = RULES.colorName(data.player);
       this.dock.addSystemNote(data.message || `Zeit abgelaufen – für ${actor} wurde automatisch gezogen.`);
-      this.overlays.toast(
-        data.player === this.myColor
-          ? 'Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen.'
-          : `Bedenkzeit von ${actor} abgelaufen – der Zug wurde automatisch ausgeführt.`,
-        'warning'
-      );
+
+      if (data.player === this.myColor) {
+        // Whoever ran out of time was looking elsewhere, so the notice waits
+        // for them: it stays until they click it away.
+        this.overlays.toast(
+          `Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen ` +
+          `(${data.consecutiveTimeouts} von ${data.timeoutLimit}: beim ${data.timeoutLimit}. Mal ` +
+          `in Folge verlierst du).`,
+          'warning',
+          { sticky: true }
+        );
+      } else {
+        this.overlays.toast(`Bedenkzeit von ${actor} abgelaufen – der Zug wurde automatisch ausgeführt.`, 'warning');
+      }
     });
 
     this.socket.on('gameOver', (data) => this.#endGame(data));
 
     this.socket.on('opponentDisconnected', (data) => {
       this.#endGame(data);
-      // The exact cause (dropped connection vs. deliberate exit) is in winReason.
-      this.overlays.toast(data.winReason || 'Die Partie wurde beendet.', 'warning');
+      // The exact cause (dropped connection vs. deliberate exit) is in endReason.
+      this.overlays.toast(data.endReason || 'Die Partie wurde beendet.', 'warning');
     });
 
     this.socket.on('actionError', (data) => {
@@ -287,7 +324,7 @@ class MuehleApp {
     if (closedMill) this.board.highlightMill(closedMill);
   }
 
-  /** The game is decided — by a win, a forfeit or a lost opponent. */
+  /** The game is decided — by a win, a draw, a forfeit or a lost opponent. */
   #endGame(data) {
     this.gameState = data.state;
     this.hud.stopCountdown();
@@ -297,8 +334,11 @@ class MuehleApp {
     // must not tear the result screen away before it has been read.
     this.sessionActive = false;
 
+    const isDraw = data.winner === null;
     const isWin = data.winner === this.myColor;
-    if (isWin) {
+    if (isDraw) {
+      soundController.playDraw();
+    } else if (isWin) {
       soundController.playWin();
     } else {
       soundController.playLose();
@@ -306,7 +346,7 @@ class MuehleApp {
     this.overlays.showGameOver({
       winner: data.winner,
       winnerName: data.winnerName,
-      winReason: data.winReason,
+      endReason: data.endReason,
       isWin
     });
   }
@@ -337,12 +377,13 @@ class MuehleApp {
   /**
    * A click on a board point. Nothing is decided here: the click is turned into
    * the one request it can be right now, and the server answers with the new
-   * state (or an `actionError`).
+   * state (or an `actionError`). A click that cannot be any request is
+   * answered on the board itself (`rejectPoint`), not with a toast.
    */
   #onPointClick(point) {
-    if (!this.gameState || this.gameState.winner) return;
+    if (!this.gameState || RULES.isGameOver(this.gameState)) return;
     if (this.gameState.turn !== this.myColor) {
-      this.overlays.toast('Der Gegner ist am Zug!', 'info');
+      this.board.rejectPoint(point);
       return;
     }
 
@@ -360,7 +401,7 @@ class MuehleApp {
     if (this.#removablePoints.includes(point)) {
       this.socket.emit('removePiece', { point });
     } else {
-      this.overlays.toast('Wähle einen gültigen gegnerischen Stein zum Schlagen (nicht in einer Mühle)!', 'warning');
+      this.board.rejectPoint(point);
     }
   }
 
@@ -369,7 +410,7 @@ class MuehleApp {
     if (this.gameState.board[point] === null) {
       this.socket.emit('placePiece', { point });
     } else {
-      this.overlays.toast('Dieses Feld ist bereits besetzt!', 'warning');
+      this.board.rejectPoint(point);
     }
   }
 
@@ -402,9 +443,8 @@ class MuehleApp {
       return;
     }
 
-    if (piece === null && this.selectedPoint) {
-      this.overlays.toast('Dieser Zug ist ungültig (keine direkte Verbindung)!', 'warning');
-    }
+    // An opponent stone, or a point the selected stone cannot reach.
+    this.board.rejectPoint(point);
   }
 
   // ── Screens ───────────────────────────────────────────────────────────────

@@ -77,6 +77,12 @@ POINTS.forEach(p => {
 export const getOpponent = (player) => (player === 'W' ? 'B' : 'W');
 
 /**
+ * Is the game in `state` decided? Asked through the phase, not the winner: a
+ * draw ends the game without one.
+ */
+export const isGameOver = (state) => state?.phase === 'FINISHED';
+
+/**
  * Is the stone of `player` at `point` part of a completed mill?
  */
 export function isPointInMill(board, point, player) {
@@ -119,7 +125,7 @@ export function getRemovablePoints(board, player) {
  */
 export function getCaptureTargets(gameState, playerColor) {
   if (!gameState || !playerColor) return [];
-  if (gameState.winner) return [];
+  if (isGameOver(gameState)) return [];
   if (!gameState.awaitingRemoval) return [];
   if (gameState.turn !== playerColor) return [];
   return getRemovablePoints(gameState.board, playerColor);
