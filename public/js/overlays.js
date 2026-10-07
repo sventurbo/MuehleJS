@@ -20,6 +20,13 @@ const TOAST_FADE_MS = 400;
 /** returnValue of a dialog the app closed itself, so it carries no choice. */
 const CLOSED_BY_APP = 'app';
 
+/** Heading of the game-over dialog for each outcome, seen from this player. */
+const GAME_OVER_TITLES = {
+  win: 'Sieg! Herzlichen Glückwunsch!',
+  loss: 'Partie Verloren',
+  draw: 'Unentschieden'
+};
+
 /**
  * Calls `onChoice` with the returnValue every time `dialog` closes, then clears
  * it: Escape and a click beside the dialog close it without setting one, and
@@ -90,16 +97,22 @@ export class Overlays {
    * Announces the result of a finished game. A surrender question that is
    * still open has nothing left to decide and is dropped.
    * @param {Object} result
-   * @param {string} result.winner Winning colour, 'W' or 'B'.
-   * @param {string} result.winnerName Display name of the winner.
-   * @param {string} result.winReason Why the game ended.
+   * @param {?string} result.winner Winning colour, 'W' or 'B'; null for a draw.
+   * @param {?string} result.winnerName Display name of the winner.
+   * @param {string} result.endReason Why the game ended.
    * @param {boolean} result.isWin Whether the local player won.
    */
-  showGameOver({ winner, winnerName, winReason, isWin }) {
-    this.gameOverTitle.textContent = isWin ? 'Sieg! Herzlichen Glückwunsch!' : 'Partie Verloren';
-    this.gameOverTitle.className = `game-over-title ${isWin ? 'win' : 'loss'}`;
-    this.gameOverWinner.textContent = `Gewinner: ${winnerName} (${RULES.colorName(winner)})`;
-    this.gameOverReason.textContent = winReason || 'Spiel beendet';
+  showGameOver({ winner, winnerName, endReason, isWin }) {
+    const outcome = winner === null ? 'draw' : (isWin ? 'win' : 'loss');
+    this.gameOverTitle.textContent = GAME_OVER_TITLES[outcome];
+    this.gameOverTitle.className = `game-over-title ${outcome}`;
+
+    // A draw has nobody to name.
+    this.gameOverWinner.hidden = outcome === 'draw';
+    this.gameOverWinner.textContent = outcome === 'draw'
+      ? ''
+      : `Gewinner: ${winnerName} (${RULES.colorName(winner)})`;
+    this.gameOverReason.textContent = endReason || 'Spiel beendet';
 
     this.surrenderModal.close(CLOSED_BY_APP);
     if (!this.gameOverModal.open) this.gameOverModal.showModal();
