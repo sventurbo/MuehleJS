@@ -1,4 +1,6 @@
-import { MuehleGame, POINTS, ADJACENCY, MILLS } from '../lib/MuehleGame.js';
+import {
+  MuehleGame, POINTS, ADJACENCY, MILLS, REPETITION_LIMIT, MOVES_WITHOUT_CAPTURE_LIMIT
+} from '../lib/MuehleGame.js';
 
 describe('MuehleGame Rule Engine', () => {
   let game;
@@ -303,7 +305,7 @@ describe('MuehleGame Rule Engine', () => {
       expect(game.piecesOnBoard.B).toBe(2);
       expect(game.winner).toBe('W');
       expect(game.phase).toBe('FINISHED');
-      expect(game.winReason).toContain('weniger als 3 Steine');
+      expect(game.endReason).toContain('weniger als 3 Steine');
     });
 
     test('player wins when opponent has no legal moves left (trapped)', () => {
@@ -349,7 +351,7 @@ describe('MuehleGame Rule Engine', () => {
       // B has no legal moves!
       expect(game.winner).toBe('W');
       expect(game.phase).toBe('FINISHED');
-      expect(game.winReason).toContain('eingesperrt');
+      expect(game.endReason).toContain('eingesperrt');
     });
 
     // Regression (#23): the placement that ends the SETTING phase handed the
@@ -374,7 +376,7 @@ describe('MuehleGame Rule Engine', () => {
       expect(res.millFormed).toBe(false);
       expect(game.winner).toBe('B');
       expect(game.phase).toBe('FINISHED');
-      expect(game.winReason).toContain('eingesperrt');
+      expect(game.endReason).toContain('eingesperrt');
       expect(res.state.winner).toBe('B');
     });
 
@@ -384,6 +386,13 @@ test('forfeit gives immediate victory to opponent', () => {
        expect(game.winner).toBe('B');
        expect(game.phase).toBe('FINISHED');
      });
+
+    test('forfeit takes the reason the caller gives', () => {
+      game.forfeit('B', 'Gegner (Bob) hat die Verbindung getrennt');
+      expect(game.winner).toBe('W');
+      expect(game.endReason).toBe('Gegner (Bob) hat die Verbindung getrennt');
+      expect(game.forfeit('W').success).toBe(false);
+    });
 
      test('placePiece return includes point coordinate', () => {
        const result = game.placePiece('W', 'a7');
@@ -451,6 +460,92 @@ test('forfeit gives immediate victory to opponent', () => {
        expect(result.player).toBe('W');
      });
    });
+
+  describe('Draws (Remis)', () => {
+    beforeEach(() => {
+      // Four stones each on the corners of the outer and the middle square:
+      // the moves below never close a mill and never trap anybody.
+      Object.assign(game, {
+        phase: 'MOVING',
+        unplacedPieces: { W: 0, B: 0 },
+        piecesOnBoard: { W: 4, B: 4 }
+      });
+      ['a7', 'g7', 'a1', 'g1'].forEach(pt => { game.board[pt] = 'W'; });
+      ['b6', 'f6', 'b2', 'f2'].forEach(pt => { game.board[pt] = 'B'; });
+    });
+
+    /** One round trip of both players: every position of it comes back after. */
+    const ROUND_TRIP = [['W', 'a7', 'd7'], ['B', 'b6', 'd6'], ['W', 'd7', 'a7'], ['B', 'd6', 'b6']];
+
+    test('the third occurrence of a position is a draw', () => {
+      expect(REPETITION_LIMIT).toBe(3);
+
+      // Two round trips bring every position up to its second occurrence.
+      for (let trip = 0; trip < 2; trip++) {
+        ROUND_TRIP.forEach(([player, from, to]) => {
+          expect(game.movePiece(player, from, to).success).toBe(true);
+          expect(game.phase).toBe('MOVING');
+        });
+      }
+
+      const res = game.movePiece('W', 'a7', 'd7');
+
+      expect(res.success).toBe(true);
+      expect(res.state.phase).toBe('FINISHED');
+      expect(game.winner).toBeNull();
+      expect(game.endReason).toContain('Stellungswiederholung');
+    });
+
+    test('fifty moves without a capture are a draw', () => {
+      expect(MOVES_WITHOUT_CAPTURE_LIMIT).toBe(50);
+      game.movesSinceCapture = MOVES_WITHOUT_CAPTURE_LIMIT - 1;
+
+      game.movePiece('W', 'a7', 'd7');
+
+      expect(game.phase).toBe('FINISHED');
+      expect(game.winner).toBeNull();
+      expect(game.endReason).toContain('50 Züge ohne Schlagen');
+    });
+
+    test('a capture starts both draw counters over', () => {
+      ROUND_TRIP.forEach(([player, from, to]) => game.movePiece(player, from, to));
+      game.movesSinceCapture = 30;
+
+      // White moves d6 -> d7 and closes a7-d7-g7, then captures b2.
+      game.board['d6'] = 'W';
+      game.piecesOnBoard.W = 5;
+      game.turn = 'W';
+      expect(game.movePiece('W', 'd6', 'd7').millFormed).toBe(true);
+      expect(game.removePiece('W', 'b2').success).toBe(true);
+
+      expect(game.movesSinceCapture).toBe(0);
+      // Only the position right after the capture is on record.
+      expect(game.positionCounts.size).toBe(1);
+      expect(game.phase).toBe('MOVING');
+    });
+
+    test('positions are only counted in the moving phase', () => {
+      const setting = new MuehleGame();
+      setting.placePiece('W', 'a7');
+      setting.placePiece('B', 'b6');
+      expect(setting.positionCounts.size).toBe(0);
+      expect(setting.movesSinceCapture).toBe(0);
+    });
+
+    test('a drawn game accepts no further action', () => {
+      game.movesSinceCapture = MOVES_WITHOUT_CAPTURE_LIMIT - 1;
+      game.movePiece('W', 'a7', 'd7');
+
+      expect(game.movePiece('B', 'b6', 'd6').success).toBe(false);
+      expect(game.getLegalActions('B')).toEqual([]);
+      expect(game.forfeit('B').success).toBe(false);
+      expect(game.getState()).toEqual(expect.objectContaining({
+        phase: 'FINISHED',
+        winner: null,
+        endReason: expect.stringContaining('Remis')
+      }));
+    });
+  });
 
   describe('Legal actions and the automatic move (turn timer)', () => {
     test('getLegalActions offers every free point during the setting phase', () => {
@@ -553,7 +648,7 @@ test('forfeit gives immediate victory to opponent', () => {
     test('a whole game played automatically never breaks a rule', () => {
       const autoGame = new MuehleGame('auto_game');
 
-      for (let i = 0; i < 400 && !autoGame.winner; i++) {
+      for (let i = 0; i < 400 && autoGame.phase !== 'FINISHED'; i++) {
         const before = autoGame.getLegalActions(autoGame.turn);
         const result = autoGame.makeRandomLegalMove(autoGame.turn);
 
@@ -569,9 +664,9 @@ test('forfeit gives immediate victory to opponent', () => {
         });
       }
 
-      // Random play can circle forever once both sides may jump, so the run is
-      // not expected to end — what matters is that it kept producing legal
-      // moves, all of them marked as played by the server.
+      // Random play may or may not decide the game within the budget — the
+      // draw rules end it at the latest — so what matters is that every move
+      // was legal and marked as played by the server.
       expect(autoGame.moveHistory.length).toBeGreaterThan(18);
       autoGame.moveHistory.forEach(entry => expect(entry.auto).toBe(true));
       expect(autoGame.phase).not.toBe('SETTING');

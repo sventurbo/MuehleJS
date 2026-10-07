@@ -93,7 +93,7 @@ export class HudView {
     if (!state) return;
     this.state = state;
 
-    const isMyTurn = state.turn === this.myColor && !state.winner;
+    const isMyTurn = state.turn === this.myColor && !RULES.isGameOver(state);
 
     this.#renderPanels(state);
     this.#renderPhase(state);
@@ -107,7 +107,7 @@ export class HudView {
       const panel = this.panels[color];
       const isMine = color === this.myColor;
 
-      panel.card.classList.toggle('active-turn', state.turn === color && !state.winner);
+      panel.card.classList.toggle('active-turn', state.turn === color && !RULES.isGameOver(state));
       panel.name.textContent = isMine ? `${this.myName} (Du)` : this.opponentName;
       panel.piecesLeft.textContent = state.unplacedPieces[color];
       // What this player captured is what their opponent lost.
@@ -138,7 +138,7 @@ export class HudView {
     let tone;
     let badge;
 
-    if (state.winner) {
+    if (RULES.isGameOver(state)) {
       tone = 'finished';
       badge = 'Spiel Beendet';
     } else if (isMyTurn) {
@@ -164,7 +164,7 @@ export class HudView {
    * What the player should do (or wait for) right now, in one sentence.
    */
   #instructionFor(state, isMyTurn) {
-    if (state.winner) return state.winReason || 'Partie abgeschlossen.';
+    if (RULES.isGameOver(state)) return state.endReason || 'Partie abgeschlossen.';
 
     if (!isMyTurn) {
       if (state.awaitingRemoval) return 'Gegner hat eine Mühle geschlossen und wählt einen Stein zum Schlagen...';
@@ -230,7 +230,7 @@ export class HudView {
     if (!this.timerBox) return;
 
     const timer = this.countdown;
-    if (!timer || !this.state || this.state.winner) {
+    if (!timer || !this.state || RULES.isGameOver(this.state)) {
       this.timerBox.hidden = true;
       return;
     }

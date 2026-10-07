@@ -135,7 +135,7 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
       // the click handler refused them.
       const game = gameWith(
         { b6: 'B', a1: 'B', a7: 'W' },
-        { awaitingRemoval: true, turn: 'W', winner: 'W', winReason: 'Test', phase: 'FINISHED' }
+        { awaitingRemoval: true, turn: 'W', winner: 'W', endReason: 'Test', phase: 'FINISHED' }
       );
       expect(RULES.getCaptureTargets(game.getState(), 'W')).toEqual([]);
     });
@@ -291,7 +291,7 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
       for (let g = 0; g < 60; g++) {
         const game = new MuehleGame(`diff_${g}`);
 
-        for (let step = 0; step < 200 && !game.winner; step++) {
+        for (let step = 0; step < 200 && game.phase !== 'FINISHED'; step++) {
           const player = game.turn;
           const before = { ...game.board };
           let result;

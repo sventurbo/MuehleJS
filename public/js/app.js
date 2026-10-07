@@ -185,7 +185,9 @@ class MuehleApp {
       this.dock.addSystemNote(data.message || `Zeit abgelaufen – für ${actor} wurde automatisch gezogen.`);
       this.overlays.toast(
         data.player === this.myColor
-          ? 'Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen.'
+          ? `Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen ` +
+            `(${data.consecutiveTimeouts} von ${data.timeoutLimit}: beim ${data.timeoutLimit}. Mal ` +
+            `in Folge verlierst du).`
           : `Bedenkzeit von ${actor} abgelaufen – der Zug wurde automatisch ausgeführt.`,
         'warning'
       );
@@ -195,8 +197,8 @@ class MuehleApp {
 
     this.socket.on('opponentDisconnected', (data) => {
       this.#endGame(data);
-      // The exact cause (dropped connection vs. deliberate exit) is in winReason.
-      this.overlays.toast(data.winReason || 'Die Partie wurde beendet.', 'warning');
+      // The exact cause (dropped connection vs. deliberate exit) is in endReason.
+      this.overlays.toast(data.endReason || 'Die Partie wurde beendet.', 'warning');
     });
 
     this.socket.on('actionError', (data) => {
@@ -287,7 +289,7 @@ class MuehleApp {
     if (closedMill) this.board.highlightMill(closedMill);
   }
 
-  /** The game is decided — by a win, a forfeit or a lost opponent. */
+  /** The game is decided — by a win, a draw, a forfeit or a lost opponent. */
   #endGame(data) {
     this.gameState = data.state;
     this.hud.stopCountdown();
@@ -297,8 +299,11 @@ class MuehleApp {
     // must not tear the result screen away before it has been read.
     this.sessionActive = false;
 
+    const isDraw = data.winner === null;
     const isWin = data.winner === this.myColor;
-    if (isWin) {
+    if (isDraw) {
+      soundController.playDraw();
+    } else if (isWin) {
       soundController.playWin();
     } else {
       soundController.playLose();
@@ -306,7 +311,7 @@ class MuehleApp {
     this.overlays.showGameOver({
       winner: data.winner,
       winnerName: data.winnerName,
-      winReason: data.winReason,
+      endReason: data.endReason,
       isWin
     });
   }
@@ -340,7 +345,7 @@ class MuehleApp {
    * state (or an `actionError`).
    */
   #onPointClick(point) {
-    if (!this.gameState || this.gameState.winner) return;
+    if (!this.gameState || RULES.isGameOver(this.gameState)) return;
     if (this.gameState.turn !== this.myColor) {
       this.overlays.toast('Der Gegner ist am Zug!', 'info');
       return;

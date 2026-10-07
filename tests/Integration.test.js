@@ -98,7 +98,7 @@ describe('Full Server & Socket.io Integration Flow', () => {
   test('Opponent disconnect notifies remaining player', (done) => {
     // If client2 disconnects, client1 should receive opponentDisconnected
     client1.once('opponentDisconnected', (data) => {
-      expect(data.winReason).toContain('Verbindung getrennt');
+      expect(data.endReason).toContain('Verbindung getrennt');
       done();
     });
 

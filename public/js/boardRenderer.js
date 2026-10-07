@@ -225,7 +225,7 @@ export class BoardRenderer {
     this.validDestinations = validDestinations;
     this.removablePoints = RULES.getCaptureTargets(gameState, playerColor);
 
-    const isMyTurn = gameState.turn === playerColor && !gameState.winner;
+    const isMyTurn = gameState.turn === playerColor && !RULES.isGameOver(gameState);
     const canSelect = isMyTurn && gameState.phase === 'MOVING' && !gameState.awaitingRemoval;
 
     this.#syncPieces(gameState);
