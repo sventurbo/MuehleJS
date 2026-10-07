@@ -169,8 +169,10 @@ classDiagram
         +boolean awaitingRemoval
         +string millTriggerPoint
         +string winner
-        +string winReason
+        +string endReason
         +Array moveHistory
+        +Map positionCounts
+        +number movesSinceCapture
         +placePiece(player, point)
         +movePiece(player, from, to)
         +removePiece(player, point)
@@ -182,6 +184,7 @@ classDiagram
         +getLegalMoves(player)
         +getLegalActions(player)
         +makeRandomLegalMove(player, random)
+        +forfeit(player, reason)
         +getState()
     }
 
@@ -205,6 +208,7 @@ classDiagram
         +Object players
         +Timeout turnTimer
         +number turnDeadline
+        +Object consecutiveTimeouts
     }
 
     GameManager "1" o-- "n" GameSession : verwaltet
@@ -280,16 +284,22 @@ stateDiagram-v2
 
         TurnWhite_Move --> FINISHED: Weiß eingesperrt (0 Züge)
         TurnBlack_Move --> FINISHED: Schwarz eingesperrt (0 Züge)
+
+        TurnWhite_Move --> FINISHED: Remis (Stellung zum 3. Mal / 50 Züge ohne Schlagen)
+        TurnBlack_Move --> FINISHED: Remis (Stellung zum 3. Mal / 50 Züge ohne Schlagen)
     }
 
-    MOVING --> FINISHED: Spieler gibt auf / Disconnect
+    SETTING --> FINISHED: Aufgabe / Disconnect / 3 Zeitüberschreitungen in Folge
+    MOVING --> FINISHED: Aufgabe / Disconnect / 3 Zeitüberschreitungen in Folge
 
     FINISHED --> [*]
 ```
 
 > **Hinweis zur Phase 3 (Springen):** Ist ein Spieler in der Phase `MOVING` auf genau 3 Steine dezimiert, gilt `canJump(player) == true`. Der Zustandsautomat verbleibt in `MOVING`, die Adjazenzprüfung wird jedoch für diesen Spieler aufgehoben (freies Springen auf beliebige freie Punkte).
 
-> **Hinweis zum Zug-Timer:** Der Ablauf der 25-Sekunden-Bedenkzeit fügt dem Automaten **keinen eigenen Zustand** hinzu. Der `GameManager` führt bei Ablauf lediglich einen der ohnehin legalen Züge aus, sodass genau dieselben Übergänge durchlaufen werden wie bei einem menschlichen Zug (siehe [5.4](#54-zug-timer--automatischer-zug)).
+> **Hinweis zum Zug-Timer:** Der Ablauf der 25-Sekunden-Bedenkzeit fügt dem Automaten **keinen eigenen Zustand** hinzu. Der `GameManager` führt bei Ablauf lediglich einen der ohnehin legalen Züge aus, sodass genau dieselben Übergänge durchlaufen werden wie bei einem menschlichen Zug (siehe [5.4](#54-zug-timer--automatischer-zug)). Erst die dritte Zeitüberschreitung desselben Spielers in Folge beendet die Partie, und zwar über `forfeit(player, reason)` wie eine Aufgabe.
+
+> **Hinweis zum Remis:** Spielende heißt `phase == FINISHED`. Bei einem Remis bleibt `winner` dabei `null`, `endReason` nennt den Grund. Gezählt wird nur in der Zugphase: `positionCounts` erfasst jede Stellung (Brett plus Spieler am Zug) bei jedem Zugwechsel, `movesSinceCapture` jeden Zug. Ein Schlag setzt beide zurück, weil danach keine frühere Stellung wiederkehren kann.
 
 ---
 
@@ -382,7 +392,7 @@ sequenceDiagram
     P1-xS: TCP FIN / Socket Disconnect
     Note over S: Socket.io erkennt disconnect
     Note over S: GameManager.handlePlayerDisconnect(socketId)<br/>Spieler aus socketMap entfernt<br/>Partie als FINISHED markiert<br/>Gewinner = Schwarz
-    S-->>P2: emit("opponentDisconnected", { winner: "B", winReason: "Gegner getrennt" })
+    S-->>P2: emit("opponentDisconnected", { winner: "B", endReason: "Gegner getrennt" })
     Note over S: gameSession aus games-Map gelöscht<br/>Kein Serverabsturz!
 ```
 
@@ -415,6 +425,12 @@ sequenceDiagram
     Note over S: Zug angenommen -> Uhr neu gestellt, jetzt für Schwarz
     S-->>P1: emit("turnTimer", { turn: "B", durationMs: 25000 })
     S-->>P2: emit("turnTimer", { turn: "B", durationMs: 25000 })
+
+    alt Schwarz überschreitet die Bedenkzeit zum dritten Mal in Folge
+        Note over S: consecutiveTimeouts.B == 3<br/>kein automatischer Zug mehr<br/>MuehleGame.forfeit("B", Grund)
+        S-->>P1: emit("gameOver", { winner: "W", endReason })
+        S-->>P2: emit("gameOver", { winner: "W", endReason })
+    end
 ```
 
 **Designentscheidung — automatischer Zug statt Zugverwirkung:** Bei Ablauf wird ein zufälliger *legaler* Zug ausgeführt (Option C des Issues), nicht der Zug verwirkt. Die Partie bleibt dadurch in Bewegung, der Spielfluss des Gegners wird nicht durch Warten blockiert, und der säumige Spieler verliert nur die freie Wahl, nicht den Zug. Der automatische Zug läuft durch dieselben Methoden wie ein menschlicher (`placePiece`, `movePiece`, `removePiece`) und ist damit zwangsläufig regelkonform; er landet regulär in der `moveHistory`, markiert mit `auto: true`.
@@ -426,7 +442,8 @@ sequenceDiagram
 | Rücksetzung | Jede angenommene Aktion (auch der automatische Zug) startet die Uhr neu. |
 | Schlagen nach Mühle | Eigene 25 Sekunden, da es eine eigene Entscheidung ist. Sonst könnte eine Partie im Zustand `awaitingRemoval` unbegrenzt blockieren. |
 | Parallele Partien | Jede `GameSession` besitzt ihre eigene Uhr; Timer laufen unabhängig voneinander. |
-| Spielende | `_broadcastGameState()` stoppt die Uhr, sobald ein Gewinner feststeht — ein beendetes Spiel bekommt keinen neuen Timer. |
+| Inaktivität | `consecutiveTimeouts` zählt pro Farbe die Zeitüberschreitungen in Folge; jede eigene Aktion setzt den Zähler zurück. Beim dritten Mal verliert der Spieler, statt dass der Server weiter für ihn zieht. Sonst hielten zwei untätige Spieler eine Partie ewig am Leben. |
+| Spielende | `_broadcastGameState()` stoppt die Uhr, sobald die Partie beendet ist (Sieg oder Remis) — ein beendetes Spiel bekommt keinen neuen Timer. |
 | Verbindungsabbruch | `_endSession()` / `leaveGame()` stoppen die Uhr, bevor die Session aus `games` entfernt wird. Der Callback kann also nie auf eine Partie feuern, die es nicht mehr gibt. |
 | Prozess-Lebensdauer | Alle Timer sind `unref()`-ed und halten den Node-Prozess nicht künstlich am Leben. |
 
@@ -457,9 +474,9 @@ sequenceDiagram
 | `gameStart` | `{ gameId, yourColor, yourName, opponentName, state }` | Startet Spielarena und teilt Farben zu |
 | `gameStateUpdate` | `{ state: Object, lastAction: Object }` | Überträgt autoritativen Spielzustand (`lastAction.auto === true` bei einem Zug, den die Uhr ausgelöst hat) |
 | `turnTimer` | `{ turn, awaitingRemoval, durationMs, remainingMs }` | Startet/erneuert den Countdown; wird nach jeder angenommenen Aktion gesendet |
-| `turnTimeout` | `{ player, timeoutMs, action, autoMove, message }` | Die Bedenkzeit ist abgelaufen; nennt den Spieler und den automatisch ausgeführten Zug |
-| `gameOver` | `{ winner: string, winnerName: string, winReason: string, state }` | Zeigt Spielende-Modal an |
-| `opponentDisconnected`| `{ winner, winnerName, winReason, state }` | Informiert über Verbindungsabbruch des Gegners |
+| `turnTimeout` | `{ player, timeoutMs, consecutiveTimeouts, timeoutLimit, action, autoMove, message }` | Die Bedenkzeit ist abgelaufen; nennt den Spieler, den automatisch ausgeführten Zug und die wievielte Zeitüberschreitung in Folge es war |
+| `gameOver` | `{ winner: string \| null, winnerName: string \| null, endReason: string, state }` | Zeigt Spielende-Modal an; `winner == null` bedeutet Remis |
+| `opponentDisconnected`| `{ winner, winnerName, endReason, state }` | Informiert über Verbindungsabbruch des Gegners |
 | `actionError` | `{ message: string }` | Informiert den Client über Regelverstoß oder Rate-Limit |
 | `serverError` | `{ message: string }` | Informiert über Server- oder Warteschlangenüberlastung |
 | `chatMessage` | `{ sender: string, color: string, text: string, timestamp: number }` | Übermittelt Chatnachricht an beide Clients |

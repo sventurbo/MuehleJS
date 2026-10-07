@@ -15,10 +15,12 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - **Mühlenerkennung**: Automatische Erkennung geschlossener Mühlen (3 Steine in einer Reihe).
   - **Schlag-Regel mit Mühlenschutz**: Steine in geschlossenen gegnerischen Mühlen sind geschützt, *es sei denn*, der Gegner besitzt ausschließlich Steine in Mühlen.
   - **Sieg-/Verlustprüfung**: Sieg bei Reduktion des Gegners auf weniger als 3 Steine oder wenn der Gegner keinen legalen Zug mehr ausführen kann (eingesperrt).
+  - **Remis**: Entsteht in der Zugphase dieselbe Stellung zum dritten Mal oder wird 50 Züge lang kein Stein geschlagen, endet die Partie unentschieden. Ohne diese Regeln könnten zwei Spieler endlos hin und her ziehen.
 - **Zug-Timer (25 Sekunden pro Zug)**:
   - Jede Entscheidung – Setzen, Ziehen und das Schlagen nach einer Mühle – ist auf 25 Sekunden begrenzt.
   - Die Uhr läuft ausschließlich auf dem Server; der Countdown im Browser ist reine Anzeige.
   - Läuft die Zeit ab, führt der Server einen zufälligen **legalen** Zug für den Spieler aus, statt den Zug verfallen zu lassen. Die Partie bleibt in Bewegung und niemand verliert mehr als die freie Wahl.
+  - Wer **dreimal in Folge** die Zeit überschreitet, verliert die Partie. So halten zwei untätige Spieler keine Partie ewig am Leben.
   - Details siehe [Zug-Timer](#-zug-timer-25-sekunden-pro-zug).
 - **Automatisches Matchmaking**:
   - Spieler melden sich über die Login-Seite an.
@@ -53,7 +55,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
   - Native **`<dialog>`-Dialoge** für Regeln, Aufgeben und Spielende: Der Browser legt sie in den Top Layer, sperrt die Seite dahinter und schließt sie mit Esc. Regeln und Aufgeben öffnen und schließen sich über **Invoker Commands** (`command`/`commandfor`) ganz ohne JavaScript; Aufgeben fragt in einem eigenen Dialog nach statt über `confirm()`.
 - **Automatisierte Testsuite**:
-   - 304 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
+   - 314 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
 
 ---
 
@@ -140,6 +142,7 @@ Ablauf im Detail:
 3. Läuft die Zeit ab, wählt der Server über `MuehleGame.makeRandomLegalMove()` einen **zufälligen legalen Zug** und führt ihn aus – geprüft durch dieselbe Regel-Engine, die auch menschliche Züge validiert.
 4. Beide Clients erhalten `turnTimeout` (wer die Zeit überschritten hat und welcher Zug ausgeführt wurde) sowie das übliche `gameStateUpdate`. Im Zugprotokoll erscheint der Zug mit dem Zusatz *(automatisch)*.
 5. Anschließend läuft die Uhr für den Gegner weiter. Parallele Partien haben jeweils eine eigene Uhr; endet eine Partie oder verlässt ein Spieler sie, wird die zugehörige Uhr gestoppt.
+6. Überschreitet derselbe Spieler die Zeit **dreimal in Folge**, zieht der Server nicht mehr für ihn: Er verliert die Partie, beide Clients erhalten `gameOver`. Jede eigene Aktion setzt den Zähler zurück. `turnTimeout` nennt dafür `consecutiveTimeouts` und `timeoutLimit`, und der betroffene Spieler sieht im Hinweis, wie oft es schon passiert ist.
 
 **Der Timer ist bewusst rein serverseitig implementiert.** Clients sind manipulierbar: ein Countdown im Browser kann angehalten, verlangsamt oder entfernt werden. Der Client empfängt daher nur die verbleibende Zeit und zeichnet sie; die Entscheidung, dass ein Zug abgelaufen ist, trifft ausschließlich der Server.
 
@@ -162,7 +165,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest. Da alle Quellen E
 npm test
 ```
 
-Getestet werden (304 Tests in 12 Test-Dateien):
+Getestet werden (314 Tests in 12 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -170,8 +173,9 @@ Getestet werden (304 Tests in 12 Test-Dateien):
 - Brett-Diff für die Stein-Animationen: jede Aktion zufällig gespielter Partien wird als genau das Setzen, Ziehen oder Schlagen erkannt.
 - Sieg durch Steinedezimierung (< 3 Steine).
 - Sieg durch Einsperren des Gegners (keine legalen Züge).
+- Remis durch dreifache Stellungswiederholung und nach 50 Zügen ohne Schlagen; ein Schlag setzt beide Zähler zurück.
 - Matchmaking-Warteschlange und Sitzungsisolation.
-- Zug-Timer: Ablauf nach 25 Sekunden, Zurücksetzen bei jedem Zug, automatischer legaler Zug (auch beim Schlagen), unabhängige Uhren paralleler Partien und ein gestoppter Timer bei Verbindungsabbruch (`jest.useFakeTimers()`).
+- Zug-Timer: Ablauf nach 25 Sekunden, Zurücksetzen bei jedem Zug, automatischer legaler Zug (auch beim Schlagen), Niederlage nach drei Zeitüberschreitungen in Folge, unabhängige Uhren paralleler Partien und ein gestoppter Timer bei Verbindungsabbruch (`jest.useFakeTimers()`).
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
@@ -346,6 +350,8 @@ Web-Spiel/
    Besitzt ein Spieler nur noch genau 3 Steine, darf er mit seinen Steinen auf jedes beliebige freie Feld springen.
 5. **Mühle & Schlagen**:
    Entstehen drei Steine einer Farbe in einer horizontalen oder vertikalen geraden Reihe, ist eine **Mühle** geschlossen. Der Spieler darf sofort einen gegnerischen Stein schlagen. Steine in geschlossenen Mühlen sind geschützt, es sei denn, alle gegnerischen Steine stehen in Mühlen.
+6. **Remis & Inaktivität**:
+   Die Partie endet unentschieden, wenn in der Zugphase dieselbe Stellung (gleiches Brett, gleicher Spieler am Zug) zum dritten Mal entsteht oder 50 Züge lang kein Stein geschlagen wird. Wer dreimal in Folge seine Bedenkzeit überschreitet, verliert.
 
 ---
 
