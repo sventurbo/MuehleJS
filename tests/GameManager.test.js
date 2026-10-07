@@ -7,7 +7,7 @@ describe('GameManager Matchmaking & Session Management', () => {
   let roomEmitMock;
   let gameManager;
 
-  const createMockSocket = (id) => ({
+  const createMockSocket = id => ({
     id,
     connected: true,
     join: jest.fn(),
@@ -27,9 +27,12 @@ describe('GameManager Matchmaking & Session Management', () => {
     gameManager.enqueuePlayer(socket1, 'Alice');
 
     expect(gameManager.waitingQueue.length).toBe(1);
-    expect(socket1.emit).toHaveBeenCalledWith('queueWaiting', expect.objectContaining({
-      position: 1
-    }));
+    expect(socket1.emit).toHaveBeenCalledWith(
+      'queueWaiting',
+      expect.objectContaining({
+        position: 1
+      })
+    );
   });
 
   test('enqueuing a second player creates a game and emits gameStart to both', () => {
@@ -45,12 +48,18 @@ describe('GameManager Matchmaking & Session Management', () => {
     expect(socket1.join).toHaveBeenCalled();
     expect(socket2.join).toHaveBeenCalled();
 
-    expect(socket1.emit).toHaveBeenCalledWith('gameStart', expect.objectContaining({
-      state: expect.any(Object)
-    }));
-    expect(socket2.emit).toHaveBeenCalledWith('gameStart', expect.objectContaining({
-      state: expect.any(Object)
-    }));
+    expect(socket1.emit).toHaveBeenCalledWith(
+      'gameStart',
+      expect.objectContaining({
+        state: expect.any(Object)
+      })
+    );
+    expect(socket2.emit).toHaveBeenCalledWith(
+      'gameStart',
+      expect.objectContaining({
+        state: expect.any(Object)
+      })
+    );
 
     const p1Color = socket1.emit.mock.calls.find(c => c[0] === 'gameStart')[1].yourColor;
     const p2Color = socket2.emit.mock.calls.find(c => c[0] === 'gameStart')[1].yourColor;
@@ -82,9 +91,12 @@ describe('GameManager Matchmaking & Session Management', () => {
     gameManager.handlePlayerDisconnect('sock_1');
 
     // Bob should receive opponentDisconnected
-    expect(socket2.emit).toHaveBeenCalledWith('opponentDisconnected', expect.objectContaining({
-      endReason: expect.stringContaining('Verbindung getrennt')
-    }));
+    expect(socket2.emit).toHaveBeenCalledWith(
+      'opponentDisconnected',
+      expect.objectContaining({
+        endReason: expect.stringContaining('Verbindung getrennt')
+      })
+    );
 
     // Game session is cleaned up
     expect(gameManager.games.has(gameId)).toBe(false);
@@ -117,9 +129,12 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       gameManager.leaveGame('sock_1');
 
-      expect(socket2.emit).toHaveBeenCalledWith('opponentDisconnected', expect.objectContaining({
-        endReason: expect.stringContaining('verlassen')
-      }));
+      expect(socket2.emit).toHaveBeenCalledWith(
+        'opponentDisconnected',
+        expect.objectContaining({
+          endReason: expect.stringContaining('verlassen')
+        })
+      );
       // Regression: the session used to stay in `games` forever, so a client
       // could exhaust maxActiveGames by looping login + leaveGame.
       expect(gameManager.games.has(gameId)).toBe(false);
@@ -159,10 +174,13 @@ describe('GameManager Matchmaking & Session Management', () => {
   });
 
   describe('actions on a session the server no longer knows', () => {
-    const expectGameNotFound = (socket) => {
-      expect(socket.emit).toHaveBeenCalledWith('gameNotFound', expect.objectContaining({
-        message: expect.any(String)
-      }));
+    const expectGameNotFound = socket => {
+      expect(socket.emit).toHaveBeenCalledWith(
+        'gameNotFound',
+        expect.objectContaining({
+          message: expect.any(String)
+        })
+      );
     };
 
     test('placePiece answers gameNotFound instead of staying silent', () => {
@@ -223,11 +241,11 @@ describe('GameManager Matchmaking & Session Management', () => {
         gameId,
         session,
         game: session.game,
-        socketOf: (color) => session.players[color].socket
+        socketOf: color => session.players[color].socket
       };
     };
 
-    const emittedTo = (event) => roomEmitMock.mock.calls.filter(call => call[0] === event);
+    const emittedTo = event => roomEmitMock.mock.calls.filter(call => call[0] === event);
 
     beforeEach(() => {
       // Fake timers have to be in place before the manager exists, so every
@@ -256,11 +274,14 @@ describe('GameManager Matchmaking & Session Management', () => {
       expect(session.turnTimer).not.toBeNull();
       expect(session.turnDeadline).toBe(Date.now() + 25000);
       expect(ioMock.to).toHaveBeenCalledWith(gameId);
-      expect(roomEmitMock).toHaveBeenCalledWith('turnTimer', expect.objectContaining({
-        turn: 'W',
-        durationMs: 25000,
-        remainingMs: 25000
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'turnTimer',
+        expect.objectContaining({
+          turn: 'W',
+          durationMs: 25000,
+          remainingMs: 25000
+        })
+      );
     });
 
     test('nothing happens while the 25 seconds are still running', () => {
@@ -294,11 +315,13 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       jest.advanceTimersByTime(25000);
 
-      expect(game.moveHistory[0]).toEqual(expect.objectContaining({
-        action: 'place',
-        player: 'W',
-        auto: true
-      }));
+      expect(game.moveHistory[0]).toEqual(
+        expect.objectContaining({
+          action: 'place',
+          player: 'W',
+          auto: true
+        })
+      );
     });
 
     test('both clients are told which move was played for them', () => {
@@ -308,16 +331,22 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       const point = game.moveHistory[0].point;
       expect(ioMock.to).toHaveBeenCalledWith(gameId);
-      expect(roomEmitMock).toHaveBeenCalledWith('turnTimeout', expect.objectContaining({
-        player: 'W',
-        timeoutMs: 25000,
-        autoMove: expect.objectContaining({ action: 'place', player: 'W', point }),
-        message: expect.any(String)
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'turnTimeout',
+        expect.objectContaining({
+          player: 'W',
+          timeoutMs: 25000,
+          autoMove: expect.objectContaining({ action: 'place', player: 'W', point }),
+          message: expect.any(String)
+        })
+      );
       // The state update carries the same flag, so the move log can mark it.
-      expect(roomEmitMock).toHaveBeenCalledWith('gameStateUpdate', expect.objectContaining({
-        lastAction: expect.objectContaining({ action: 'place', auto: true })
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'gameStateUpdate',
+        expect.objectContaining({
+          lastAction: expect.objectContaining({ action: 'place', auto: true })
+        })
+      );
     });
 
     test('every executed move resets the clock', () => {
@@ -376,10 +405,12 @@ describe('GameManager Matchmaking & Session Management', () => {
 
         expect(game.moveHistory).toHaveLength(historyBefore + 1);
         const played = game.moveHistory[historyBefore];
-        expect(legalBefore).toContainEqual(expect.objectContaining({
-          action: played.action,
-          ...(played.action === 'move' ? { from: played.from, to: played.to } : { point: played.point })
-        }));
+        expect(legalBefore).toContainEqual(
+          expect.objectContaining({
+            action: played.action,
+            ...(played.action === 'move' ? { from: played.from, to: played.to } : { point: played.point })
+          })
+        );
       }
 
       // The board the engine ends up with still matches its own counters.
@@ -396,11 +427,14 @@ describe('GameManager Matchmaking & Session Management', () => {
       jest.advanceTimersByTime(25000);
 
       expect(MAX_CONSECUTIVE_TIMEOUTS).toBe(3);
-      expect(roomEmitMock).toHaveBeenCalledWith('turnTimeout', expect.objectContaining({
-        player: 'W',
-        consecutiveTimeouts: 1,
-        timeoutLimit: MAX_CONSECUTIVE_TIMEOUTS
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'turnTimeout',
+        expect.objectContaining({
+          player: 'W',
+          consecutiveTimeouts: 1,
+          timeoutLimit: MAX_CONSECUTIVE_TIMEOUTS
+        })
+      );
     });
 
     test('the third timeout in a row loses the game instead of moving again', () => {
@@ -419,11 +453,14 @@ describe('GameManager Matchmaking & Session Management', () => {
       expect(game.winner).toBe('B');
       expect(game.endReason).toContain('Bedenkzeit');
       expect(emittedTo('turnTimeout')).toHaveLength(0);
-      expect(roomEmitMock).toHaveBeenCalledWith('gameOver', expect.objectContaining({
-        winner: 'B',
-        winnerName: session.players.B.username,
-        endReason: game.endReason
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'gameOver',
+        expect.objectContaining({
+          winner: 'B',
+          winnerName: session.players.B.username,
+          endReason: game.endReason
+        })
+      );
 
       // The decided game gets no new clock.
       expect(session.turnTimer).toBeNull();
@@ -440,7 +477,9 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       // A free point on no line with a white stone: placing there closes no
       // mill, so the turn passes to Black.
-      const freePoint = game.getLegalActions('W').map(action => action.point)
+      const freePoint = game
+        .getLegalActions('W')
+        .map(action => action.point)
         .find(pt => MILLS_BY_POINT[pt].every(mill => mill.every(p => game.board[p] !== 'W')));
       manager.handlePlacePiece(socketOf('W'), freePoint);
       expect(session.consecutiveTimeouts).toEqual({ W: 0, B: 2 });
@@ -460,16 +499,23 @@ describe('GameManager Matchmaking & Session Management', () => {
         piecesOnBoard: { W: 4, B: 4 },
         movesSinceCapture: 49
       });
-      ['a7', 'g7', 'a1', 'g1'].forEach(pt => { game.board[pt] = 'W'; });
-      ['b6', 'f6', 'b2', 'f2'].forEach(pt => { game.board[pt] = 'B'; });
+      ['a7', 'g7', 'a1', 'g1'].forEach(pt => {
+        game.board[pt] = 'W';
+      });
+      ['b6', 'f6', 'b2', 'f2'].forEach(pt => {
+        game.board[pt] = 'B';
+      });
 
       manager.handleMovePiece(socketOf('W'), 'a7', 'd7');
 
-      expect(roomEmitMock).toHaveBeenCalledWith('gameOver', expect.objectContaining({
-        winner: null,
-        winnerName: null,
-        endReason: expect.stringContaining('Remis')
-      }));
+      expect(roomEmitMock).toHaveBeenCalledWith(
+        'gameOver',
+        expect.objectContaining({
+          winner: null,
+          winnerName: null,
+          endReason: expect.stringContaining('Remis')
+        })
+      );
       expect(session.turnTimer).toBeNull();
     });
 
@@ -546,10 +592,12 @@ describe('GameManager Matchmaking & Session Management', () => {
 
     gameManager.handleChatMessage(socket1, 'Hallo Bob!');
     expect(ioMock.to).toHaveBeenCalledWith(gameId);
-    expect(roomEmitMock).toHaveBeenCalledWith('chatMessage', expect.objectContaining({
-      sender: 'Alice',
-      text: 'Hallo Bob!'
-    }));
+    expect(roomEmitMock).toHaveBeenCalledWith(
+      'chatMessage',
+      expect.objectContaining({
+        sender: 'Alice',
+        text: 'Hallo Bob!'
+      })
+    );
   });
 });
-

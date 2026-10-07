@@ -100,7 +100,10 @@ describe('Stone animations', () => {
 
   test('reduced motion collapses every animation, including these', () => {
     const reduced = mediaBlock('@media (prefers-reduced-motion: reduce)');
-    expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*animation-duration:\s*0\.001ms !important/);
+    // No !important: the rule wins because the responsive layer comes after
+    // board.css (pinned in CssModules.test.js), whatever the selectors.
+    expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*animation-duration:\s*0\.001ms;/);
+    expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*transition-duration:\s*0\.001ms;/);
   });
 });
 
@@ -128,7 +131,7 @@ describe('Mill beam', () => {
     expect(fallbackMs).toBeGreaterThan(fadeMs);
   });
 
-  test('a new game drops the previous game\'s beam', () => {
+  test("a new game drops the previous game's beam", () => {
     expect(boardJs).toMatch(/if \(!sameGame\) \{[^}]*this\.millGlowLayer\.replaceChildren\(\)/);
   });
 
@@ -159,8 +162,12 @@ describe('Feedback for a click that does nothing', () => {
 
   test('ineffective clicks are answered on the board, not with toasts', () => {
     expect(appJs).toContain('this.board.rejectPoint(point)');
-    ['Der Gegner ist am Zug!', 'Dieses Feld ist bereits besetzt', 'keine direkte Verbindung', 'gültigen gegnerischen Stein']
-      .forEach(text => expect(appJs).not.toContain(text));
+    [
+      'Der Gegner ist am Zug!',
+      'Dieses Feld ist bereits besetzt',
+      'keine direkte Verbindung',
+      'gültigen gegnerischen Stein'
+    ].forEach(text => expect(appJs).not.toContain(text));
   });
 
   test('the board markup carries no inline style', () => {

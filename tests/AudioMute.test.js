@@ -23,14 +23,18 @@ function workingStorage(entries = {}) {
   return {
     data,
     getItem: key => (key in data ? data[key] : null),
-    setItem: (key, value) => { data[key] = String(value); }
+    setItem: (key, value) => {
+      data[key] = String(value);
+    }
   };
 }
 
 /** A localStorage whose very access throws, as a blocked one does. */
 function blockStorage() {
   Object.defineProperty(globalThis, 'localStorage', {
-    get() { throw new DOMException('The operation is insecure.', 'SecurityError'); },
+    get() {
+      throw new DOMException('The operation is insecure.', 'SecurityError');
+    },
     configurable: true
   });
 }
@@ -67,7 +71,9 @@ describe('The sound controller with a blocked storage', () => {
   test('still gets constructed', () => {
     blockStorage();
     let controller;
-    expect(() => { controller = new SoundController(); }).not.toThrow();
+    expect(() => {
+      controller = new SoundController();
+    }).not.toThrow();
     expect(controller).toBeDefined();
   });
 
@@ -88,7 +94,9 @@ describe('The sound controller with a blocked storage', () => {
 
   test('survives a store that reads but refuses to write', () => {
     const readOnly = workingStorage();
-    readOnly.setItem = () => { throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); };
+    readOnly.setItem = () => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    };
     useStorage(readOnly);
     const controller = new SoundController();
 

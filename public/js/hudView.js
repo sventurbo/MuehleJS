@@ -238,9 +238,7 @@ export class HudView {
       'aria-label',
       `${isMine ? 'Deine Bedenkzeit' : 'Bedenkzeit des Gegners'}: noch ${seconds} Sekunden`
     );
-    box.title = isMine
-      ? 'Deine Bedenkzeit für diesen Zug'
-      : 'Bedenkzeit des Gegners für diesen Zug';
+    box.title = isMine ? 'Deine Bedenkzeit für diesen Zug' : 'Bedenkzeit des Gegners für diesen Zug';
     value.textContent = String(seconds);
 
     const radius = Number(arc.getAttribute('r')) || 0;

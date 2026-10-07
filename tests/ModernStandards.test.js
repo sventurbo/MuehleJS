@@ -6,7 +6,7 @@
  * formats, feature detection for APIs every supported engine ships — and pin
  * the current standards that replaced the older idioms: native dialogs driven
  * by invoker commands, the hidden attribute, light-dark() tokens, media query
- * ranges, space-separated rgb() and private class members.
+ * ranges, oklch() and color-mix() colours and private class members.
  */
 
 import fs from 'node:fs';
@@ -15,10 +15,10 @@ import { loadStylesheet } from '../scripts/css-bundle.js';
 import { loadClientScripts } from '../scripts/client-bundle.js';
 
 const root = path.join(import.meta.dirname, '..');
-const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 /** Strips comments, so assertions only see what an engine would run. */
-const code = (source) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+const code = source => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 const css = loadStylesheet().replace(/\/\*[\s\S]*?\*\//g, '');
 const html = read('public/index.html');
@@ -26,13 +26,15 @@ const clientJs = code(loadClientScripts());
 const tokens = read('public/css/tokens.css');
 
 /** The opening tag of the element with the given id. */
-const tagOf = (id) => html.match(new RegExp('<[a-z]+\\b[^>]*\\bid="' + id + '"[^>]*>'))?.[0] ?? '';
+const tagOf = id => html.match(new RegExp('<[a-z]+\\b[^>]*\\bid="' + id + '"[^>]*>'))?.[0] ?? '';
 const serverFiles = [
   'server.js',
   ...['lib', 'shared', 'scripts'].flatMap(dir =>
-    fs.readdirSync(path.join(root, dir))
+    fs
+      .readdirSync(path.join(root, dir))
       .filter(name => name.endsWith('.js'))
-      .map(name => `${dir}/${name}`))
+      .map(name => `${dir}/${name}`)
+  )
 ];
 
 describe('Stylesheet', () => {
@@ -53,8 +55,12 @@ describe('Stylesheet', () => {
     expect(css).not.toMatch(/@media[^{]*\((?:min|max)-(?:width|height)\s*:/);
   });
 
-  test('writes colours in the space-separated rgb() syntax', () => {
-    expect(css).not.toMatch(/rgba\(|rgb\(\s*\d+\s*,/);
+  test('writes colours as oklch(), and derived ones with color-mix()', () => {
+    expect(css).not.toMatch(/\b(?:rgba?|hsla?)\(/);
+    // A hex colour in a declaration; ids in selectors are not matched.
+    expect(css).not.toMatch(/(?:^|[;{])\s*[\w-]+\s*:[^;{}]*#[\da-f]{3,8}\b/im);
+    expect(tokens).toContain('oklch(');
+    expect(tokens).toMatch(/color-mix\(in srgb, var\(--[\w-]+\) \d+%, transparent\)/);
   });
 
   test('serves both themes from one token block through light-dark()', () => {
@@ -78,6 +84,13 @@ describe('Page', () => {
   test('shows and hides with the hidden attribute, not a class', () => {
     expect(html).not.toMatch(/class="[^"]*\bhidden\b/);
     expect(tagOf('screen-game')).toMatch(/\shidden[\s>]/);
+  });
+
+  test('styles nothing inline, neither in the page nor in the markup the client builds', () => {
+    // Values that change at runtime (a stone's travel offset, the countdown
+    // ring) are set through element.style; fixed styles belong in the CSS.
+    expect(html).not.toMatch(/\sstyle=/);
+    expect(clientJs).not.toMatch(/\sstyle=/);
   });
 
   test('builds every overlay as a native dialog', () => {
@@ -117,7 +130,7 @@ describe('Client', () => {
     expect(clientJs).not.toContain("'use strict'");
   });
 
-  test('never blocks on the browser\'s own confirm, alert or prompt boxes', () => {
+  test("never blocks on the browser's own confirm, alert or prompt boxes", () => {
     expect(clientJs).not.toMatch(/\b(?:confirm|alert|prompt)\s*\(/);
   });
 
@@ -127,18 +140,21 @@ describe('Client', () => {
 });
 
 describe('Server, shared rules and tooling', () => {
-  test.each(serverFiles)('%s is an ES module', (file) => {
+  test.each(serverFiles)('%s is an ES module', file => {
     const source = code(read(file));
     expect(source).not.toMatch(/\brequire\s*\(/);
     expect(source).not.toMatch(/\bmodule\.exports\b/);
     expect(source).not.toMatch(/\b__dirname\b/);
   });
 
-  test.each([...serverFiles, ...fs.readdirSync(path.join(root, 'public', 'js')).map(name => `public/js/${name}`)])('%s keeps its private members private (#), not by convention (_)', (file) => {
-    expect(code(read(file))).not.toMatch(/^\s+(?:static\s+)?(?:get\s+)?_[A-Za-z]\w*\s*\(/m);
-  });
+  test.each([...serverFiles, ...fs.readdirSync(path.join(root, 'public', 'js')).map(name => `public/js/${name}`)])(
+    '%s keeps its private members private (#), not by convention (_)',
+    file => {
+      expect(code(read(file))).not.toMatch(/^\s+(?:static\s+)?(?:get\s+)?_[A-Za-z]\w*\s*\(/m);
+    }
+  );
 
-  test.each(serverFiles)('%s imports Node built-ins through the node: scheme', (file) => {
+  test.each(serverFiles)('%s imports Node built-ins through the node: scheme', file => {
     const builtins = ['fs', 'path', 'http', 'https', 'crypto', 'os', 'url', 'vm'];
     const specifiers = Array.from(read(file).matchAll(/\bfrom\s+'([^']+)'/g), match => match[1]);
     specifiers.forEach(specifier => expect(builtins).not.toContain(specifier));

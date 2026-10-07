@@ -7,15 +7,18 @@
 /* ── Header: status, sound toggle ── */
 .app-header {
   position: sticky;
-  top: 0;
+  inset-block-start: 0;
   height: 52px;
   background: var(--material-bg);
   backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid var(--hairline);
+  border-block-end: 1px solid var(--hairline);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--sp-6);
+  /* Everything else is spaced with logical properties. Next to a safe-area
+     inset the padding stays physical: the inset is a fixed edge of the
+     screen, while padding-inline-start would follow the text direction. */
   padding-left: max(var(--sp-6), env(safe-area-inset-left));
   padding-right: max(var(--sp-6), env(safe-area-inset-right));
   z-index: 10;
@@ -63,9 +66,11 @@
   font-weight: 400;
   color: var(--text-muted);
   padding: 4px 6px;
-  margin-right: var(--sp-1);
+  margin-inline-end: var(--sp-1);
   border-radius: var(--radius-pill);
-  transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
+  transition:
+    color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
 
   &::before {
     content: "";
@@ -102,7 +107,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 
   &:active {
     transform: scale(0.92);
@@ -111,11 +119,17 @@
 
 /* Sound toggle holds both glyphs; app.js flips the .is-muted class. */
 .btn-sound {
-  .icon-sound-off { display: none; }
+  .icon-sound-off {
+    display: none;
+  }
 
   &.is-muted {
-    .icon-sound-on { display: none; }
-    .icon-sound-off { display: block; }
+    .icon-sound-on {
+      display: none;
+    }
+    .icon-sound-off {
+      display: block;
+    }
   }
 }
 

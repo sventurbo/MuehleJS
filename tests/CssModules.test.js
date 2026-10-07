@@ -17,7 +17,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { loadStylesheet, listModules, listImports, listLayers, bundleCss } from '../scripts/css-bundle.js';
-import { parseCssVariables, resolveScheme, runContrastCheck, CONTRAST_TESTS } from '../scripts/contrast-check.js';
+import {
+  parseCssVariables,
+  resolveScheme,
+  resolveVars,
+  runContrastCheck,
+  CONTRAST_TESTS
+} from '../scripts/contrast-check.js';
+import { resolveColor } from '../scripts/contrast.js';
 
 const cssDir = path.join(import.meta.dirname, '..', 'public', 'css');
 const manifest = fs.readFileSync(path.join(cssDir, 'style.css'), 'utf8');
@@ -30,7 +37,8 @@ function rules(css) {
 
 describe('The manifest', () => {
   test('imports every module in public/css, exactly once', () => {
-    const onDisk = fs.readdirSync(cssDir)
+    const onDisk = fs
+      .readdirSync(cssDir)
       .filter(name => name.endsWith('.css') && name !== 'style.css')
       .sort();
     expect([...modules].sort()).toEqual(onDisk);
@@ -38,7 +46,11 @@ describe('The manifest', () => {
   });
 
   test('carries no rules of its own', () => {
-    expect(rules(manifest).replace(/@(?:import|layer)[^;{]+;/g, '').trim()).toBe('');
+    expect(
+      rules(manifest)
+        .replace(/@(?:import|layer)[^;{]+;/g, '')
+        .trim()
+    ).toBe('');
   });
 
   test('imports every module into a cascade layer of its own name', () => {
@@ -51,9 +63,10 @@ describe('The manifest', () => {
     expect(listLayers()).toEqual(listImports().map(({ layer }) => layer));
   });
 
-  test('loads the tokens first and the device adaptations last', () => {
+  test('loads the tokens first, the device adaptations after every component, the utilities last', () => {
     expect(modules[0]).toBe('tokens.css');
-    expect(modules[modules.length - 1]).toBe('responsive.css');
+    expect(modules.at(-2)).toBe('responsive.css');
+    expect(modules.at(-1)).toBe('utilities.css');
   });
 
   test('is the only stylesheet the page links', () => {
@@ -95,6 +108,35 @@ describe('The resolved stylesheet', () => {
   });
 });
 
+describe('Precedence comes from the layer order, not from !important', () => {
+  // Inside cascade layers !important turns the layer order upside down, so
+  // the sheet does without it: whatever has to win sits in a later layer.
+  const css = rules(loadStylesheet());
+
+  test('no declaration is marked !important', () => {
+    expect(css).not.toContain('!important');
+  });
+
+  test('the hidden attribute is enforced by the last layer, and only there', () => {
+    const utilities = rules(fs.readFileSync(path.join(cssDir, 'utilities.css'), 'utf8'));
+    expect(listLayers().at(-1)).toBe('utilities');
+    expect(utilities).toMatch(/\[hidden\]\s*\{\s*display:\s*none;\s*\}/);
+    expect(css.match(/\[hidden\]\s*\{/g)).toHaveLength(1);
+  });
+
+  test('reduced motion lives in the layer after every module that animates', () => {
+    const responsive = rules(fs.readFileSync(path.join(cssDir, 'responsive.css'), 'utf8'));
+    expect(responsive).toContain('@media (prefers-reduced-motion: reduce)');
+    const animating = modules.filter(name =>
+      /\b(?:animation|transition)\s*:/.test(rules(fs.readFileSync(path.join(cssDir, name), 'utf8')))
+    );
+    const layers = listLayers();
+    animating
+      .filter(name => name !== 'responsive.css')
+      .forEach(name => expect(layers.indexOf(name.replace(/\.css$/, ''))).toBeLessThan(layers.indexOf('responsive')));
+  });
+});
+
 describe('The contrast checker still reaches the tokens', () => {
   // runContrastCheck() skips a pair whose variables it cannot find, so a sheet
   // it can no longer parse does not fail the check — it reports nothing and
@@ -108,9 +150,7 @@ describe('The contrast checker still reaches the tokens', () => {
 
   test('every pair it asserts resolves in both themes', () => {
     for (const theme of ['dark', 'light']) {
-      const missing = CONTRAST_TESTS
-        .flatMap(t => [t.fgVar, t.bgVar])
-        .filter(name => !variables[theme][name]);
+      const missing = CONTRAST_TESTS.flatMap(t => [t.fgVar, t.bgVar]).filter(name => !variables[theme][name]);
       expect({ theme, missing: [...new Set(missing)] }).toEqual({ theme, missing: [] });
     }
   });
@@ -145,6 +185,36 @@ describe('light-dark() pairs', () => {
 
   test('refuse a malformed pair instead of guessing', () => {
     expect(() => resolveScheme('light-dark(#ffffff)', 'dark')).toThrow(/Malformed/);
+  });
+});
+
+describe('var() between tokens', () => {
+  test('is replaced by the token it names, after light-dark() picked the theme', () => {
+    const css =
+      ':root {\n  --a: light-dark(#ffffff, #000000);\n  --b: color-mix(in srgb, var(--a) 50%, transparent);\n}\n';
+    const variables = parseCssVariables(css);
+    expect(variables.light.b).toBe('color-mix(in srgb, #ffffff 50%, transparent)');
+    expect(variables.dark.b).toBe('color-mix(in srgb, #000000 50%, transparent)');
+  });
+
+  test('follows a chain of references', () => {
+    expect(resolveVars('var(--c)', { c: 'var(--d)', d: '#123456' })).toBe('#123456');
+  });
+
+  test('leaves a name that is no token as it is', () => {
+    expect(resolveVars('var(--nope)', {})).toBe('var(--nope)');
+  });
+
+  test('refuses a reference cycle instead of looping forever', () => {
+    expect(() => resolveVars('var(--a)', { a: 'var(--b)', b: 'var(--a)' })).toThrow(/Circular/);
+  });
+
+  test('derived tokens of the real sheet read as the token they derive from', () => {
+    const { light, dark } = parseCssVariables(loadStylesheet());
+    expect(resolveColor(light['tint-blue'])).toBe(resolveColor(light['accent-blue']));
+    expect(resolveColor(dark['tint-red-strong'])).toBe(resolveColor(dark['accent-red']));
+    expect(resolveColor(dark['material-bg'])).toBe(resolveColor(dark['bg-surface']));
+    expect(resolveColor(light['btn-tool-hover'])).toBe(resolveColor(light['btn-secondary-bg']));
   });
 });
 

@@ -64,13 +64,13 @@ export class Overlays {
     this.gameOverReason = document.getElementById('game-over-reason');
     this.gameOverWinner = document.getElementById('game-over-winner-name');
 
-    onDialogClose(this.surrenderModal, (choice) => {
+    onDialogClose(this.surrenderModal, choice => {
       if (choice === 'surrender') onSurrender?.();
     });
 
     // The game is over either way, so closing the dialog without a choice
     // (Escape) means leaving, just like the "Zurück zur Startseite" button.
-    onDialogClose(this.gameOverModal, (choice) => {
+    onDialogClose(this.gameOverModal, choice => {
       if (choice === 'again') onPlayAgain?.();
       else if (choice !== CLOSED_BY_APP) onBackToLobby?.();
     });
@@ -134,15 +134,13 @@ export class Overlays {
    * @param {boolean} result.isWin Whether the local player won.
    */
   showGameOver({ winner, winnerName, endReason, isWin }) {
-    const outcome = winner === null ? 'draw' : (isWin ? 'win' : 'loss');
+    const outcome = winner === null ? 'draw' : isWin ? 'win' : 'loss';
     this.gameOverTitle.textContent = GAME_OVER_TITLES[outcome];
     this.gameOverTitle.className = `game-over-title ${outcome}`;
 
     // A draw has nobody to name.
     this.gameOverWinner.hidden = outcome === 'draw';
-    this.gameOverWinner.textContent = outcome === 'draw'
-      ? ''
-      : `Gewinner: ${winnerName} (${RULES.colorName(winner)})`;
+    this.gameOverWinner.textContent = outcome === 'draw' ? '' : `Gewinner: ${winnerName} (${RULES.colorName(winner)})`;
     this.gameOverReason.textContent = endReason || 'Spiel beendet';
 
     this.surrenderModal.close(CLOSED_BY_APP);

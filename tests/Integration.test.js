@@ -15,18 +15,18 @@ describe('Full Server & Socket.io Integration Flow', () => {
   let client1;
   let client2;
 
-  beforeAll((done) => {
+  beforeAll(done => {
     const app = express();
     httpServer = http.createServer(app);
     ioServer = new Server(httpServer);
     gameManager = new GameManager(ioServer);
 
-    ioServer.on('connection', (socket) => {
-      socket.on('login', (data) => gameManager.enqueuePlayer(socket, data ? data.username : ''));
-      socket.on('placePiece', (data) => gameManager.handlePlacePiece(socket, data.point));
-      socket.on('movePiece', (data) => gameManager.handleMovePiece(socket, data.from, data.to));
-      socket.on('removePiece', (data) => gameManager.handleRemovePiece(socket, data.point));
-      socket.on('chatMessage', (data) => gameManager.handleChatMessage(socket, data.text));
+    ioServer.on('connection', socket => {
+      socket.on('login', data => gameManager.enqueuePlayer(socket, data ? data.username : ''));
+      socket.on('placePiece', data => gameManager.handlePlacePiece(socket, data.point));
+      socket.on('movePiece', data => gameManager.handleMovePiece(socket, data.from, data.to));
+      socket.on('removePiece', data => gameManager.handleRemovePiece(socket, data.point));
+      socket.on('chatMessage', data => gameManager.handleChatMessage(socket, data.text));
       socket.on('disconnect', () => gameManager.handlePlayerDisconnect(socket.id));
     });
 
@@ -36,14 +36,14 @@ describe('Full Server & Socket.io Integration Flow', () => {
     });
   });
 
-  afterAll((done) => {
+  afterAll(done => {
     if (client1 && client1.connected) client1.disconnect();
     if (client2 && client2.connected) client2.disconnect();
     ioServer.close();
     httpServer.close(done);
   });
 
-  test('Matchmaking pairs two clients and plays through a move', (done) => {
+  test('Matchmaking pairs two clients and plays through a move', done => {
     client1 = Client(`http://127.0.0.1:${port}`);
     client2 = Client(`http://127.0.0.1:${port}`);
 
@@ -54,7 +54,7 @@ describe('Full Server & Socket.io Integration Flow', () => {
       client1.emit('login', { username: 'SpielerAlpha' });
     });
 
-    client1.on('queueWaiting', (data) => {
+    client1.on('queueWaiting', data => {
       expect(data.position).toBe(1);
       // Once client1 is waiting, connect client2
       client2.emit('login', { username: 'SpielerBeta' });
@@ -69,14 +69,14 @@ describe('Full Server & Socket.io Integration Flow', () => {
         expect(p1Data.yourColor).not.toBe(p2Data.yourColor);
 
         // Identify who is White ('W') and places first
-        const whiteClient = (p1Data.yourColor === 'W') ? client1 : client2;
-        const blackClient = (p1Data.yourColor === 'W') ? client2 : client1;
+        const whiteClient = p1Data.yourColor === 'W' ? client1 : client2;
+        const blackClient = p1Data.yourColor === 'W' ? client2 : client1;
 
         // White places on 'a1'
         whiteClient.emit('placePiece', { point: 'a1' });
 
         // Both clients should receive gameStateUpdate
-        blackClient.once('gameStateUpdate', (update) => {
+        blackClient.once('gameStateUpdate', update => {
           expect(update.state.board['a1']).toBe('W');
           expect(update.state.turn).toBe('B');
           expect(update.lastAction.action).toBe('place');
@@ -85,20 +85,20 @@ describe('Full Server & Socket.io Integration Flow', () => {
       }
     };
 
-    client1.on('gameStart', (data) => {
+    client1.on('gameStart', data => {
       p1Data = data;
       checkGameStart();
     });
 
-    client2.on('gameStart', (data) => {
+    client2.on('gameStart', data => {
       p2Data = data;
       checkGameStart();
     });
   });
 
-  test('Opponent disconnect notifies remaining player', (done) => {
+  test('Opponent disconnect notifies remaining player', done => {
     // If client2 disconnects, client1 should receive opponentDisconnected
-    client1.once('opponentDisconnected', (data) => {
+    client1.once('opponentDisconnected', data => {
       expect(data.endReason).toContain('Verbindung getrennt');
       done();
     });
@@ -119,15 +119,15 @@ describe('Turn timer over the socket interface', () => {
   let clientA;
   let clientB;
 
-  beforeAll((done) => {
+  beforeAll(done => {
     const app = express();
     httpServer = http.createServer(app);
     ioServer = new Server(httpServer);
     gameManager = new GameManager(ioServer, { turnTimeoutMs: TURN_TIMEOUT_MS });
 
-    ioServer.on('connection', (socket) => {
-      socket.on('login', (data) => gameManager.enqueuePlayer(socket, data ? data.username : ''));
-      socket.on('placePiece', (data) => gameManager.handlePlacePiece(socket, data.point));
+    ioServer.on('connection', socket => {
+      socket.on('login', data => gameManager.enqueuePlayer(socket, data ? data.username : ''));
+      socket.on('placePiece', data => gameManager.handlePlacePiece(socket, data.point));
       socket.on('disconnect', () => gameManager.handlePlayerDisconnect(socket.id));
     });
 
@@ -137,7 +137,7 @@ describe('Turn timer over the socket interface', () => {
     });
   });
 
-  afterAll((done) => {
+  afterAll(done => {
     if (clientA && clientA.connected) clientA.disconnect();
     if (clientB && clientB.connected) clientB.disconnect();
     ioServer.close();
@@ -182,10 +182,12 @@ describe('Turn timer over the socket interface', () => {
     // Both clients are told how long the player on turn has.
     const announcements = await Promise.all([started.timerA, started.timerB]);
     announcements.forEach(announcement => {
-      expect(announcement).toEqual(expect.objectContaining({
-        turn: 'W',
-        durationMs: TURN_TIMEOUT_MS
-      }));
+      expect(announcement).toEqual(
+        expect.objectContaining({
+          turn: 'W',
+          durationMs: TURN_TIMEOUT_MS
+        })
+      );
     });
 
     // Neither client sends a move; the server has to play for White.
@@ -275,7 +277,10 @@ describe('Turn timer UI', () => {
     expect(handler).toMatch(/if \(data\.player === this\.myColor\) \{[\s\S]*?\{ sticky: true \}[\s\S]*?\} else \{/);
 
     // A sticky toast is a button that only a click removes; no timer does.
-    const sticky = overlaysJs.slice(overlaysJs.indexOf('if (sticky) {'), overlaysJs.indexOf('} else {', overlaysJs.indexOf('if (sticky) {')));
+    const sticky = overlaysJs.slice(
+      overlaysJs.indexOf('if (sticky) {'),
+      overlaysJs.indexOf('} else {', overlaysJs.indexOf('if (sticky) {'))
+    );
     expect(overlaysJs).toContain("document.createElement(sticky ? 'button' : 'div')");
     expect(sticky).toContain("toast.addEventListener('click', () => Overlays.#dismiss(toast), { once: true })");
     expect(sticky).not.toContain('setTimeout');
@@ -326,4 +331,3 @@ describe('Game Over Modal UI (Issue #8)', () => {
     expect(btnMatch[1]).not.toContain('🔄');
   });
 });
-

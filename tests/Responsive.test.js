@@ -174,6 +174,12 @@ describe('Move log / chat tabs', () => {
     expect(phone).toMatch(/\.dock-panel\.is-active\s*\{[^}]*display:\s*flex/);
   });
 
+  test('the selected tab is styled from its aria-selected state, not from a class of its own', () => {
+    expect(css).toMatch(/\.dock-tab\s*\{[^]*?&\[aria-selected="true"\]\s*\{[^}]*background:/);
+    expect(html).not.toMatch(/class="dock-tab\b[^"]*\bis-active/);
+    expect(clientJs).not.toMatch(/tab\.classList\.toggle\('is-active'/);
+  });
+
   test('the client switches tabs and marks unread chat messages', () => {
     expect(clientJs).toContain('activateTab(name)');
     expect(clientJs).toContain('aria-selected');
@@ -225,7 +231,9 @@ describe('Touch interaction', () => {
 
   test('dialogs keep clear of the notch and the home indicator on phones', () => {
     const phone = mediaBlock('@media (width <= 700px)');
-    expect(phone).toMatch(/\.modal\s*\{[^}]*inset-block:[^;]*env\(safe-area-inset-top\)[^;]*env\(safe-area-inset-bottom\)/);
+    expect(phone).toMatch(
+      /\.modal\s*\{[^}]*inset-block:[^;]*env\(safe-area-inset-top\)[^;]*env\(safe-area-inset-bottom\)/
+    );
   });
 });
 

@@ -57,9 +57,11 @@ export const POINTS = Object.keys(ADJACENCY);
 export const COLOR_NAMES = { W: 'Weiß', B: 'Schwarz' };
 
 /** The name to show for a colour ('W' / 'B'). */
-export const colorName = (color) => COLOR_NAMES[color] ?? '';
+export const colorName = color => COLOR_NAMES[color] ?? '';
 
-// All 16 possible mills (triplets of collinear points).
+// All 16 possible mills (triplets of collinear points): the horizontal ones,
+// the vertical ones, then the four that cross the squares.
+// prettier-ignore
 export const MILLS = [
   ['a7', 'd7', 'g7'], ['b6', 'd6', 'f6'], ['c5', 'd5', 'e5'],
   ['c3', 'd3', 'e3'], ['b2', 'd2', 'f2'], ['a1', 'd1', 'g1'],
@@ -74,13 +76,13 @@ POINTS.forEach(p => {
   MILLS_BY_POINT[p] = MILLS.filter(m => m.includes(p));
 });
 
-export const getOpponent = (player) => (player === 'W' ? 'B' : 'W');
+export const getOpponent = player => (player === 'W' ? 'B' : 'W');
 
 /**
  * Is the game in `state` decided? Asked through the phase, not the winner: a
  * draw ends the game without one.
  */
-export const isGameOver = (state) => state?.phase === 'FINISHED';
+export const isGameOver = state => state?.phase === 'FINISHED';
 
 /**
  * Is the stone of `player` at `point` part of a completed mill?
@@ -161,8 +163,7 @@ export function diffBoards(prevBoard, nextBoard) {
     if (after) placed.push(pt);
   });
 
-  if (placed.length === 1 && removed.length === 1 &&
-      prevBoard[removed[0]] === nextBoard[placed[0]]) {
+  if (placed.length === 1 && removed.length === 1 && prevBoard[removed[0]] === nextBoard[placed[0]]) {
     return { moved: { from: removed[0], to: placed[0] }, placed: [], removed: [] };
   }
   return { moved: null, placed, removed };

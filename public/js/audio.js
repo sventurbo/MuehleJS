@@ -57,12 +57,16 @@ const SOUNDS = {
   // A closed mill: the triad, quick and bright.
   mill: arpeggio('triangle', [C5, E5, G5, C6], { gain: 0.2, duration: 0.35, step: 0.07 }),
   // Victory: the same triad, held on the last note.
-  win: melody('triangle', [
-    { freq: C5, duration: 0.12 },
-    { freq: E5, duration: 0.12 },
-    { freq: G5, duration: 0.12 },
-    { freq: C6, duration: 0.35 }
-  ], { gain: 0.25 }),
+  win: melody(
+    'triangle',
+    [
+      { freq: C5, duration: 0.12 },
+      { freq: E5, duration: 0.12 },
+      { freq: G5, duration: 0.12 },
+      { freq: C6, duration: 0.35 }
+    ],
+    { gain: 0.25 }
+  ),
   // Defeat: four descending, rougher notes.
   lose: arpeggio('sawtooth', [440, 415.3, 392, 349.2], { gain: 0.18, duration: 0.25, step: 0.12 }),
   // Draw: the root and the fifth, neither rising to a fanfare nor falling.
@@ -111,13 +115,27 @@ export class SoundController {
     return this.muted;
   }
 
-  playPlace() { this.#play(SOUNDS.place); }
-  playMove() { this.#play(SOUNDS.move); }
-  playMill() { this.#play(SOUNDS.mill); }
-  playRemove() { this.#play(SOUNDS.remove); }
-  playWin() { this.#play(SOUNDS.win); }
-  playLose() { this.#play(SOUNDS.lose); }
-  playDraw() { this.#play(SOUNDS.draw); }
+  playPlace() {
+    this.#play(SOUNDS.place);
+  }
+  playMove() {
+    this.#play(SOUNDS.move);
+  }
+  playMill() {
+    this.#play(SOUNDS.mill);
+  }
+  playRemove() {
+    this.#play(SOUNDS.remove);
+  }
+  playWin() {
+    this.#play(SOUNDS.win);
+  }
+  playLose() {
+    this.#play(SOUNDS.lose);
+  }
+  playDraw() {
+    this.#play(SOUNDS.draw);
+  }
 
   /**
    * The autoplay policy only lets an AudioContext start with user activation.
