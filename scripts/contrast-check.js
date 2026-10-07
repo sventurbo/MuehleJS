@@ -71,7 +71,6 @@ export const CONTRAST_TESTS = [
   { name: 'Button text on primary button', fgVar: 'white-stone-color', bgVar: 'accent-blue', aaThreshold: 4.5, description: 'Primärer Button-Text auf Button-Hintergrund' },
   { name: 'Secondary button text on secondary background', fgVar: 'text-main', bgVar: 'btn-secondary-bg', aaThreshold: 4.5, description: 'Sekundärer Button-Text auf Hintergrund' },
   { name: 'Pip on background', fgVar: 'pip-inactive', bgVar: 'bg-main', aaThreshold: 3, description: 'Pip auf Hintergrund' },
-  { name: 'Opponent turn text on background', fgVar: 'opponent-turn-color', bgVar: 'bg-main', aaThreshold: 4.5, description: 'Gegner-am-Zug-Text auf Hintergrund' },
   { name: 'Chat bubble text on bubble background', fgVar: 'text-main', bgVar: 'chat-bubble-me', aaThreshold: 4.5, description: 'Chat-Bubble-Text auf Bubble-Hintergrund' },
   { name: 'Toast text on toast background', fgVar: 'text-main', bgVar: 'bg-card', aaThreshold: 4.5, description: 'Toast-Text auf Toast-Hintergrund' },
   { name: 'Board label on board plate', fgVar: 'board-label', bgVar: 'board-plate', aaThreshold: 3, description: 'Spielfeld-Labels auf Brett' },

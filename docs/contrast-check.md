@@ -39,7 +39,6 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 | Primary button text on button | #ffffff | #5a70d0 | 4.50:1 | 4.5:1 | ✅ Pass |
 | Secondary button text on background | #d8dce4 | #2a313c | 9.53:1 | 4.5:1 | ✅ Pass |
 | Pip on background | #6a7080 | #181c22 | 3.45:1 | 3:1 | ✅ Pass |
-| Opponent turn text on background | #cad1df | #181c22 | 11.15:1 | 4.5:1 | ✅ Pass |
 | Chat bubble text on card | #8a9ab0 | #262d38 | 4.84:1 | 4.5:1 | ✅ Pass |
 | Toast text on toast background | #d8dce4 | #262d38 | 10.08:1 | 4.5:1 | ✅ Pass |
 | Board label on board plate | #ffffff | #2a2e39 | 8.91:1 | 3:1 | ✅ Pass |
@@ -64,7 +63,6 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 | Primary button text on button | #ffffff | #1e4a94 | 8.53:1 | 4.5:1 | ✅ Pass |
 | Secondary button text on background | #1a1a2e | #e8ecf0 | 14.37:1 | 4.5:1 | ✅ Pass |
 | Pip on background | #606874 | #f0f2f5 | 5.02:1 | 3:1 | ✅ Pass |
-| Opponent turn text on background | #3a3a5c | #f0f2f5 | 9.65:1 | 4.5:1 | ✅ Pass |
 | Chat bubble text on card | #4a6080 | #ffffff | 6.41:1 | 4.5:1 | ✅ Pass |
 | Toast text on toast background | #1a1a2e | #ffffff | 17.06:1 | 4.5:1 | ✅ Pass |
 | Board label on board plate | #ffffff | #2a2e39 | 8.91:1 | 3:1 | ✅ Pass |
@@ -92,5 +90,4 @@ The following colors were adjusted from their original values to meet AA contras
 | `--chat-bubble-me` | #253966 (dark) / #dbe4f7 (light) | #8a9ab0 (dark) / #4a6080 (light) | Both modes were <4.5:1 |
 | `--pip-inactive` | #3a4250 (dark) / #c8ccd4 (light) | #6a7080 (dark) / #606874 (light) | Both modes were <3:1 |
 | `--border-color` | #2e374a (dark) / #c8ccd4 (light) | #3d4658 (dark) / #b0b8c4 (light) | Separated from pip-inactive |
-| `--opponent-turn-color` | #576574 (dark) / #555770 (light) | #cad1df (dark) / #3a3a5c (light) | Improved contrast |
 | `--black-stone-color` | #1e2129 | #2a3240 (dark) / #1e2530 (light) | Graduated grays |

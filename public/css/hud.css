@@ -1,6 +1,8 @@
 /* ==========================================================================
    Screen 3: HUD
-   Phase label, turn badge, turn countdown and the instruction banner.
+   One status row above the board: the tinted banner with phase and
+   instruction, and the game tools beside it. The turn clock lives on the
+   player panels (arena.css).
    ========================================================================== */
 
 /* Shell of screen 3: the column the HUD, the arena and the dock stack in. */
@@ -13,111 +15,20 @@
   flex-direction: column;
 }
 
-.game-hud-top {
+.game-hud {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sp-3);
-  gap: var(--sp-4);
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
 }
 
-.hud-phase-box {
-  display: flex;
-  align-items: center;
-}
-
-.phase-name {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  padding: 5px var(--sp-3);
-  border-radius: var(--radius-pill);
-}
-
-.hud-badge {
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 5px var(--sp-4);
-  border-radius: var(--radius-pill);
-
-  &.my-turn {
-    background: var(--accent-green);
-    color: var(--badge-my-turn-color);
-  }
-
-  &.opponent-turn {
-    background: var(--opponent-turn-bg);
-    color: var(--opponent-turn-color);
-  }
-
-  &.finished {
-    background: var(--accent-gold);
-    color: var(--badge-finished-bg);
-  }
-}
-
-/* Turn timer: the seconds the server grants for the current decision, drawn as
-   a shrinking ring. Display only — the clock that counts runs in GameManager. */
-.hud-timer {
-  position: relative;
+.hud-phase {
   flex: none;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-
-  /* Own turn: the ring picks up the same green the turn badge uses. */
-  &.is-mine {
-    color: var(--accent-green);
-  }
-
-  /* Last five seconds: red, on both sides of the board. */
-  &.is-urgent {
-    color: var(--accent-red);
-
-    .hud-timer-value {
-      color: var(--accent-red);
-    }
-  }
-}
-
-.hud-timer-ring {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  /* The arc starts at twelve o'clock and empties clockwise. */
-  rotate: -90deg;
-}
-
-.hud-timer-track {
-  fill: none;
-  stroke: var(--border-color);
-  stroke-width: 2.5;
-}
-
-.hud-timer-arc {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  transition: stroke-dashoffset var(--dur-2) linear, stroke var(--dur-2) var(--ease-out);
-}
-
-.hud-timer-value {
-  position: relative;
-  font-size: 0.8125rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--tracking-tight);
-  color: var(--text-main);
 }
 
 .hud-game-actions {
+  flex: none;
   display: flex;
   gap: 6px;
 }
@@ -154,13 +65,15 @@
   }
 }
 
-/* Instruction banner: a tinted notice with a leading state dot. */
+/* Status banner: a tinted notice with a leading state dot, the phase in bold
+   and the instruction after it. It takes whatever width the tools leave. */
 .hud-status-banner {
+  flex: 1;
+  min-width: 0;
   background: var(--bg-surface);
   border: 1px solid var(--hairline);
   padding: var(--sp-3) var(--sp-4);
   border-radius: var(--radius-md);
-  margin-bottom: var(--sp-4);
   font-size: 0.875rem;
   display: flex;
   align-items: center;
@@ -174,10 +87,6 @@
     border-radius: 50%;
     background: var(--text-muted);
     flex: none;
-  }
-
-  strong {
-    font-weight: 600;
   }
 
   &.my-turn {

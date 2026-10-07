@@ -220,6 +220,22 @@ body:has(dialog:modal) {
 .toast-warning::before { background: var(--accent-gold); }
 .toast-error::before { background: var(--accent-red); }
 
+/* A toast that stays until it is clicked away: a button that reads like the
+   other toasts, with a cross at its end. */
+.toast-sticky {
+  font-family: inherit;
+  line-height: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  .toast-close-icon {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    color: var(--text-muted);
+  }
+}
+
 .toast-fade {
   opacity: 0;
   translate: 0 8px;

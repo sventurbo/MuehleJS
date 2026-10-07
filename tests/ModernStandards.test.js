@@ -88,7 +88,7 @@ describe('Page', () => {
   });
 
   test('opens and closes the rules and the surrender dialog through invoker commands', () => {
-    ['btn-rules-header', 'btn-rules-login', 'btn-rules-game'].forEach(id => {
+    ['btn-rules-login', 'btn-rules-game'].forEach(id => {
       expect(tagOf(id)).toContain('commandfor="modal-rules" command="show-modal"');
     });
     expect(tagOf('btn-close-rules')).toContain('commandfor="modal-rules" command="close"');

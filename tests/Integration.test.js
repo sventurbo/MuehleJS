@@ -5,6 +5,7 @@ import { io as Client } from 'socket.io-client';
 import { GameManager } from '../lib/GameManager.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadStylesheet } from '../scripts/css-bundle.js';
 
 describe('Full Server & Socket.io Integration Flow', () => {
   let httpServer;
@@ -244,17 +245,47 @@ describe('Turn timer UI', () => {
   let htmlContent;
   let appJs;
   let hudJs;
+  let overlaysJs;
+  let css;
 
   beforeAll(() => {
     htmlContent = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'index.html'), 'utf8');
     appJs = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'js', 'app.js'), 'utf8');
     hudJs = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'js', 'hudView.js'), 'utf8');
+    overlaysJs = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'js', 'overlays.js'), 'utf8');
+    css = loadStylesheet();
   });
 
-  test('the HUD carries a countdown element', () => {
-    expect(htmlContent).toContain('id="hud-turn-timer"');
-    expect(htmlContent).toContain('id="hud-timer-value"');
-    expect(htmlContent).toContain('id="hud-timer-arc"');
+  test('each player panel carries a countdown element, like a chess clock', () => {
+    ['w', 'b'].forEach(part => {
+      const clock = htmlContent.match(new RegExp(`<div id="player-${part}-clock"[\\s\\S]*?</div>`))[0];
+      expect(clock).toContain('role="timer"');
+      expect(clock).toContain('class="turn-clock-arc"');
+      expect(clock).toContain('class="turn-clock-value"');
+    });
+  });
+
+  test('the notice of a move played for this player stays until it is clicked', () => {
+    const handler = appJs.slice(
+      appJs.indexOf("this.socket.on('turnTimeout'"),
+      appJs.indexOf("this.socket.on('gameOver'")
+    );
+    // Only the own timeout is sticky; the opponent's still fades on its own.
+    expect(handler.match(/\{ sticky: true \}/g)).toHaveLength(1);
+    expect(handler).toMatch(/if \(data\.player === this\.myColor\) \{[\s\S]*?\{ sticky: true \}[\s\S]*?\} else \{/);
+
+    // A sticky toast is a button that only a click removes; no timer does.
+    const sticky = overlaysJs.slice(overlaysJs.indexOf('if (sticky) {'), overlaysJs.indexOf('} else {', overlaysJs.indexOf('if (sticky) {')));
+    expect(overlaysJs).toContain("document.createElement(sticky ? 'button' : 'div')");
+    expect(sticky).toContain("toast.addEventListener('click', () => Overlays.#dismiss(toast), { once: true })");
+    expect(sticky).not.toContain('setTimeout');
+    expect(sticky).toContain('text.textContent = message');
+  });
+
+  test('a sticky toast takes clicks even though its container lets them through', () => {
+    expect(css).toMatch(/\.toast-container\s*\{[^}]*pointer-events:\s*none/);
+    expect(css).toMatch(/\.toast\s*\{[^}]*pointer-events:\s*auto/);
+    expect(css).toMatch(/\.toast-sticky\s*\{[^}]*cursor:\s*pointer/);
   });
 
   test('the countdown is fed by the server events', () => {
