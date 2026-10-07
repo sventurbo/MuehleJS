@@ -372,6 +372,8 @@ Web-Spiel/
 ├── docs/
 │   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation
 ├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   └── code-review.yml   # Issue-Vorlage für Funde aus dem Code Review (Stand: Tag code-review)
 │   └── workflows/
 │       └── node.js.yml       # CI-Pipeline (Node.js 26.x: npm ci, Build, Lint, Formatprüfung, Tests, Kontrastprüfung)
 ├── tests/
