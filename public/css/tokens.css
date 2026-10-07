@@ -30,7 +30,6 @@
   --text-main: light-dark(oklch(22.73% 0.0038 286.09), oklch(96.26% 0.0066 286.27));
   --text-muted: light-dark(oklch(47.83% 0.0159 285.78), oklch(68.94% 0.0145 286.01));
   --rules-body-color: light-dark(oklch(35.07% 0.0103 285.86), oklch(87.23% 0.0109 286.17));
-  --opponent-turn-color: light-dark(oklch(35.07% 0.0103 285.86), oklch(83.27% 0.0138 286.1));
   /* ── Accents: blue is the only brand accent, green/red are state only.
      --accent-cyan is unused by the design but kept because contrast-check.js
      asserts it by name; dropping it would silently weaken that gate. ── */
@@ -44,11 +43,8 @@
   --btn-secondary-hover: light-dark(oklch(89.62% 0.0081 286.23), oklch(31.33% 0.0178 285.33));
   --btn-icon-hover: var(--btn-secondary-bg);
   --btn-tool-hover: var(--btn-secondary-bg);
-  --opponent-turn-bg: var(--btn-secondary-bg);
   /* Text and icons on an --accent-blue fill (primary button, chat send). */
   --text-on-accent: oklch(100% 0 0);
-  --badge-my-turn-color: light-dark(oklch(100% 0 0), oklch(22.79% 0.0518 150.66));
-  --badge-finished-bg: light-dark(oklch(100% 0 0), oklch(23.3% 0.0458 75.14));
   --pip-inactive: light-dark(oklch(61.33% 0.0149 285.95), oklch(53.54% 0.0186 285.76));
   --pip-black-active: light-dark(oklch(35.16% 0.0138 285.67), oklch(41.32% 0.0182 285.58));
   --chat-bubble-me: light-dark(oklch(89.26% 0.0211 261.77), oklch(34.65% 0.0467 259.58));

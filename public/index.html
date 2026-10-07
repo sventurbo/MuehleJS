@@ -46,13 +46,6 @@
             <path d="M21 10l-5 4"/>
           </svg>
         </button>
-        <button id="btn-rules-header" class="btn-icon btn-rules-trigger" commandfor="modal-rules" command="show-modal" title="Spielregeln" aria-label="Spielregeln">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9"/>
-            <path d="M9.3 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.1-2.7 3.9"/>
-            <path d="M12 17.3h.01" stroke-width="2"/>
-          </svg>
-        </button>
       </div>
     </header>
 
@@ -72,11 +65,13 @@
             <p class="subtitle">Das klassische Strategiespiel für zwei Spieler im Browser. Tritt gegen einen Mitspieler an.</p>
           </div>
 
-          <div class="login-form-box">
+          <!-- The browser checks the name before submitting (required, pattern:
+               at least one non-blank character); the server checks it again. -->
+          <form id="login-form" class="login-form-box">
             <label for="username-input" class="form-label">Dein Spielername</label>
             <div class="input-group">
-              <input type="text" id="username-input" class="text-input" placeholder="z.B. MeisterStratege" maxlength="12" autofocus autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go">
-              <button id="btn-find-game" class="btn btn-primary">
+              <input type="text" id="username-input" name="username" class="text-input" placeholder="z.B. MeisterStratege" required pattern=".*\S.*" maxlength="12" title="Bitte gib einen Namen mit höchstens 12 Zeichen ein." autofocus autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go">
+              <button type="submit" id="btn-find-game" class="btn btn-primary">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="11" cy="11" r="7"/>
                   <path d="M16.5 16.5 21 21"/>
@@ -85,7 +80,7 @@
               </button>
             </div>
             <p class="form-hint">Sobald sich ein zweiter Spieler anmeldet, startet die Partie automatisch.</p>
-          </div>
+          </form>
 
           <div class="login-actions">
             <button id="btn-rules-login" class="btn btn-secondary" commandfor="modal-rules" command="show-modal">
@@ -95,15 +90,6 @@
               </svg>
               Spielregeln anzeigen
             </button>
-          </div>
-
-          <div class="network-badge">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="9"/>
-              <path d="M3 12h18"/>
-              <path d="M12 3c2.5 2.4 4 5.6 4 9s-1.5 6.6-4 9c-2.5-2.4-4-5.6-4-9s1.5-6.6 4-9z"/>
-            </svg>
-            <span>Server läuft mit Dual-Stack IPv6 &amp; IPv4</span>
           </div>
         </div>
       </section>
@@ -133,21 +119,13 @@
 
       <!-- SCREEN 3: ACTIVE GAMEPLAY -->
       <section id="screen-game" class="screen" hidden>
-        <!-- Top Game Status Banner -->
-        <div class="game-hud-top">
-          <div class="hud-phase-box">
-            <span id="hud-phase-text" class="phase-name">Phase 1: Setzen</span>
-          </div>
-          <div id="hud-turn-badge" class="hud-badge my-turn">Du bist am Zug</div>
-          <!-- Countdown for the server-side turn timer. Pure display: the clock
-               that counts is the one in GameManager. -->
-          <div id="hud-turn-timer" class="hud-timer" hidden role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
-            <svg class="hud-timer-ring" viewBox="0 0 36 36" aria-hidden="true">
-              <circle class="hud-timer-track" cx="18" cy="18" r="15.5"/>
-              <circle id="hud-timer-arc" class="hud-timer-arc" cx="18" cy="18" r="15.5"/>
-            </svg>
-            <span id="hud-timer-value" class="hud-timer-value">25</span>
-          </div>
+        <!-- Status row: phase and what to do now in one sentence, tinted by
+             whose turn it is, next to the game tools. -->
+        <div class="game-hud">
+          <p id="hud-status-banner" class="hud-status-banner my-turn" role="status">
+            <strong id="hud-phase-text" class="hud-phase">Setzphase</strong>
+            <span id="hud-instruction-text">Du bist am Zug: Setze einen Stein (9 übrig).</span>
+          </p>
           <div class="hud-game-actions">
             <button id="btn-rules-game" class="btn-tool" commandfor="modal-rules" command="show-modal" title="Regeln" aria-label="Spielregeln">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -166,11 +144,6 @@
           </div>
         </div>
 
-        <!-- Instruction Banner -->
-        <div id="hud-status-banner" class="hud-status-banner my-turn">
-          <span id="hud-instruction-text">Setzphase: Platziere einen Stein auf ein freies Feld.</span>
-        </div>
-
         <!-- Gameplay Layout: Players & Board -->
         <div class="game-arena">
           <!-- Left: Player White Profile -->
@@ -179,7 +152,16 @@
               <div class="stone-avatar avatar-w" aria-hidden="true"></div>
               <div class="player-meta">
                 <h3 id="player-w-name" class="player-name">Spieler 1</h3>
-                <span class="color-tag">Weiß (Zieht zuerst)</span>
+                <span class="color-tag">Weiß, beginnt</span>
+              </div>
+              <!-- Turn clock, shown on the card of the player on turn. Pure display:
+                   the clock that counts runs in GameManager. -->
+              <div id="player-w-clock" class="turn-clock" hidden role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
+                <svg class="turn-clock-ring" viewBox="0 0 36 36" aria-hidden="true">
+                  <circle class="turn-clock-track" cx="18" cy="18" r="15.5"/>
+                  <circle class="turn-clock-arc" cx="18" cy="18" r="15.5"/>
+                </svg>
+                <span class="turn-clock-value">25</span>
               </div>
             </div>
 
@@ -209,6 +191,15 @@
               <div class="player-meta">
                 <h3 id="player-b-name" class="player-name">Spieler 2</h3>
                 <span class="color-tag">Schwarz</span>
+              </div>
+              <!-- Turn clock, shown on the card of the player on turn. Pure display:
+                   the clock that counts runs in GameManager. -->
+              <div id="player-b-clock" class="turn-clock" hidden role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
+                <svg class="turn-clock-ring" viewBox="0 0 36 36" aria-hidden="true">
+                  <circle class="turn-clock-track" cx="18" cy="18" r="15.5"/>
+                  <circle class="turn-clock-arc" cx="18" cy="18" r="15.5"/>
+                </svg>
+                <span class="turn-clock-value">25</span>
               </div>
             </div>
 
@@ -346,6 +337,8 @@
           <ul>
             <li>Ein Spieler <strong>verliert</strong>, wenn er auf <strong>2 Steine</strong> reduziert wird.</li>
             <li>Ein Spieler <strong>verliert</strong>, wenn er am Zug ist und <strong>keinen legalen Zug</strong> mehr ausführen kann (eingesperrt ist).</li>
+            <li>Ein Spieler <strong>verliert</strong>, wenn er <strong>dreimal in Folge</strong> seine Bedenkzeit überschreitet.</li>
+            <li>Die Partie endet <strong>unentschieden</strong>, wenn in der Zugphase dieselbe Stellung zum dritten Mal entsteht oder 50 Züge lang kein Stein geschlagen wird.</li>
           </ul>
         </section>
       </div>

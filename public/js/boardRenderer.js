@@ -62,6 +62,11 @@ const LEAVE_FALLBACK_MS = 1000;
    any animation, so it must outlast the fade. */
 const MILL_BEAM_FALLBACK_MS = 3000;
 
+/* How long a point stays marked after a click that could not do anything. It
+   outlasts the shake in board.css; with reduced motion only the red glow is
+   left, so the mark is removed by this timer rather than by `animationend`. */
+const REJECT_FEEDBACK_MS = 600;
+
 // The rows follow the board: one square or one direction per line.
 // prettier-ignore
 const BOARD_LINES = [
@@ -233,7 +238,7 @@ export class BoardRenderer {
     this.validDestinations = validDestinations;
     this.removablePoints = RULES.getCaptureTargets(gameState, playerColor);
 
-    const isMyTurn = gameState.turn === playerColor && !gameState.winner;
+    const isMyTurn = gameState.turn === playerColor && !RULES.isGameOver(gameState);
     const canSelect = isMyTurn && gameState.phase === 'MOVING' && !gameState.awaitingRemoval;
 
     this.#syncPieces(gameState);
@@ -357,6 +362,19 @@ export class BoardRenderer {
   static #playOnce(el, className) {
     el.classList.add(className);
     el.addEventListener('animationend', () => el.classList.remove(className), { once: true });
+  }
+
+  /**
+   * Answers a click that could not do anything (an occupied point, the
+   * opponent's turn, no line to the selected stone) right where the player
+   * looked: the point shakes briefly and glows red, instead of a toast
+   * appearing in a corner of the screen.
+   */
+  rejectPoint(pt) {
+    const group = this.pointGroups[pt];
+    if (!group) return;
+    group.classList.add('is-rejected');
+    setTimeout(() => group.classList.remove('is-rejected'), REJECT_FEEDBACK_MS);
   }
 
   /**

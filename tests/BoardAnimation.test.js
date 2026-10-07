@@ -16,6 +16,7 @@ import { loadStylesheet } from '../scripts/css-bundle.js';
 const publicDir = path.join(import.meta.dirname, '..', 'public');
 const css = loadStylesheet();
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
+const appJs = fs.readFileSync(path.join(publicDir, 'js', 'app.js'), 'utf8');
 
 /** Returns the declarations of the first rule whose selector is exactly `selector`. */
 function ruleBody(selector) {
@@ -137,5 +138,42 @@ describe('Mill beam', () => {
   test('reduced motion shows the beam without a fade instead of one that ends at opacity 0', () => {
     const reduced = mediaBlock('@media (prefers-reduced-motion: reduce)');
     expect(reduced).toMatch(/\.mill-gold-beam\s*\{[^}]*animation:\s*none/);
+  });
+});
+
+describe('Feedback for a click that does nothing', () => {
+  test('the renderer marks the point and the stylesheet shakes it', () => {
+    expect(boardJs).toContain("group.classList.add('is-rejected')");
+    expect(ruleBody('.board-point-group.is-rejected')).toContain('pointReject');
+    expect(css).toContain('@keyframes pointReject');
+  });
+
+  test('the mark has a cue without motion, so reduced motion keeps one', () => {
+    expect(ruleBody('.board-point-group.is-rejected')).toMatch(/filter:\s*drop-shadow/);
+  });
+
+  test('a timer that outlasts the shake removes the mark', () => {
+    const shakeMs = Number(css.match(/--dur-3:\s*(\d+)ms/)[1]);
+    expect(ruleBody('.board-point-group.is-rejected')).toContain('var(--dur-3)');
+    const feedbackMs = Number(boardJs.match(/const REJECT_FEEDBACK_MS = (\d+);/)[1]);
+    expect(feedbackMs).toBeGreaterThan(shakeMs);
+    expect(boardJs).toMatch(/setTimeout\(\(\) => group\.classList\.remove\('is-rejected'\), REJECT_FEEDBACK_MS\)/);
+  });
+
+  test('ineffective clicks are answered on the board, not with toasts', () => {
+    expect(appJs).toContain('this.board.rejectPoint(point)');
+    [
+      'Der Gegner ist am Zug!',
+      'Dieses Feld ist bereits besetzt',
+      'keine direkte Verbindung',
+      'gültigen gegnerischen Stein'
+    ].forEach(text => expect(appJs).not.toContain(text));
+  });
+
+  test('the board markup carries no inline style', () => {
+    expect(boardJs).not.toMatch(/\sstyle="/);
+    // base.css lists the group in a shared touch-action rule, so match the
+    // board's own rule rather than the first one naming the selector.
+    expect(css).toMatch(/\n\.board-point-group\s*\{\s*cursor:\s*pointer;/);
   });
 });

@@ -178,13 +178,6 @@ export const CONTRAST_TESTS = [
     description: 'Pip auf Hintergrund'
   },
   {
-    name: 'Opponent turn text on background',
-    fgVar: 'opponent-turn-color',
-    bgVar: 'bg-main',
-    aaThreshold: 4.5,
-    description: 'Gegner-am-Zug-Text auf Hintergrund'
-  },
-  {
     name: 'Chat bubble text on bubble background',
     fgVar: 'text-main',
     bgVar: 'chat-bubble-me',

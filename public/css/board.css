@@ -34,17 +34,35 @@
   stroke: var(--board-line);
 }
 
-/* Every point takes a click, whether it holds a stone or not. */
-.board-point-group {
-  cursor: pointer;
-}
-
 .grid-socket {
   fill: var(--board-socket);
   stroke: var(--board-socket-stroke);
   transition:
     fill var(--dur-2) var(--ease-out),
     stroke var(--dur-2) var(--ease-out);
+}
+
+/* Every point is clickable; the hit area around it makes that a generous target. */
+.board-point-group {
+  cursor: pointer;
+}
+
+/* A click that could not do anything: the point shakes once and glows red.
+   With reduced motion the shake is gone and the glow alone remains. */
+.board-point-group.is-rejected {
+  filter: drop-shadow(0 0 4px var(--accent-red));
+  animation: pointReject var(--dur-3) var(--ease-out);
+}
+
+@keyframes pointReject {
+  20%,
+  60% {
+    translate: -5px 0;
+  }
+  40%,
+  80% {
+    translate: 5px 0;
+  }
 }
 
 .grid-label {

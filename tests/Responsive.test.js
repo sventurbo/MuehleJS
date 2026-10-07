@@ -68,6 +68,27 @@ describe('Viewport & mobile meta tags', () => {
   });
 });
 
+describe('Login form', () => {
+  test('the name field is checked by the browser before it is sent', () => {
+    expect(html).toMatch(/<form id="login-form"[\s\S]*?id="username-input"[\s\S]*?<\/form>/);
+    const input = html.match(/<input[^>]*id="username-input"[^>]*>/)[0];
+    expect(input).toContain(' required ');
+    expect(input).toMatch(/pattern="[^"]+"/);
+    expect(input).toContain('maxlength="12"');
+    expect(html).toContain('<button type="submit" id="btn-find-game"');
+  });
+
+  test('the client submits through the form instead of a key handler of its own', () => {
+    expect(clientJs).toContain("getElementById('login-form').addEventListener('submit'");
+    expect(clientJs).not.toContain("e.key === 'Enter'");
+  });
+
+  test('the last name is remembered, and blocked storage cannot break the page', () => {
+    expect(clientJs).toMatch(/try \{\s*return localStorage\.getItem\(PLAYER_NAME_KEY\)/);
+    expect(clientJs).toMatch(/try \{\s*localStorage\.setItem\(PLAYER_NAME_KEY, name\)/);
+  });
+});
+
 describe('Login form on phones', () => {
   test('name field and search button stack into their own rows', () => {
     const phone = mediaBlock('@media (width <= 700px)');
@@ -108,9 +129,18 @@ describe('Game layout on phones', () => {
     expect(landscape).toMatch(/\.board-wrapper\s*\{[^}]*width:\s*min\(/);
   });
 
-  test('the duplicate turn badge is dropped where the banner already says it', () => {
+  test('the turn is said once in words, and each panel carries its own clock', () => {
+    expect(html).not.toContain('hud-turn-badge');
+    expect(html).toMatch(/id="player-w-card"[\s\S]*?id="player-w-clock" class="turn-clock"/);
+    expect(html).toMatch(/id="player-b-card"[\s\S]*?id="player-b-clock" class="turn-clock"/);
+  });
+
+  test('the tools shrink to their labelled icons so the status row fits', () => {
     const phone = mediaBlock('@media (width <= 700px)');
-    expect(phone).toMatch(/\.hud-badge\s*\{[^}]*display:\s*none/);
+    expect(phone).toMatch(/\.btn-tool \.btn-tool-label\s*\{[^}]*display:\s*none/);
+    ['btn-rules-game', 'btn-surrender'].forEach(id => {
+      expect(html).toMatch(new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`));
+    });
   });
 
   test('safe-area insets are respected on notched devices', () => {
