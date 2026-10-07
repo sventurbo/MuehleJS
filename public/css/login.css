@@ -93,28 +93,8 @@
   margin-top: var(--sp-2);
 }
 
-.login-actions {
-  margin-bottom: var(--sp-6);
-
-  .btn {
-    width: 100%;
-  }
-}
-
-.network-badge {
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  padding-top: var(--sp-5);
-  border-top: 1px solid var(--hairline);
-
-  .icon {
-    width: 15px;
-    height: 15px;
-  }
+.login-actions .btn {
+  width: 100%;
 }
 
 /* ── Screen 2: matchmaking queue ── */

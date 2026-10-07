@@ -251,10 +251,13 @@ describe('Turn timer UI', () => {
     hudJs = fs.readFileSync(path.join(import.meta.dirname, '..', 'public', 'js', 'hudView.js'), 'utf8');
   });
 
-  test('the HUD carries a countdown element', () => {
-    expect(htmlContent).toContain('id="hud-turn-timer"');
-    expect(htmlContent).toContain('id="hud-timer-value"');
-    expect(htmlContent).toContain('id="hud-timer-arc"');
+  test('each player panel carries a countdown element, like a chess clock', () => {
+    ['w', 'b'].forEach(part => {
+      const clock = htmlContent.match(new RegExp(`<div id="player-${part}-clock"[\\s\\S]*?</div>`))[0];
+      expect(clock).toContain('role="timer"');
+      expect(clock).toContain('class="turn-clock-arc"');
+      expect(clock).toContain('class="turn-clock-value"');
+    });
   });
 
   test('the countdown is fed by the server events', () => {

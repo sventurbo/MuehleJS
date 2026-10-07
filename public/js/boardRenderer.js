@@ -62,6 +62,11 @@ const LEAVE_FALLBACK_MS = 1000;
    any animation, so it must outlast the fade. */
 const MILL_BEAM_FALLBACK_MS = 3000;
 
+/* How long a point stays marked after a click that could not do anything. It
+   outlasts the shake in board.css; with reduced motion only the red glow is
+   left, so the mark is removed by this timer rather than by `animationend`. */
+const REJECT_FEEDBACK_MS = 600;
+
 const BOARD_LINES = [
   // Outer square
   ['a7', 'd7'], ['d7', 'g7'], ['g7', 'g4'], ['g4', 'g1'],
@@ -108,7 +113,7 @@ function gridLabelsMarkup() {
  */
 function pointGroupsMarkup(hitRadius) {
   return Object.entries(POINT_COORDS).map(([pt, c]) => `
-    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})" style="cursor: pointer;">
+    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})">
       <!-- Transparent wide hit area for easy clicking / tapping -->
       <circle cx="0" cy="0" r="${hitRadius}" fill="transparent" class="hit-area" />
       <!-- Base socket, inside the group so hover/press feedback can reach it -->
@@ -344,6 +349,19 @@ export class BoardRenderer {
   static #playOnce(el, className) {
     el.classList.add(className);
     el.addEventListener('animationend', () => el.classList.remove(className), { once: true });
+  }
+
+  /**
+   * Answers a click that could not do anything (an occupied point, the
+   * opponent's turn, no line to the selected stone) right where the player
+   * looked: the point shakes briefly and glows red, instead of a toast
+   * appearing in a corner of the screen.
+   */
+  rejectPoint(pt) {
+    const group = this.pointGroups[pt];
+    if (!group) return;
+    group.classList.add('is-rejected');
+    setTimeout(() => group.classList.remove('is-rejected'), REJECT_FEEDBACK_MS);
   }
 
   /**

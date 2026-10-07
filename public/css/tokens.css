@@ -22,7 +22,6 @@
   --text-main: light-dark(#1c1c1e, #f2f2f7);
   --text-muted: light-dark(#5c5c66, #9a9aa4);
   --rules-body-color: light-dark(#3a3a40, #d4d4dc);
-  --opponent-turn-color: light-dark(#3a3a40, #c7c7d1);
   /* ── Accents: blue is the only brand accent, green/red are state only.
      --accent-cyan is unused by the design but kept because contrast-check.js
      asserts it by name; dropping it would silently weaken that gate. ── */
@@ -36,9 +35,6 @@
   --btn-secondary-hover: light-dark(#dcdce2, #30303a);
   --btn-icon-hover: light-dark(#e8e8ed, #26262c);
   --btn-tool-hover: light-dark(#e8e8ed, #26262c);
-  --opponent-turn-bg: light-dark(#e8e8ed, #26262c);
-  --badge-my-turn-color: light-dark(#ffffff, #06230f);
-  --badge-finished-bg: light-dark(#ffffff, #2a1a02);
   --pip-inactive: light-dark(#83838d, #6c6c78);
   --pip-black-active: light-dark(#3a3a42, #4a4a55);
   --chat-bubble-me: light-dark(#d4dcea, #2b3a52);

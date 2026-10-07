@@ -25,6 +25,32 @@ import { HudView } from './hudView.js';
 import { DockView } from './dockView.js';
 import { Overlays } from './overlays.js';
 
+/** localStorage key of the name typed last time. */
+const PLAYER_NAME_KEY = 'muehle_player_name';
+
+/**
+ * Reads the name typed last time, so the next game is one click away.
+ *
+ * Blocked site data makes the very access to localStorage throw, in current
+ * browsers too (see audio.js). The field then simply starts empty.
+ */
+function loadPlayerName() {
+  try {
+    return localStorage.getItem(PLAYER_NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Remembers the name; a blocked or full store just means it is not remembered. */
+function storePlayerName(name) {
+  try {
+    localStorage.setItem(PLAYER_NAME_KEY, name);
+  } catch {
+    // The name stays in the field for this visit only.
+  }
+}
+
 class MuehleApp {
   constructor() {
     this.socket = null;
@@ -87,10 +113,12 @@ class MuehleApp {
   // ── Controls outside the views ────────────────────────────────────────────
 
   #bindControls() {
-    document.getElementById('btn-find-game')
-      .addEventListener('click', () => this.#handleLogin());
-    this.usernameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.#handleLogin();
+    // A real form: the browser checks the name (required, pattern) and submits
+    // on Enter, so neither needs code of its own.
+    this.usernameInput.value = loadPlayerName();
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.#handleLogin();
     });
 
     document.getElementById('btn-cancel-queue').addEventListener('click', () => {
@@ -128,6 +156,7 @@ class MuehleApp {
     const username = this.usernameInput.value.trim().substring(0, 12);
     if (!username) return;
     this.myName = username;
+    storePlayerName(username);
     this.socket.emit('login', { username });
   }
 
@@ -342,12 +371,13 @@ class MuehleApp {
   /**
    * A click on a board point. Nothing is decided here: the click is turned into
    * the one request it can be right now, and the server answers with the new
-   * state (or an `actionError`).
+   * state (or an `actionError`). A click that cannot be any request is
+   * answered on the board itself (`rejectPoint`), not with a toast.
    */
   #onPointClick(point) {
     if (!this.gameState || RULES.isGameOver(this.gameState)) return;
     if (this.gameState.turn !== this.myColor) {
-      this.overlays.toast('Der Gegner ist am Zug!', 'info');
+      this.board.rejectPoint(point);
       return;
     }
 
@@ -365,7 +395,7 @@ class MuehleApp {
     if (this.#removablePoints.includes(point)) {
       this.socket.emit('removePiece', { point });
     } else {
-      this.overlays.toast('Wähle einen gültigen gegnerischen Stein zum Schlagen (nicht in einer Mühle)!', 'warning');
+      this.board.rejectPoint(point);
     }
   }
 
@@ -374,7 +404,7 @@ class MuehleApp {
     if (this.gameState.board[point] === null) {
       this.socket.emit('placePiece', { point });
     } else {
-      this.overlays.toast('Dieses Feld ist bereits besetzt!', 'warning');
+      this.board.rejectPoint(point);
     }
   }
 
@@ -407,9 +437,8 @@ class MuehleApp {
       return;
     }
 
-    if (piece === null && this.selectedPoint) {
-      this.overlays.toast('Dieser Zug ist ungültig (keine direkte Verbindung)!', 'warning');
-    }
+    // An opponent stone, or a point the selected stone cannot reach.
+    this.board.rejectPoint(point);
   }
 
   // ── Screens ───────────────────────────────────────────────────────────────
