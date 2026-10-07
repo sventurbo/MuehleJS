@@ -58,7 +58,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
   - Native **`<dialog>`-Dialoge** für Regeln, Aufgeben und Spielende: Der Browser legt sie in den Top Layer, sperrt die Seite dahinter und schließt sie mit Esc. Regeln und Aufgeben öffnen und schließen sich über **Invoker Commands** (`command`/`commandfor`) ganz ohne JavaScript; Aufgeben fragt in einem eigenen Dialog nach statt über `confirm()`.
 - **Automatisierte Testsuite**:
-   - 323 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
+   - 325 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
 
 ---
 
@@ -145,7 +145,7 @@ Ablauf im Detail:
 3. Läuft die Zeit ab, wählt der Server über `MuehleGame.makeRandomLegalMove()` einen **zufälligen legalen Zug** und führt ihn aus – geprüft durch dieselbe Regel-Engine, die auch menschliche Züge validiert.
 4. Beide Clients erhalten `turnTimeout` (wer die Zeit überschritten hat und welcher Zug ausgeführt wurde) sowie das übliche `gameStateUpdate`. Im Zugprotokoll erscheint der Zug mit dem Zusatz *(automatisch)*.
 5. Anschließend läuft die Uhr für den Gegner weiter. Parallele Partien haben jeweils eine eigene Uhr; endet eine Partie oder verlässt ein Spieler sie, wird die zugehörige Uhr gestoppt.
-6. Überschreitet derselbe Spieler die Zeit **dreimal in Folge**, zieht der Server nicht mehr für ihn: Er verliert die Partie, beide Clients erhalten `gameOver`. Jede eigene Aktion setzt den Zähler zurück. `turnTimeout` nennt dafür `consecutiveTimeouts` und `timeoutLimit`, und der betroffene Spieler sieht im Hinweis, wie oft es schon passiert ist.
+6. Überschreitet derselbe Spieler die Zeit **dreimal in Folge**, zieht der Server nicht mehr für ihn: Er verliert die Partie, beide Clients erhalten `gameOver`. Jede eigene Aktion setzt den Zähler zurück. `turnTimeout` nennt dafür `consecutiveTimeouts` und `timeoutLimit`, und der betroffene Spieler sieht im Hinweis, wie oft es schon passiert ist. Dieser Hinweis bleibt stehen, bis er angeklickt wird: Wer die Zeit überschritten hat, war gerade nicht am Bildschirm und soll ihn trotzdem sehen.
 
 **Der Timer ist bewusst rein serverseitig implementiert.** Clients sind manipulierbar: ein Countdown im Browser kann angehalten, verlangsamt oder entfernt werden. Der Client empfängt daher nur die verbleibende Zeit und zeichnet sie; die Entscheidung, dass ein Zug abgelaufen ist, trifft ausschließlich der Server.
 
@@ -168,7 +168,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest. Da alle Quellen E
 npm test
 ```
 
-Getestet werden (323 Tests in 12 Test-Dateien):
+Getestet werden (325 Tests in 12 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -183,7 +183,7 @@ Getestet werden (323 Tests in 12 Test-Dateien):
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
 - Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating) und die Statuszeile mit der Uhr in jeder Spielerkarte.
-- Anmeldeformular (`required`, `pattern`, Absenden per `submit`, gemerkter Name) und die Rückmeldung am Brett statt Toasts bei wirkungslosen Klicks.
+- Anmeldeformular (`required`, `pattern`, Absenden per `submit`, gemerkter Name), die Rückmeldung am Brett statt Toasts bei wirkungslosen Klicks und der Hinweis auf einen automatischen Zug, der bis zum Anklicken stehen bleibt.
 - Ton-Einstellung auch bei blockiertem `localStorage` (abgeschaltete Website-Daten).
 - Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die Architekturregel, dass nur `app.js` mit dem Socket spricht.
 - Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine Vendor-Metatags, nur ES-Module, keine Feature-Erkennung, Node-Built-ins über `node:`.

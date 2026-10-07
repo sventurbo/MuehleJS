@@ -212,14 +212,20 @@ class MuehleApp {
       if (!data) return;
       const actor = RULES.colorName(data.player);
       this.dock.addSystemNote(data.message || `Zeit abgelaufen – für ${actor} wurde automatisch gezogen.`);
-      this.overlays.toast(
-        data.player === this.myColor
-          ? `Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen ` +
-            `(${data.consecutiveTimeouts} von ${data.timeoutLimit}: beim ${data.timeoutLimit}. Mal ` +
-            `in Folge verlierst du).`
-          : `Bedenkzeit von ${actor} abgelaufen – der Zug wurde automatisch ausgeführt.`,
-        'warning'
-      );
+
+      if (data.player === this.myColor) {
+        // Whoever ran out of time was looking elsewhere, so the notice waits
+        // for them: it stays until they click it away.
+        this.overlays.toast(
+          `Deine Bedenkzeit ist abgelaufen – es wurde automatisch für dich gezogen ` +
+          `(${data.consecutiveTimeouts} von ${data.timeoutLimit}: beim ${data.timeoutLimit}. Mal ` +
+          `in Folge verlierst du).`,
+          'warning',
+          { sticky: true }
+        );
+      } else {
+        this.overlays.toast(`Bedenkzeit von ${actor} abgelaufen – der Zug wurde automatisch ausgeführt.`, 'warning');
+      }
     });
 
     this.socket.on('gameOver', (data) => this.#endGame(data));

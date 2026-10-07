@@ -1,7 +1,7 @@
 /**
  * overlays.js
- * Everything that sits *above* the app: the connection badge, transient toasts
- * and the three dialogs (rules, surrender, game over).
+ * Everything that sits *above* the app: the connection badge, toasts and the
+ * three dialogs (rules, surrender, game over).
  *
  * The dialogs are native <dialog> elements. The browser opens them in the top
  * layer, makes the page behind them inert, traps focus and closes them on
@@ -16,6 +16,13 @@ import * as RULES from '/shared/muehleRules.js';
 /** How long a toast stays before it starts to fade, and how long it fades. */
 const TOAST_VISIBLE_MS = 3000;
 const TOAST_FADE_MS = 400;
+
+/** The cross a sticky toast shows, the same glyph as the rules dialog's close button. */
+const CLOSE_ICON = `
+  <svg class="icon toast-close-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M6.5 6.5l11 11"/>
+    <path d="M17.5 6.5l-11 11"/>
+  </svg>`;
 
 /** returnValue of a dialog the app closed itself, so it carries no choice. */
 const CLOSED_BY_APP = 'app';
@@ -78,19 +85,43 @@ export class Overlays {
 
   /**
    * Shows a short message that removes itself again.
+   *
+   * A sticky toast stays until the player clicks it away instead. It is meant
+   * for news a player must not miss while looking elsewhere, such as a move
+   * the server played for them; it is a button, so the keyboard reaches and
+   * closes it as well.
+   *
    * @param {string} message
    * @param {string} [type] 'info' | 'warning' | 'error'
+   * @param {Object} [options]
+   * @param {boolean} [options.sticky] Stay until clicked instead of fading out.
    */
-  toast(message, type = 'info') {
-    const toast = document.createElement('div');
+  toast(message, type = 'info', { sticky = false } = {}) {
+    const toast = document.createElement(sticky ? 'button' : 'div');
     toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    this.toastContainer.append(toast);
 
-    setTimeout(() => {
-      toast.classList.add('toast-fade');
-      setTimeout(() => toast.remove(), TOAST_FADE_MS);
-    }, TOAST_VISIBLE_MS);
+    if (sticky) {
+      toast.type = 'button';
+      toast.classList.add('toast-sticky');
+      toast.title = 'Zum Schließen klicken';
+      // The message goes in as text; only the static icon is markup.
+      const text = document.createElement('span');
+      text.textContent = message;
+      toast.append(text);
+      toast.insertAdjacentHTML('beforeend', CLOSE_ICON);
+      toast.addEventListener('click', () => Overlays.#dismiss(toast), { once: true });
+    } else {
+      toast.textContent = message;
+      setTimeout(() => Overlays.#dismiss(toast), TOAST_VISIBLE_MS);
+    }
+
+    this.toastContainer.append(toast);
+  }
+
+  /** Lets a toast fade out and then takes it off the page. */
+  static #dismiss(toast) {
+    toast.classList.add('toast-fade');
+    setTimeout(() => toast.remove(), TOAST_FADE_MS);
   }
 
   /**
