@@ -1,0 +1,61 @@
+# Issue form for findings from the peer code review. GitHub reads templates only
+# from the default branch; the reviewed state itself is the tag code-review.
+# The label is applied even when the reporter is not a collaborator.
+name: Code-Review-Fund
+description: Einen Fund aus dem Code Review melden (Stand code-review)
+title: '[Review] '
+labels: ['code-review']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bewertet wird der Stand [`code-review`](https://github.com/sventurbo/MuehleJS/releases/tag/code-review), nicht `main`. Bitte je Fund ein eigenes Issue anlegen.
+  - type: input
+    id: reviewed-state
+    attributes:
+      label: Bewerteter Stand
+      value: code-review (2920ccc)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Bereich
+      options:
+        - Build-Prozess und Projektstruktur
+        - HTML
+        - CSS
+        - JavaScript (Client)
+        - JavaScript (Server)
+        - Architektur und Dokumentation
+        - Sonstiges
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Schweregrad
+      options:
+        - Hoch (verletzt eine Vorgabe oder führt zu Fehlern)
+        - Mittel (erschwert Verständnis oder Wartung)
+        - Niedrig (Stil oder Kleinigkeit)
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Fundstelle
+      description: Ein Permalink pro Zeile, dann zeigt GitHub den Codeausschnitt an. In der Datei auf die Zeilennummer klicken (Shift-Klick für einen Bereich) und „Copy permalink“ wählen. Bei übergreifenden Funden leer lassen.
+      placeholder: https://github.com/sventurbo/MuehleJS/blob/2920cccd370b859564347452fa5d9e8d8e9acabf/lib/MuehleGame.js#L10-L20
+  - type: textarea
+    id: finding
+    attributes:
+      label: Beschreibung
+      description: Was ist das Problem, und warum ist es eins?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Vorschlag
+      description: Wie ließe es sich verbessern?
