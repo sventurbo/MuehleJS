@@ -77,7 +77,7 @@ graph LR
         HTML["index.html (SPA Screens, dialog-Elemente & Einstiegsmodul)"]
         CSS["css/ (11 Module in Cascade Layers: Tokens, Layout 320px - Desktop, SVG-Styles)"]
         APP["app.js (Controller: Socket, Screens, Brett-Interaktion)"]
-        HUD["hudView.js (Phase, Zug-Badge, Spielerkarten, Countdown)"]
+        HUD["hudView.js (Statuszeile, Spielerkarten, Zuguhr)"]
         DOCK["dockView.js (Zugprotokoll & Chat)"]
         OVL["overlays.js (Dialoge, Toasts, Verbindungsanzeige)"]
         BR["boardRenderer.js (SVG Renderer & Hitboxen)"]
@@ -123,7 +123,7 @@ Aktionen an den Server. `tests/ClientModules.test.js` prüft genau das.
 
 #### Clientseitige Module
 - **`public/js/app.js`**: Einziges Einstiegsmodul der Seite (`<script type="module">`); importiert Socket.io-Client, Regelmodul und Views. Controller für Socket.io-Client, Screen-Wechsel (Login, Queue, Game, Game Over) und Brett-Interaktion. Übersetzt Klicks in Server-Anfragen und Server-Events in Aufrufe der Views — er zeichnet selbst nichts.
-- **`public/js/hudView.js`**: Phasenanzeige, Zug-Badge, Hinweisbanner, beide Spielerkarten und der Zug-Countdown aus den Server-Events `turnTimer` / `turnTimeout` — reine Anzeige ohne eigene Zeitlogik und ohne Socket.
+- **`public/js/hudView.js`**: Die Statuszeile (Phase und Anweisung in einem Satz, eingefärbt nach dem Spieler am Zug), beide Spielerkarten und die Zuguhr, die wie bei einer Schachuhr in der Karte des Spielers am Zug läuft. Gespeist aus den Server-Events `turnTimer` / `turnTimeout`, reine Anzeige ohne eigene Zeitlogik und ohne Socket.
 - **`public/js/dockView.js`**: Zugprotokoll und Chat samt Tab-Leiste und Ungelesen-Markierung auf kleinen Bildschirmen. Hier liegt die Escaping-Grenze: Name und Text einer Nachricht gehen durch `escapeHtml()`, bevor Markup entsteht.
 - **`public/js/overlays.js`**: Toasts, Verbindungsanzeige und die Antworten der nativen `<dialog>`-Elemente. Regel- und Aufgeben-Dialog öffnen und schließen sich über Invoker Commands (`command`/`commandfor`) ohne Skript; die View reicht nur den `returnValue` von Aufgeben- und Spielende-Dialog an den Controller weiter. Die Scroll-Sperre hinter einem offenen Dialog leistet CSS (`body:has(dialog:modal)`).
 - **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und legt Ziel-, Auswahl- und Schlagmarker einmalig an; ein Zustandswechsel schaltet nur noch deren `is-*`-Klasse um. Das Brett wird einmal aufgebaut und danach nur gepatcht: `diffBoards()` aus dem geteilten Regelmodul bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten.

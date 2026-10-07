@@ -39,6 +39,9 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
 - **Minimalistisches, responsives UI**:
   - Durchgängiges Design-System: neutrale Flächen, ein einziger Akzentfarbton (Blau), Haarlinien-Ränder, 4pt-Abstandsraster und translucent Materials (`backdrop-filter`) statt farbiger Glow-Effekte.
   - Vektorbasiertes, gestochen scharfes **SVG-Spielfeld**; Auswahlring, Zielmarker und Mühle-Strahl sind ruhige, statische bzw. einmalig eingeblendete Marker.
+  - **Eine Statuszeile statt vieler Anzeigen**: Phase und Anweisung stehen in einem Satz über dem Brett, die Farbe sagt, wer am Zug ist. Die Bedenkzeit läuft wie bei einer Schachuhr als Ring in der Karte des Spielers am Zug. Das Brett gewinnt dadurch Höhe (bei 1024 × 768 rund 450 statt 396 px).
+  - **Rückmeldung am Brett**: Ein Klick, der nichts bewirken kann (besetztes Feld, Gegner am Zug, kein Weg zum Ziel), lässt den Punkt kurz wackeln und rot aufleuchten, statt einen Hinweis einzublenden.
+  - **Anmeldung als echtes Formular**: Der Browser prüft den Namen (`required`, `pattern`, `maxlength`), Enter schickt ab, der Server prüft erneut. Der zuletzt genutzte Name wird gemerkt.
   - **Animierte Steine**: ein gesetzter Stein springt kurz auf, ein gezogener gleitet leicht angehoben vom Start- zum Zielfeld (auch beim Springen), ein geschlagener blendet aus. Der Renderer patcht das Brett, statt es neu aufzubauen – Steine, die liegen bleiben, behalten ihren SVG-Knoten.
   - Vollständiges **Light- und Dark-Theme** über `color-scheme` und `light-dark()`: ein einziger Token-Block trägt beide Themes, der Browser wählt die passende Seite nach der Systemeinstellung. Das Spielbrett folgt dem Theme (helles Brett im Light-Mode, dunkles im Dark-Mode).
   - Alle Icons sind **Inline-SVG** in `currentColor` – keine Emoji, keine Icon-Fonts, keine externen Assets.
@@ -55,7 +58,7 @@ Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **
   - Integrierter Live-Chat & detailliertes Zugprotokoll.
   - Native **`<dialog>`-Dialoge** für Regeln, Aufgeben und Spielende: Der Browser legt sie in den Top Layer, sperrt die Seite dahinter und schließt sie mit Esc. Regeln und Aufgeben öffnen und schließen sich über **Invoker Commands** (`command`/`commandfor`) ganz ohne JavaScript; Aufgeben fragt in einem eigenen Dialog nach statt über `confirm()`.
 - **Automatisierte Testsuite**:
-   - 314 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
+   - 323 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen und die Ton-Einstellung.
 
 ---
 
@@ -138,7 +141,7 @@ Ohne Zeitlimit blockiert ein Spieler, der nicht zieht, die ganze Partie. Deshalb
 Ablauf im Detail:
 
 1. Mit dem Spielstart beginnt die Uhr für Weiß. Jede angenommene Aktion setzt sie zurück, danach läuft sie für den nächsten Zug weiter.
-2. Der Server schickt bei jedem Neustart der Uhr das Event `turnTimer` an beide Clients; diese zeigen den Countdown als schrumpfenden Ring im HUD an.
+2. Der Server schickt bei jedem Neustart der Uhr das Event `turnTimer` an beide Clients; diese zeigen den Countdown als schrumpfenden Ring in der Karte des Spielers am Zug an.
 3. Läuft die Zeit ab, wählt der Server über `MuehleGame.makeRandomLegalMove()` einen **zufälligen legalen Zug** und führt ihn aus – geprüft durch dieselbe Regel-Engine, die auch menschliche Züge validiert.
 4. Beide Clients erhalten `turnTimeout` (wer die Zeit überschritten hat und welcher Zug ausgeführt wurde) sowie das übliche `gameStateUpdate`. Im Zugprotokoll erscheint der Zug mit dem Zusatz *(automatisch)*.
 5. Anschließend läuft die Uhr für den Gegner weiter. Parallele Partien haben jeweils eine eigene Uhr; endet eine Partie oder verlässt ein Spieler sie, wird die zugehörige Uhr gestoppt.
@@ -165,7 +168,7 @@ Das Projekt verfügt über eine umfassende Testsuite mit Jest. Da alle Quellen E
 npm test
 ```
 
-Getestet werden (314 Tests in 12 Test-Dateien):
+Getestet werden (323 Tests in 12 Test-Dateien):
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
@@ -179,7 +182,8 @@ Getestet werden (314 Tests in 12 Test-Dateien):
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
 - Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
-- Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating).
+- Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating) und die Statuszeile mit der Uhr in jeder Spielerkarte.
+- Anmeldeformular (`required`, `pattern`, Absenden per `submit`, gemerkter Name) und die Rückmeldung am Brett statt Toasts bei wirkungslosen Klicks.
 - Ton-Einstellung auch bei blockiertem `localStorage` (abgeschaltete Website-Daten).
 - Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die Architekturregel, dass nur `app.js` mit dem Socket spricht.
 - Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine Vendor-Metatags, nur ES-Module, keine Feature-Erkennung, Node-Built-ins über `node:`.
@@ -253,8 +257,8 @@ js/app.js  →  /socket.io/socket.io.esm.min.js · /shared/muehleRules.js
 Die Aufteilung folgt einer einzigen Regel: **die Views zeichnen, der Controller
 spricht.** `hudView.js`, `dockView.js`, `overlays.js` und `boardRenderer.js`
 bekommen fertige Daten und besitzen keinen Socket; nur `app.js` sendet Aktionen
-an den Server und verteilt dessen Antworten. Deshalb ist der Zug-Countdown im
-HUD auch reine Anzeige: er kann gar keinen Zug auslösen, die einzige zählende
+an den Server und verteilt dessen Antworten. Deshalb ist der Zug-Countdown in
+den Spielerkarten auch reine Anzeige: er kann gar keinen Zug auslösen, die einzige zählende
 Uhr läuft im `GameManager`.
 
 Werkzeuge, die den Client als Ganzes lesen (die statischen Client-Tests), gehen
@@ -299,8 +303,8 @@ Web-Spiel/
 │   │   ├── layout.css        # App-Shell: Header (Verbindungsstatus, Ton) & Screen-Switcher
 │   │   ├── controls.css      # Buttons & Eingabefelder
 │   │   ├── login.css         # Screen 1 & 2: Login/Lobby und Matchmaking-Warteschlange
-│   │   ├── hud.css           # Screen 3: Phasenanzeige, Zug-Badge, Countdown, Hinweisbanner
-│   │   ├── arena.css         # Screen 3: Spielerkarten und die Brettfläche dazwischen
+│   │   ├── hud.css           # Screen 3: Statuszeile (Phase und Anweisung) & Spielwerkzeuge
+│   │   ├── arena.css         # Screen 3: Spielerkarten mit Zuguhr und die Brettfläche dazwischen
 │   │   ├── dock.css          # Screen 3: Zugprotokoll & Chat (auf Smartphones mit Tab-Leiste)
 │   │   ├── board.css         # SVG-Brett (Gradienten, Marker, Stein-Animationen)
 │   │   ├── modals.css        # Native <dialog>-Elemente (::backdrop, Scroll-Sperre) & Toasts
@@ -308,7 +312,7 @@ Web-Spiel/
 │   └── js/
 │       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
 │       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen, Hervorhebungen & Stein-Animationen
-│       ├── hudView.js        # Phasen-, Zug- und Spieleranzeige sowie der Zug-Countdown
+│       ├── hudView.js        # Statuszeile, Spielerkarten und die Zuguhr in der Karte des Spielers am Zug
 │       ├── dockView.js       # Zugprotokoll, Chat und die Tab-Leiste auf kleinen Bildschirmen
 │       ├── overlays.js       # Dialog-Antworten (Aufgeben, Spielende), Toasts und Verbindungsanzeige
 │       └── app.js            # Controller: Socket.io-Client, Screen-Wechsel & Brett-Interaktion
