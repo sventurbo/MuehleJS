@@ -457,7 +457,7 @@ sequenceDiagram
 
 | Event | Payload | Validierung & Vorbedingungen | Antwort / Reaktion |
 |:---|:---|:---|:---|
-| `login` | `{ username: string }` | Queue-Rate-Limit aktiv; String getrimmt (max. 20 Zeichen) | `queueWaiting` oder `gameStart` |
+| `login` | `{ username: string }` | Queue-Rate-Limit aktiv; String getrimmt (max. 12 Zeichen) | `queueWaiting` oder `gameStart` |
 | `placePiece` | `{ point: string }` | Phase `SETTING`; `turn == player`; Punkt in `POINTS` & frei | `gameStateUpdate` oder `actionError` |
 | `movePiece` | `{ from: string, to: string }` | Phase `MOVING`; `board[from] == player`; Ziel frei; Nachbar oder Jump | `gameStateUpdate` oder `actionError` |
 | `removePiece` | `{ point: string }` | `awaitingRemoval == true`; Stein gehört Gegner; Mühlenschutz beachtet | `gameStateUpdate` oder `actionError` |

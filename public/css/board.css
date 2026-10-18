@@ -67,13 +67,22 @@
 
 .grid-label {
   fill: var(--board-label);
-  opacity: 0.45;
+  /* Voll deckend, damit die Koordinaten lesbar bleiben und die
+     Kontrastprüfung die tatsächlich gerenderte Farbe prüft (Issue #59).
+     rem statt einer festen px-Schriftgröße. */
+  font-size: 0.7rem;
 }
 
 /* Touch devices get the same socket feedback on press instead of on hover. */
 .board-point-group:active .grid-socket {
   fill: var(--hover-socket);
   stroke: var(--accent-blue);
+}
+
+/* Tastaturfokus sichtbar machen (Issue #58). */
+.board-point-group:focus-visible .grid-socket {
+  stroke: var(--accent-blue);
+  stroke-width: 2.5;
 }
 
 /* Point markers. Every point carries all three of them from the moment the
