@@ -280,7 +280,7 @@ export class BoardRenderer {
     };
 
     this.interactiveLayer.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.code === 'Enter' || e.code === 'Space') {
         e.preventDefault();
         const pt = e.target.closest('.board-point-group')?.getAttribute('data-point');
         if (pt) this.onPointClick?.(pt);
