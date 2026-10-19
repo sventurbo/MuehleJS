@@ -551,6 +551,20 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       expect(gm.waitingQueue.length).toBe(1);
       expect(gm.waitingQueue[0].username).toBe('Alice');
     });
+
+    test('rejects a username that is empty after sanitization (Issue #56)', () => {
+      const socket = {
+        id: 'sock_control',
+        connected: true,
+        join: jest.fn(),
+        emit: jest.fn()
+      };
+      // Nur Steuerzeichen: sanitizeText entfernt sie, danach bleibt ein leerer
+      // Name übrig, der abgelehnt werden muss.
+      gm.enqueuePlayer(socket, String.fromCharCode(0).repeat(12));
+      expect(gm.waitingQueue.length).toBe(0);
+      expect(socket.emit).not.toHaveBeenCalled();
+    });
   });
 
   describe('XSS: the client is the escaping boundary', () => {

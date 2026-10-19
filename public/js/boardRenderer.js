@@ -119,7 +119,7 @@ function pointGroupsMarkup(hitRadius) {
   return Object.entries(POINT_COORDS)
     .map(
       ([pt, c]) => `
-    <g class="board-point-group" data-point="${pt}" transform="translate(${c.x}, ${c.y})">
+    <g class="board-point-group" role="button" tabindex="0" aria-label="Feld ${pt}" data-point="${pt}" transform="translate(${c.x}, ${c.y})">
       <!-- Transparent wide hit area for easy clicking / tapping -->
       <circle cx="0" cy="0" r="${hitRadius}" fill="transparent" class="hit-area" />
       <!-- Base socket, inside the group so hover/press feedback can reach it -->
@@ -198,7 +198,7 @@ export class BoardRenderer {
         <!-- Active Mill Glowing Lines Group -->
         <g id="mill-glow-lines"></g>
 
-        <g id="grid-labels" class="grid-labels" font-size="9" text-anchor="middle" dominant-baseline="central">${gridLabelsMarkup()}</g>
+        <g id="grid-labels" class="grid-labels" text-anchor="middle" dominant-baseline="central">${gridLabelsMarkup()}</g>
 
         <!-- Interactive Pieces and Target Markers Layer -->
         <g id="interactive-layer">${pointGroupsMarkup(this.hitRadius)}</g>
@@ -218,6 +218,85 @@ export class BoardRenderer {
     this.interactiveLayer.addEventListener('click', e => {
       const pt = e.target.closest('.board-point-group')?.getAttribute('data-point');
       if (pt) this.onPointClick?.(pt);
+    });
+
+    // Tastaturbedienung: Pfeiltasten bewegen den Fokus von Feld zu Feld,
+    // Enter/Leertaste löst den ausgewählten Punkt aus (Issue #58).
+    this.#initKeyboardNavigation();
+  }
+
+  /**
+   * Tastaturbedienung des Bretts.
+   *
+   * Jedes Feld ist ein fokussierbarer Button. Die Pfeiltasten bewegen den Fokus
+   * zum nächsten Feld in die jeweilige Himmelsrichtung (fehlt eines, wird im
+   * Lesezyklus weitergeschaltet), Enter und Leertaste lösen den Fokuspunkt aus
+   * – dieselbe Aktion, die auch ein Klick auslöst.
+   */
+  #initKeyboardNavigation() {
+    const points = Array.from(this.interactiveLayer.querySelectorAll('.board-point-group')).map(group => {
+      const pt = group.getAttribute('data-point');
+      return { element: group, point: pt, ...POINT_COORDS[pt] };
+    });
+
+    const focusPoint = pt => {
+      const group = this.pointGroups[pt];
+      if (group) group.focus();
+    };
+
+    // Nächstes Feld in eine Himmelsrichtung; nichts weiter in die Richtung =>
+    // im Lesezyklus (top-to-bottom, left-to-right) weitermachen.
+    const moveFocus = (dx, dy) => {
+      const active = document.activeElement;
+      if (!active || !active.classList.contains('board-point-group')) return;
+      const current = points.find(p => p.element === active);
+      if (!current) return;
+
+      const candidates = points.filter(p => {
+        if (dx > 0) return p.x > current.x;
+        if (dx < 0) return p.x < current.x;
+        if (dy > 0) return p.y > current.y;
+        return p.y < current.y;
+      });
+
+      if (candidates.length === 0) {
+        const ordered = points.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+        const index = ordered.findIndex(p => p.point === current.point);
+        const step = dx > 0 || dy > 0 ? 1 : -1;
+        focusPoint(ordered[(index + step + ordered.length) % ordered.length].point);
+        return;
+      }
+
+      let best = candidates[0];
+      let bestDist = Math.abs(best.x - current.x) + Math.abs(best.y - current.y);
+      for (const cand of candidates.slice(1)) {
+        const dist = Math.abs(cand.x - current.x) + Math.abs(cand.y - current.y);
+        if (dist < bestDist) {
+          best = cand;
+          bestDist = dist;
+        }
+      }
+      focusPoint(best.point);
+    };
+
+    this.interactiveLayer.addEventListener('keydown', e => {
+      if (e.code === 'Enter' || e.code === 'Space') {
+        e.preventDefault();
+        const pt = e.target.closest('.board-point-group')?.getAttribute('data-point');
+        if (pt) this.onPointClick?.(pt);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        moveFocus(-1, 0);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        moveFocus(1, 0);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveFocus(0, -1);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveFocus(0, 1);
+      }
     });
   }
 
