@@ -1,137 +1,192 @@
-# Mühle (Nine Men's Morris) – Multiplayer Web-Spiel
+# Mühle – Multiplayer im Browser
 
-Ein modernes, responsives Multiplayer-Webspiel für das traditionelle Strategiespiel **Mühle** (*Nine Men's Morris* / *Mill*), entwickelt im Rahmen der Vorlesung Web-Programmierung.
+[![CI](https://github.com/sventurbo/MuehleJS/actions/workflows/node.js.yml/badge.svg)](https://github.com/sventurbo/MuehleJS/actions/workflows/node.js.yml)
+![Node.js 26](https://img.shields.io/badge/Node.js-26-339933)
+![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue)
 
-Das Projekt verzichtet im Frontend vollständig auf große Frameworks (reines **HTML5, CSS3 und Vanilla JavaScript**) und nutzt serverseitig **Node.js, Express** und **Socket.io** für die Echtzeit-Kommunikation.
+Das klassische Strategiespiel **Mühle** (*Nine Men's Morris*) für zwei Personen, gespielt in
+Echtzeit über den Browser. Entstanden als Portfolioaufgabe im Modul Web-Entwicklung (DHBW).
 
----
+- **Frontend**: reines HTML, CSS und JavaScript ohne Framework und ohne Build-Schritt
+- **Backend**: Node.js mit Express und Socket.io
+- **Spielablauf**: anmelden, automatisch einen Gegner zugeteilt bekommen, losspielen
 
-## 🎯 Features & Highlights
+> **Schnellstart**
+>
+> ```bash
+> npm install && npm run build && npm start   # danach http://localhost:3000 öffnen
+> ```
 
-- **Vollständige offizielle Mühle-Regeln**:
-  - **Phase 1: Setzphase**: Abwechselndes Setzen der 9 Steine pro Spieler.
-  - **Phase 2: Zugphase**: Ziehen entlang der markierten Verbindungslinien.
-  - **Phase 3: Endphase (Springen)**: Sobald ein Spieler auf genau 3 Steine reduziert ist, darf er frei auf jedes offene Feld springen.
-  - **Mühlenerkennung**: Automatische Erkennung geschlossener Mühlen (3 Steine in einer Reihe).
-  - **Schlag-Regel mit Mühlenschutz**: Steine in geschlossenen gegnerischen Mühlen sind geschützt, *es sei denn*, der Gegner besitzt ausschließlich Steine in Mühlen.
-  - **Sieg-/Verlustprüfung**: Sieg bei Reduktion des Gegners auf weniger als 3 Steine oder wenn der Gegner keinen legalen Zug mehr ausführen kann (eingesperrt).
-  - **Remis**: Entsteht in der Zugphase dieselbe Stellung zum dritten Mal oder wird 50 Züge lang kein Stein geschlagen, endet die Partie unentschieden. Ohne diese Regeln könnten zwei Spieler endlos hin und her ziehen.
-- **Zug-Timer (25 Sekunden pro Zug)**:
-  - Jede Entscheidung – Setzen, Ziehen und das Schlagen nach einer Mühle – ist auf 25 Sekunden begrenzt.
-  - Die Uhr läuft ausschließlich auf dem Server; der Countdown im Browser ist reine Anzeige.
-  - Läuft die Zeit ab, führt der Server einen zufälligen **legalen** Zug für den Spieler aus, statt den Zug verfallen zu lassen. Die Partie bleibt in Bewegung und niemand verliert mehr als die freie Wahl.
-  - Wer **dreimal in Folge** die Zeit überschreitet, verliert die Partie. So halten zwei untätige Spieler keine Partie ewig am Leben.
-  - Details siehe [Zug-Timer](#-zug-timer-25-sekunden-pro-zug).
-- **Automatisches Matchmaking**:
-  - Spieler melden sich über die Login-Seite an.
-  - Sobald ein zweiter Spieler beitritt, werden beide sofort gepaart und das Spiel startet in einem isolierten Raum.
-  - Beliebig viele parallele Partien gleichzeitig möglich.
-- **Robustes Fehlermanagement & Sicherheit**:
-  - Bei Verbindungsabbruch eines Spielers wird die Partie sauber terminiert und der verbleibende Spieler benachrichtigt.
-  - Der Server stürzt unter keinen Umständen ab (`try/catch`-Guards, globale Exception-Handler).
-  - **DoS-Schutz**: In-Memory Sliding-Window Rate Limiter schützt Socket.io- und HTTP-Events vor Spam und Flooding.
-    - Anmeldeversuche werden pro Verbindung und pro Client-Adresse gezählt. `X-Forwarded-For` zählt nur hinter einem per `TRUST_PROXY` freigegebenen Reverse Proxy (siehe [Betrieb hinter einem Reverse Proxy](#4-betrieb-hinter-einem-reverse-proxy-optional)).
-    - Gezählt wird dabei auf den Adressblock: IPv4 (auch als IPv4-mapped `::ffff:a.b.c.d`) auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix. Ein IPv6-Client verfügt üblicherweise über mindestens ein ganzes `/64` und könnte sonst pro Verbindung eine frische Adresse wählen, ohne je an sein Budget zu stoßen.
-  - **Eingabesäuberung**: Alle Client-Inputs werden serverseitig bereinigt (HTML-Sanitization).
-- **Dual-Stack Netzwerkunterstützung (IPv6 & IPv4)**:
-  - Primär auf **IPv6** (`::`) gebunden – ideal für moderne Server- und Cloud-Umgebungen.
-  - Unterstützt gleichzeitig **IPv4** (über IPv4-mapped Dual-Stack oder dedizierten sekundären Fallback-Listener auf `0.0.0.0`).
-- **Minimalistisches, responsives UI**:
-  - Durchgängiges Design-System: neutrale Flächen, ein einziger Akzentfarbton (Blau), Haarlinien-Ränder, 4pt-Abstandsraster und translucent Materials (`backdrop-filter`) statt farbiger Glow-Effekte.
-  - Vektorbasiertes, gestochen scharfes **SVG-Spielfeld**; Auswahlring, Zielmarker und Mühle-Strahl sind ruhige, statische bzw. einmalig eingeblendete Marker.
-  - **Eine Statuszeile statt vieler Anzeigen**: Phase und Anweisung stehen in einem Satz über dem Brett, die Farbe sagt, wer am Zug ist. Die Bedenkzeit läuft wie bei einer Schachuhr als Ring in der Karte des Spielers am Zug. Das Brett gewinnt dadurch Höhe (bei 1024 × 768 rund 450 statt 396 px).
-  - **Rückmeldung am Brett**: Ein Klick, der nichts bewirken kann (besetztes Feld, Gegner am Zug, kein Weg zum Ziel), lässt den Punkt kurz wackeln und rot aufleuchten, statt einen Hinweis einzublenden.
-  - **Anmeldung als echtes Formular**: Der Browser prüft den Namen (`required`, `pattern`, `maxlength`), Enter schickt ab, der Server prüft erneut. Der zuletzt genutzte Name wird gemerkt.
-  - **Animierte Steine**: ein gesetzter Stein springt kurz auf, ein gezogener gleitet leicht angehoben vom Start- zum Zielfeld (auch beim Springen), ein geschlagener blendet aus. Der Renderer patcht das Brett, statt es neu aufzubauen – Steine, die liegen bleiben, behalten ihren SVG-Knoten.
-  - Vollständiges **Light- und Dark-Theme** über `color-scheme` und `light-dark()`: ein einziger Token-Block trägt beide Themes, der Browser wählt die passende Seite nach der Systemeinstellung. Das Spielbrett folgt dem Theme (helles Brett im Light-Mode, dunkles im Dark-Mode).
-  - Alle Icons sind **Inline-SVG** in `currentColor` – keine Emoji, keine Icon-Fonts, keine externen Assets.
-  - Optimiert für Desktop ab **1024 × 768 Pixeln**: die komplette Spielfläche passt ohne Scrollen ins Fenster und skaliert auf größere Bildschirme.
-  - **Vollwertige Smartphone-Unterstützung** (getestet bis hinunter zu 320 px Breite, Referenzgerät iPhone):
-    - Eigene Touch-Layouts ab 700 px Breite: Spielername und „Spieler suchen" stehen in eigenen Zeilen, beide Spielerkarten teilen sich eine kompakte Zeile über dem Brett, das Brett nutzt die volle Breite.
-    - Zugprotokoll und Chat teilen sich auf dem Handy eine Tab-Leiste (inkl. Ungelesen-Markierung), statt die Seite endlos zu verlängern.
-    - Querformat: Spielerkarten flankieren das Brett, dessen Größe sich an der kurzen Bildschirmkante orientiert.
-    - Mobile Feinheiten: `viewport-fit=cover` + `env(safe-area-inset-*)` für Notch und Home-Indicator, `100dvh` gegen die einklappende Browser-Leiste, 16 px Eingabefelder (kein Auto-Zoom), entsperrter Web-Audio-Kontext beim ersten Tap, Web App Manifest für den Home-Bildschirm.
-    - Touch-Bedienung: Tippziele ab 44 px, vergrößerte Trefferflächen auf dem Spielbrett, Druck- statt Hover-Feedback (Hover-Stile gelten nur für echte Zeigegeräte).
-  - Respektiert `prefers-reduced-motion` (gilt auch für die Stein-Animationen).
-  - Läuft **ausschließlich auf den aktuellen Versionen** von **Chrome, Firefox, Safari** – Desktop wie auch **iOS Safari** und **Chrome für Android**. Es gibt bewusst keine Rückwärtskompatibilität: keine Vendor-Präfixe, keine Fallback-Deklarationen, keine Feature-Erkennung, ES-Module statt globaler Skripte (`tests/ModernStandards.test.js` wacht darüber).
-  - Integrierte Web-Audio-Synthesizer-Soundeffekte (keine externen MP3-Dateien nötig, 100% offlinefähig).
-  - Integrierter Live-Chat & detailliertes Zugprotokoll.
-  - Native **`<dialog>`-Dialoge** für Regeln, Aufgeben und Spielende: Der Browser legt sie in den Top Layer, sperrt die Seite dahinter und schließt sie mit Esc. Regeln und Aufgeben öffnen und schließen sich über **Invoker Commands** (`command`/`commandfor`) ganz ohne JavaScript; Aufgeben fragt in einem eigenen Dialog nach statt über `confirm()`.
-- **Automatisierte Testsuite**:
-   - 355 automatisierte Tests mit **Jest** für Spiellogik, Regeln, Matchmaking, Zug-Timer, Socket-Integration, Sicherheit/DoS-Schutz, den Client-Regel-Abgleich, das responsive Mobile-Layout, die Brett-Animationen, die Ton-Einstellung und die Konfiguration über `.env`.
-   - Linter (**ESLint**) und Formatter (**Prettier**) sind konfiguriert und laufen in der CI.
+## Inhalt
+
+1. [Spielregeln](#-spielregeln)
+2. [Funktionen](#-funktionen)
+3. [Installation und Start](#-installation-und-start)
+4. [Konfiguration](#-konfiguration)
+5. [Zug-Timer](#-zug-timer)
+6. [Tests und Qualitätssicherung](#-tests-und-qualitätssicherung)
+7. [Architektur](#-architektur)
+8. [Projektstruktur](#-projektstruktur)
+9. [Lizenz](#-lizenz)
+
+Architektur, Zustandsautomaten und das Socket.io-Protokoll beschreibt
+[Systemmodel.md](Systemmodel.md) ausführlich als Mermaid-Diagramme.
 
 ---
 
-## 🚀 Schnellanleitung (Installation & Start)
+## 📜 Spielregeln
 
-Das Projekt läuft auf jedem Rechner (z. B. Ubuntu, Debian, macOS) mit einer installierten Node.js-Umgebung. Wie für die Browser gilt auch hier: unterstützt wird nur die jeweils neueste Node.js-Hauptversion – aktuell **Node.js >= 26** (mit npm 11).
+Jeder Spieler hat **9 Steine**. Ziel ist es, den Gegner auf **2 Steine** zu reduzieren oder
+ihn so einzusperren, dass er keinen legalen Zug mehr hat.
 
-Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc` (`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Erscheint eine neue Node.js-Hauptversion, werden `engines`, dieser Abschnitt und die CI-Matrix in `.github/workflows/node.js.yml` gemeinsam angehoben.
-
-npm führt Installationsskripte von Abhängigkeiten nur aus, wenn `allowScripts` in `package.json` sie erlaubt. Die beiden Jest-Abhängigkeiten `@parcel/watcher` und `unrs-resolver` sind dort ausdrücklich abgelehnt: Ihre Skripte bauen native Binärdateien nur als Fallback, wenn die mitgelieferten fehlen. ESLint, Prettier und ihre Abhängigkeiten bringen keine Installationsskripte mit und brauchen daher keinen Eintrag.
-
-### 1. Abhängigkeiten installieren
-```bash
-npm install
-```
-
-### 2. Build ausführen
-```bash
-npm run build
-```
-*(Da reines Vanilla JavaScript im Frontend verwendet wird, ist kein komplexer Bundler nötig. Der Befehl schließt sofort erfolgreich ab).*
-
-### 3. Server starten
-
-Standardmäßig auf Port `3000`:
-```bash
-npm start
-```
-
-Mit einem benutzerdefinierten Port (z. B. Port `8080`):
-```bash
-npm start 8080
-# oder
-node server.js 8080
-# oder
-PORT=8080 npm start
-```
-
-Ein Port auf der Kommandozeile hat Vorrang vor der Umgebungsvariable `PORT`, auch vor einer `PORT`-Zeile in `.env` (siehe [Abschnitt 5](#5-einstellungen-in-env-optional)). Ohne beides gilt `3000`. Die `.env`-Datei liest nur `npm start`, nicht der direkte Aufruf `node server.js`.
-
-Anschließend ist das Spiel erreichbar unter:
-- **IPv6:** `http://[::1]:<port>` (bzw. über die öffentliche IPv6-Adresse des Servers)
-- **IPv4:** `http://127.0.0.1:<port>` (bzw. über die IPv4-Adresse des Servers)
-
-### 4. Betrieb hinter einem Reverse Proxy (optional)
-
-Anmeldeversuche werden nicht nur pro Verbindung, sondern auch pro Client-Adresse begrenzt. Als Adresse gilt standardmäßig die, von der die Verbindung tatsächlich kommt. Den Header `X-Forwarded-For` ignoriert der Server, denn jeder Client kann ihn selbst setzen und sich so für jede Verbindung eine neue Adresse ausdenken.
-
-Läuft der Server hinter einem Reverse Proxy (z. B. nginx, Caddy, Traefik), kommen dagegen alle Verbindungen vom Proxy, und alle Spieler teilen sich ein gemeinsames Budget. Für diesen Fall legt die Umgebungsvariable `TRUST_PROXY` fest, welchen Proxys der Server den Header glaubt:
-
-| Wert | Bedeutung |
+| Phase | Was passiert |
 |---|---|
-| nicht gesetzt, `false` oder `0` | Standard: `X-Forwarded-For` wird ignoriert. |
-| Adressen oder Netze, kommagetrennt (z. B. `127.0.0.1` oder `10.0.0.0/8,fd00::/8`) | Nur Verbindungen von diesen Proxys dürfen die Client-Adresse nennen. Zusätzlich gibt es die Kurzformen `loopback`, `linklocal` und `uniquelocal`. |
-| Anzahl `n` (z. B. `1`) | Die `n` Hops direkt vor dem Server gelten als Proxys, egal von welcher Adresse sie kommen. |
+| **1 · Setzen** | Beide setzen abwechselnd je einen Stein auf einen freien Punkt, bis alle 18 Steine liegen. |
+| **2 · Ziehen** | Ein eigener Stein zieht entlang einer Linie auf ein freies Nachbarfeld. |
+| **3 · Springen** | Wer nur noch 3 Steine hat, darf auf jedes freie Feld springen. |
+
+- **Mühle**: Drei eigene Steine in einer geraden Reihe bilden eine Mühle. Wer sie schließt, schlägt
+  sofort einen gegnerischen Stein. Steine in Mühlen sind geschützt, außer der Gegner hat
+  ausschließlich Steine in Mühlen.
+- **Remis**: Die Partie endet unentschieden, wenn in der Zugphase dieselbe Stellung (gleiches Brett,
+  gleicher Spieler am Zug) zum dritten Mal entsteht oder 50 Züge lang kein Stein geschlagen wird.
+  Ohne diese Regeln könnten zwei Spieler endlos hin und her ziehen.
+- **Bedenkzeit**: Jede Entscheidung hat 25 Sekunden. Wer dreimal in Folge die Zeit überschreitet,
+  verliert (siehe [Zug-Timer](#-zug-timer)).
+
+---
+
+## ✨ Funktionen
+
+### Spiel
+
+- **Vollständige Regeln**: alle drei Phasen, Mühlenerkennung, Mühlenschutz samt Ausnahme, Sieg durch
+  Dezimieren oder Einsperren, Remis durch Stellungswiederholung oder 50 Züge ohne Schlagen.
+- **Automatisches Matchmaking**: Sobald sich ein zweiter Spieler anmeldet, werden beide gepaart und
+  die Partie startet in einem eigenen Raum. Beliebig viele Partien laufen parallel.
+- **Zug-Timer**: 25 Sekunden pro Entscheidung, gemessen allein vom Server. Läuft die Zeit ab, zieht
+  der Server zufällig, aber legal.
+- **Live-Chat und Zugprotokoll** neben dem Brett.
+
+### Oberfläche
+
+- **Eine Statuszeile statt vieler Anzeigen**: Phase und Anweisung stehen in einem Satz über dem
+  Brett, die Farbe zeigt, wer am Zug ist. Die Bedenkzeit läuft wie bei einer Schachuhr als Ring in
+  der Karte des Spielers am Zug. Das Brett gewinnt dadurch Höhe (bei 1024 × 768 rund 450 statt 396 px).
+- **SVG-Spielfeld**, gestochen scharf in jeder Größe. Auswahlring, Zielmarker und Mühle-Strahl sind
+  ruhige, statische oder einmalig eingeblendete Marker.
+- **Animierte Steine**: Ein gesetzter Stein springt kurz auf, ein gezogener gleitet leicht angehoben
+  zum Ziel (auch beim Springen), ein geschlagener blendet aus. Der Renderer patcht das Brett, statt
+  es neu aufzubauen: Liegen bleibende Steine behalten ihren SVG-Knoten.
+- **Rückmeldung am Brett**: Ein wirkungsloser Klick (besetztes Feld, Gegner am Zug, kein Weg zum
+  Ziel) lässt den Punkt kurz wackeln und rot aufleuchten, statt einen Hinweis einzublenden.
+- **Anmeldung als echtes Formular**: Der Browser prüft den Namen (`required`, `pattern`,
+  `maxlength`), Enter schickt ab, der Server prüft erneut. Der zuletzt genutzte Name wird gemerkt.
+- **Native `<dialog>`-Dialoge** für Regeln, Aufgeben und Spielende: Top Layer, gesperrte Seite
+  dahinter, Esc schließt. Regeln und Aufgeben öffnen und schließen per **Invoker Commands**
+  (`command`/`commandfor`) ganz ohne JavaScript; Aufgeben fragt in einem eigenen Dialog nach statt
+  über `confirm()`.
+- **Light- und Dark-Theme** über `color-scheme` und `light-dark()`: Ein Token-Block trägt beide
+  Themes, der Browser folgt der Systemeinstellung, auch das Brett.
+- **Ruhiges Design-System**: neutrale Flächen, ein Akzentton (Blau), Haarlinien-Ränder,
+  4-pt-Abstandsraster und durchscheinende Materialien (`backdrop-filter`) statt Glow-Effekten.
+- **Keine externen Assets**: Icons sind Inline-SVG in `currentColor` (keine Emoji, keine
+  Icon-Fonts), Soundeffekte entstehen per Web-Audio-Synthesizer.
+- **Barrierearm**: Kontraste nach WCAG 2.1 AA (automatisch geprüft), `prefers-reduced-motion` wird
+  respektiert, auch von den Stein-Animationen.
+
+### Desktop und Smartphone
+
+- **Desktop ab 1024 × 768**: Die ganze Spielfläche passt ohne Scrollen ins Fenster und wächst mit
+  größeren Bildschirmen.
+- **Smartphone bis 320 px Breite** (Referenzgerät iPhone):
+  - Eigene Touch-Layouts bis 700 px Breite: Name und „Spieler suchen“ in eigenen Zeilen,
+    beide Spielerkarten in einer kompakten Zeile über dem Brett, das Brett in voller Breite.
+  - Zugprotokoll und Chat teilen sich eine Tab-Leiste mit Ungelesen-Markierung.
+  - Im Querformat flankieren die Spielerkarten das Brett, dessen Größe sich nach der kurzen
+    Bildschirmkante richtet.
+  - Feinheiten: `viewport-fit=cover` und `env(safe-area-inset-*)` für Notch und Home-Indicator,
+    `100dvh` gegen die einklappende Browser-Leiste, 16-px-Eingabefelder (kein Auto-Zoom),
+    entsperrter Audio-Kontext beim ersten Tap, Web App Manifest für den Home-Bildschirm.
+  - Touch-Bedienung: Tippziele ab 44 px, vergrößerte Trefferflächen auf dem Brett, Druck- statt
+    Hover-Feedback (Hover-Stile gelten nur für echte Zeigegeräte).
+
+### Robustheit und Sicherheit
+
+- **Der Server ist autoritativ**: Er prüft jede Aktion, dem Client wird nie vertraut.
+- **Der Server stürzt nicht ab**: `try/catch`-Guards und globale Exception-Handler. Bricht eine
+  Verbindung ab, endet die Partie sauber, und der verbliebene Spieler wird benachrichtigt.
+- **DoS-Schutz**: Ein In-Memory-Rate-Limiter (Sliding Window) bremst Spam auf Socket.io- und
+  HTTP-Ebene. Anmeldeversuche zählen pro Verbindung und pro Adressblock (siehe
+  [Reverse Proxy](#betrieb-hinter-einem-reverse-proxy)).
+- **Eingabesäuberung**: Alle Eingaben werden serverseitig bereinigt (HTML-Sanitization).
+- **IPv6 und IPv4**: Der Server lauscht auf `::` im Dual-Stack-Modus und startet bei Bedarf einen
+  eigenen IPv4-Listener (siehe [Netzwerk](#netzwerk-ipv6-und-ipv4)).
+
+### Nur aktuelle Standards
+
+Das Spiel läuft auf den **jeweils aktuellen Versionen** von Chrome, Firefox und Safari, auf dem
+Desktop wie auf iOS und Android. Rückwärtskompatibilität gibt es bewusst nicht: keine
+Vendor-Präfixe, keine Fallback-Deklarationen, keine Feature-Erkennung, ES-Module statt globaler
+Skripte. `tests/ModernStandards.test.js` wacht darüber.
+
+---
+
+## 🚀 Installation und Start
+
+**Voraussetzung**: Node.js **26 oder neuer** mit npm 11. Das Projekt läuft auf jedem System mit
+Node.js, etwa Ubuntu, Debian oder macOS. Wie bei den Browsern wird nur die jeweils neueste
+Hauptversion unterstützt.
 
 ```bash
-TRUST_PROXY=loopback npm start
+npm install        # 1. Abhängigkeiten installieren
+npm run build      # 2. Build (kein Bundler nötig, schließt sofort ab)
+npm start          # 3. Server starten, Standardport 3000
 ```
-*(Beispiel für einen nginx auf demselben Rechner.)*
 
-Der Server liest die Kette in `X-Forwarded-For` von rechts nach links: Jeder Eintrag eines vertrauten Proxys wird übersprungen, der erste andere ist der Client. Bei `TRUST_PROXY=10.0.0.1`, einer Verbindung von `10.0.0.1` und `X-Forwarded-For: 198.51.100.1, 203.0.113.7` zählt also `203.0.113.7`; `198.51.100.1` hat der Client selbst mitgeschickt und wird verworfen. Kommt eine Verbindung nicht von einem vertrauten Proxy, bleibt der Header unbeachtet.
+Danach ist das Spiel erreichbar unter:
 
-- `TRUST_PROXY=true` wird abgelehnt: Dann wäre jeder Hop vertrauenswürdig und es zählte der linke Eintrag, den der Client selbst schreibt. Auch ungültige Adressen brechen den Start mit einer Fehlermeldung ab.
-- Der Proxy muss die Adresse, von der er angesprochen wird, an den Header anhängen oder ihn damit überschreiben (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
-- Mit einer Anzahl statt Adressen darf der Node-Port nicht direkt erreichbar sein, sonst umgeht ein Client den Proxy und füllt den Header selbst. Eine Adressliste ist in diesem Punkt robuster.
+| Protokoll | Adresse |
+|---|---|
+| IPv4 | `http://127.0.0.1:<port>` oder die IPv4-Adresse des Servers |
+| IPv6 | `http://[::1]:<port>` oder die öffentliche IPv6-Adresse des Servers |
 
-Die so ermittelte Adresse zählt anschließend nicht für sich allein, sondern für ihren Block: IPv4 und IPv4-mapped IPv6 (`::ffff:a.b.c.d`) werden auf die reine IPv4-Adresse abgebildet, natives IPv6 auf sein `/64`-Präfix (z. B. `2001:db8:1:2::/64`). Ein IPv6-Client verfügt in der Regel über mindestens ein ganzes `/64`; ohne diese Zusammenfassung stünden ihm pro Verbindung eine frische Adresse und damit beliebig viele Budgets zur Verfügung.
+### Anderer Port
 
-### 5. Einstellungen in `.env` (optional)
+```bash
+npm start 8080          # Port als Argument
+node server.js 8080     # dasselbe ohne npm
+PORT=8080 npm start     # Port als Umgebungsvariable
+```
 
-Alle Einstellungen des Servers sind optional und kommen aus Umgebungsvariablen. Statt sie bei jedem Start anzugeben, können sie in einer Datei `.env` im Projektverzeichnis stehen. `npm start` lädt sie mit der in Node.js eingebauten Option `--env-file-if-exists=.env`, ein zusätzliches Paket wie `dotenv` ist nicht nötig. Fehlt die Datei, meldet Node das in einer Zeile und der Server startet mit den Standardwerten.
+Vorrang hat der Port auf der Kommandozeile, dann `PORT` aus der Shell, dann `PORT` aus `.env`,
+zuletzt der Standard `3000`. Die Datei `.env` liest nur `npm start`, nicht `node server.js`.
+
+<details>
+<summary><strong>Warum <code>npm install</code> auf alten Node-Versionen abbricht</strong></summary>
+
+<br>
+
+Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc`
+(`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit
+einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Erscheint
+eine neue Node.js-Hauptversion, werden `engines`, dieser Abschnitt und die CI-Matrix in
+`.github/workflows/node.js.yml` gemeinsam angehoben.
+
+npm führt Installationsskripte von Abhängigkeiten nur aus, wenn `allowScripts` in `package.json`
+sie erlaubt. Die beiden Jest-Abhängigkeiten `@parcel/watcher` und `unrs-resolver` sind dort
+ausdrücklich abgelehnt: Ihre Skripte bauen native Binärdateien nur als Fallback, wenn die
+mitgelieferten fehlen. ESLint, Prettier und ihre Abhängigkeiten bringen keine Installationsskripte
+mit und brauchen daher keinen Eintrag.
+
+</details>
+
+---
+
+## 🔧 Konfiguration
+
+Alle Einstellungen sind optional und kommen aus Umgebungsvariablen. Damit sie nicht bei jedem Start
+angegeben werden müssen, können sie in einer Datei `.env` im Projektverzeichnis stehen:
 
 ```bash
 cp .env.example .env   # Vorlage kopieren, dann die gewünschte Zeile einkommentieren
@@ -140,16 +195,77 @@ cp .env.example .env   # Vorlage kopieren, dann die gewünschte Zeile einkomment
 | Variable | Standard | Bedeutung |
 |---|---|---|
 | `PORT` | `3000` | Port des Servers (IPv6 und IPv4) |
-| `TRUST_PROXY` | nicht gesetzt | Vertrauenswürdige Reverse Proxys, siehe [Abschnitt 4](#4-betrieb-hinter-einem-reverse-proxy-optional) |
-| `TURN_TIMEOUT_MS` | `25000` | Bedenkzeit pro Entscheidung in Millisekunden, siehe [Zug-Timer](#-zug-timer-25-sekunden-pro-zug) |
+| `TRUST_PROXY` | nicht gesetzt | Vertrauenswürdige Reverse Proxys, siehe [unten](#betrieb-hinter-einem-reverse-proxy) |
+| `TURN_TIMEOUT_MS` | `25000` | Bedenkzeit pro Entscheidung in Millisekunden, siehe [Zug-Timer](#-zug-timer) |
 
-In `.env.example` ist jede Zeile auskommentiert, eine unveränderte Kopie ändert also nichts. Es gilt: ein Port auf der Kommandozeile vor Variablen aus der Shell (`PORT=8080 npm start`) vor `.env` vor dem Standardwert. `.env` steht in `.gitignore` und wird nie committet; `tests/Environment.test.js` prüft, dass `.env.example` jede Variable dokumentiert, die `server.js` liest.
+`npm start` lädt die Datei mit der in Node.js eingebauten Option `--env-file-if-exists=.env`, ein
+Paket wie `dotenv` ist nicht nötig. Fehlt die Datei, meldet Node das in einer Zeile, und der Server
+startet mit den Standardwerten. In `.env.example` ist jede Zeile auskommentiert, eine unveränderte
+Kopie ändert also nichts. `.env` steht in `.gitignore` und wird nie committet;
+`tests/Environment.test.js` prüft, dass `.env.example` jede Variable dokumentiert, die `server.js`
+liest.
+
+### Betrieb hinter einem Reverse Proxy
+
+Anmeldeversuche werden auch pro Client-Adresse begrenzt. Standardmäßig zählt die Adresse, von der
+die Verbindung tatsächlich kommt. Den Header `X-Forwarded-For` ignoriert der Server, denn jeder
+Client kann ihn selbst setzen und sich so für jede Verbindung eine neue Adresse ausdenken.
+
+Hinter einem Reverse Proxy (nginx, Caddy, Traefik …) kämen aber alle Verbindungen vom Proxy, und
+alle Spieler teilten sich ein Budget. Deshalb legt `TRUST_PROXY` fest, welchen Proxys der Server den
+Header glaubt:
+
+| Wert | Bedeutung |
+|---|---|
+| nicht gesetzt, `false` oder `0` | Standard: `X-Forwarded-For` wird ignoriert. |
+| Adressen oder Netze, kommagetrennt (z. B. `127.0.0.1` oder `10.0.0.0/8,fd00::/8`) | Nur Verbindungen von diesen Proxys dürfen die Client-Adresse nennen. Zusätzlich gibt es die Kurzformen `loopback`, `linklocal` und `uniquelocal`. |
+| Anzahl `n` (z. B. `1`) | Die `n` Hops direkt vor dem Server gelten als Proxys, egal von welcher Adresse sie kommen. |
+
+```bash
+TRUST_PROXY=loopback npm start   # z. B. für einen nginx auf demselben Rechner
+```
+
+<details>
+<summary><strong>Details: Auswertung des Headers und Adressblöcke</strong></summary>
+
+<br>
+
+Der Server liest die Kette in `X-Forwarded-For` von rechts nach links: Jeder Eintrag eines
+vertrauten Proxys wird übersprungen, der erste andere ist der Client. Bei `TRUST_PROXY=10.0.0.1`,
+einer Verbindung von `10.0.0.1` und `X-Forwarded-For: 198.51.100.1, 203.0.113.7` zählt also
+`203.0.113.7`; `198.51.100.1` hat der Client selbst mitgeschickt und wird verworfen. Kommt eine
+Verbindung nicht von einem vertrauten Proxy, bleibt der Header unbeachtet.
+
+- `TRUST_PROXY=true` wird abgelehnt: Dann wäre jeder Hop vertrauenswürdig, und es zählte der linke
+  Eintrag, den der Client selbst schreibt. Auch ungültige Adressen brechen den Start mit einer
+  Fehlermeldung ab.
+- Der Proxy muss die Adresse, von der er angesprochen wird, an den Header anhängen oder ihn damit
+  überschreiben (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
+- Mit einer Anzahl statt Adressen darf der Node-Port nicht direkt erreichbar sein, sonst umgeht ein
+  Client den Proxy und füllt den Header selbst. Eine Adressliste ist in diesem Punkt robuster.
+
+Die so ermittelte Adresse zählt nicht für sich allein, sondern für ihren Block: IPv4 und
+IPv4-mapped IPv6 (`::ffff:a.b.c.d`) werden auf die reine IPv4-Adresse abgebildet, natives IPv6 auf
+sein `/64`-Präfix (z. B. `2001:db8:1:2::/64`). Ein IPv6-Client verfügt in der Regel über mindestens
+ein ganzes `/64`; ohne diese Zusammenfassung stünden ihm pro Verbindung eine frische Adresse und
+damit beliebig viele Budgets zur Verfügung.
+
+</details>
+
+### Netzwerk: IPv6 und IPv4
+
+Der Server bindet an `::` (IPv6 Unspecified). Unter Linux und macOS nimmt dieser Socket im
+Dual-Stack-Modus auch IPv4-Verbindungen an (als IPv4-mapped IPv6). Erzwingt das Betriebssystem
+`net.ipv6.bindv6only = 1`, startet `server.js` zusätzlich einen IPv4-Listener auf `0.0.0.0`, an den
+Socket.io ebenfalls angebunden wird. So ist das Spiel in jedem Fall über **beide Protokolle**
+erreichbar, auch auf einem reinen IPv4-Rechner.
 
 ---
 
-## ⏱️ Zug-Timer (25 Sekunden pro Zug)
+## ⏳ Zug-Timer
 
-Ohne Zeitlimit blockiert ein Spieler, der nicht zieht, die ganze Partie. Deshalb hat jede Entscheidung ein Zeitbudget von **25 Sekunden**:
+Ohne Zeitlimit könnte ein Spieler, der nicht zieht, die ganze Partie blockieren. Deshalb hat jede
+Entscheidung ein Budget von **25 Sekunden**:
 
 | Situation | Was die Uhr misst |
 |---|---|
@@ -157,165 +273,210 @@ Ohne Zeitlimit blockiert ein Spieler, der nicht zieht, die ganze Partie. Deshalb
 | Zug- und Springphase | Zeit bis zum Ziehen eines Steins |
 | Nach einer geschlossenen Mühle | Zeit bis zur Wahl des zu schlagenden Steins |
 
-Ablauf im Detail:
+**So läuft es ab:**
 
-1. Mit dem Spielstart beginnt die Uhr für Weiß. Jede angenommene Aktion setzt sie zurück, danach läuft sie für den nächsten Zug weiter.
-2. Der Server schickt bei jedem Neustart der Uhr das Event `turnTimer` an beide Clients; diese zeigen den Countdown als schrumpfenden Ring in der Karte des Spielers am Zug an.
-3. Läuft die Zeit ab, wählt der Server über `MuehleGame.makeRandomLegalMove()` einen **zufälligen legalen Zug** und führt ihn aus – geprüft durch dieselbe Regel-Engine, die auch menschliche Züge validiert.
-4. Beide Clients erhalten `turnTimeout` (wer die Zeit überschritten hat und welcher Zug ausgeführt wurde) sowie das übliche `gameStateUpdate`. Im Zugprotokoll erscheint der Zug mit dem Zusatz *(automatisch)*.
-5. Anschließend läuft die Uhr für den Gegner weiter. Parallele Partien haben jeweils eine eigene Uhr; endet eine Partie oder verlässt ein Spieler sie, wird die zugehörige Uhr gestoppt.
-6. Überschreitet derselbe Spieler die Zeit **dreimal in Folge**, zieht der Server nicht mehr für ihn: Er verliert die Partie, beide Clients erhalten `gameOver`. Jede eigene Aktion setzt den Zähler zurück. `turnTimeout` nennt dafür `consecutiveTimeouts` und `timeoutLimit`, und der betroffene Spieler sieht im Hinweis, wie oft es schon passiert ist. Dieser Hinweis bleibt stehen, bis er angeklickt wird: Wer die Zeit überschritten hat, war gerade nicht am Bildschirm und soll ihn trotzdem sehen.
+1. Mit dem Spielstart beginnt die Uhr für Weiß. Jede angenommene Aktion setzt sie zurück, danach
+   läuft sie für den nächsten Zug.
+2. Bei jedem Neustart der Uhr schickt der Server `turnTimer` an beide Clients. Sie zeigen den
+   Countdown als schrumpfenden Ring in der Karte des Spielers am Zug.
+3. Läuft die Zeit ab, wählt der Server über `MuehleGame.makeRandomLegalMove()` einen **zufälligen
+   legalen Zug** und führt ihn aus, geprüft von derselben Regel-Engine wie menschliche Züge.
+4. Beide Clients erhalten `turnTimeout` (wer die Zeit überschritten hat, welcher Zug ausgeführt
+   wurde) und das übliche `gameStateUpdate`. Im Zugprotokoll steht der Zug mit dem Zusatz
+   *(automatisch)*.
+5. Danach läuft die Uhr für den Gegner. Jede Partie hat ihre eigene Uhr; endet die Partie oder
+   verlässt ein Spieler sie, wird die Uhr gestoppt.
+6. Überschreitet derselbe Spieler die Zeit **dreimal in Folge**, zieht der Server nicht mehr für ihn:
+   Er verliert, beide Clients erhalten `gameOver`. Jede eigene Aktion setzt den Zähler zurück.
+   `turnTimeout` nennt dafür `consecutiveTimeouts` und `timeoutLimit`, und der Betroffene sieht im
+   Hinweis, wie oft es schon passiert ist. Der Hinweis bleibt stehen, bis er angeklickt wird: Wer die
+   Zeit überschritten hat, war gerade nicht am Bildschirm und soll ihn trotzdem sehen.
 
-**Der Timer ist bewusst rein serverseitig implementiert.** Clients sind manipulierbar: ein Countdown im Browser kann angehalten, verlangsamt oder entfernt werden. Der Client empfängt daher nur die verbleibende Zeit und zeichnet sie; die Entscheidung, dass ein Zug abgelaufen ist, trifft ausschließlich der Server.
+> **Warum nur auf dem Server?** Ein Countdown im Browser lässt sich anhalten, verlangsamen oder
+> entfernen. Der Client bekommt daher nur die verbleibende Zeit und zeichnet sie; ob ein Zug
+> abgelaufen ist, entscheidet allein der Server.
 
-### Zugzeit anpassen (optional)
-
-Die Umgebungsvariable `TURN_TIMEOUT_MS` setzt die Zugzeit in Millisekunden:
+### Zugzeit anpassen
 
 ```bash
 TURN_TIMEOUT_MS=60000 npm start   # 60 Sekunden pro Zug
 ```
 
-Ohne Angabe gelten 25 000 ms. Werte, die keine positive Zahl sind (Tippfehler, leere Variable, `0`, negative Werte), fallen auf diesen Standard zurück – der Timer lässt sich über die Umgebung also nicht versehentlich abschalten.
+Ohne Angabe gelten 25 000 ms. Werte, die keine positive Zahl sind (Tippfehler, leere Variable, `0`,
+negative Werte), fallen auf diesen Standard zurück. Der Timer lässt sich über die Umgebung also
+nicht versehentlich abschalten.
 
 ---
 
-## 🧪 Tests ausführen
+## 🧪 Tests und Qualitätssicherung
 
-Das Projekt verfügt über eine umfassende Testsuite mit Jest. Da alle Quellen ES-Module sind, läuft Jest im ESM-Modus (`--experimental-vm-modules`, im `test`-Skript bereits gesetzt):
 ```bash
-npm test
+npm test                 # Jest: 355 Tests in 13 Dateien
+npm run lint             # ESLint: Fehler und toter Code
+npm run format:check     # Prettier: prüft die Formatierung, ändert nichts
+npm run format           # Prettier: formatiert alle Dateien
+npm run contrast-check   # WCAG 2.1 AA: Kontrast aller Farbpaare
 ```
 
-Getestet werden (355 Tests in 13 Test-Dateien):
+Alle Prüfungen laufen auch in der CI (`.github/workflows/node.js.yml`). Da alle Quellen ES-Module
+sind, läuft Jest im ESM-Modus (`--experimental-vm-modules`, im `test`-Skript bereits gesetzt).
+
+<details>
+<summary><strong>Was die Tests abdecken</strong></summary>
+
+<br>
+
+**Spielregeln**
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
-- Identität des geteilten Regelmoduls (`shared/muehleRules.js`) mit der Server-Engine: beide Seiten benutzen dasselbe Objekt, nicht zwei Kopien.
-- Brett-Diff für die Stein-Animationen: jede Aktion zufällig gespielter Partien wird als genau das Setzen, Ziehen oder Schlagen erkannt.
-- Sieg durch Steinedezimierung (< 3 Steine).
-- Sieg durch Einsperren des Gegners (keine legalen Züge).
-- Remis durch dreifache Stellungswiederholung und nach 50 Zügen ohne Schlagen; ein Schlag setzt beide Zähler zurück.
+- Sieg durch Steinedezimierung (< 3 Steine) und durch Einsperren (keine legalen Züge).
+- Remis durch dreifache Stellungswiederholung und nach 50 Zügen ohne Schlagen; ein Schlag setzt
+  beide Zähler zurück.
+- Identität des geteilten Regelmoduls (`shared/muehleRules.js`) mit der Server-Engine: Beide Seiten
+  benutzen dasselbe Objekt, nicht zwei Kopien.
+
+**Server**
 - Matchmaking-Warteschlange und Sitzungsisolation.
-- Zug-Timer: Ablauf nach 25 Sekunden, Zurücksetzen bei jedem Zug, automatischer legaler Zug (auch beim Schlagen), Niederlage nach drei Zeitüberschreitungen in Folge, unabhängige Uhren paralleler Partien und ein gestoppter Timer bei Verbindungsabbruch (`jest.useFakeTimers()`).
+- Zug-Timer: Ablauf nach 25 Sekunden, Zurücksetzen bei jedem Zug, automatischer legaler Zug (auch
+  beim Schlagen), Niederlage nach drei Zeitüberschreitungen in Folge, unabhängige Uhren paralleler
+  Partien und ein gestoppter Timer bei Verbindungsabbruch (`jest.useFakeTimers()`).
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
-- Sicherheits- und DoS-Schutzmaßnahmen (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen, Eingabesäuberung).
-- Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating) und die Statuszeile mit der Uhr in jeder Spielerkarte.
-- Anmeldeformular (`required`, `pattern`, Absenden per `submit`, gemerkter Name), die Rückmeldung am Brett statt Toasts bei wirkungslosen Klicks und der Hinweis auf einen automatischen Zug, der bis zum Anklicken stehen bleibt.
+- Sicherheit und DoS-Schutz (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen,
+  Eingabesäuberung).
+- Konfiguration: `.env.example` dokumentiert jede Umgebungsvariable des Servers, `npm start` lädt
+  `.env`, und ein Port auf der Kommandozeile hat Vorrang.
+
+**Client**
+- Brett-Diff für die Stein-Animationen: Jede Aktion zufällig gespielter Partien wird als genau das
+  Setzen, Ziehen oder Schlagen erkannt.
+- Responsives Mobile-Layout (Viewport-Meta, Touch-Zielgrößen, Safe-Area, Tab-Leiste, Hover-Gating)
+  und die Statuszeile mit der Uhr in jeder Spielerkarte.
+- Anmeldeformular (`required`, `pattern`, Absenden per `submit`, gemerkter Name), die Rückmeldung am
+  Brett statt Toasts bei wirkungslosen Klicks und der Hinweis auf einen automatischen Zug, der bis
+  zum Anklicken stehen bleibt.
 - Ton-Einstellung auch bei blockiertem `localStorage` (abgeschaltete Website-Daten).
-- Konfiguration: `.env.example` dokumentiert jede Umgebungsvariable des Servers, `npm start` lädt `.env`, und ein Port auf der Kommandozeile hat Vorrang.
-- Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die Architekturregel, dass nur `app.js` mit dem Socket spricht.
-- Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine Vendor-Metatags, nur ES-Module, keine Feature-Erkennung, Node-Built-ins über `node:`.
-- Aktuelle Standards statt älterer Idiome: native Dialoge mit Invoker Commands statt `confirm()`, `hidden`-Attribut statt `.hidden`-Klasse, `light-dark()`-Tokens, Media Queries als Bereiche (`width <= 700px`), Farben in `oklch()` und abgeleitete per `color-mix()`, private `#`-Methoden, Cascade Layers statt `!important`, keine Inline-Styles.
+- Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die
+  Architekturregel, dass nur `app.js` mit dem Socket spricht.
 
-### Linter und Formatter
+**Standards**
+- Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine
+  Vendor-Metatags, nur ES-Module, keine Feature-Erkennung, Node-Built-ins über `node:`.
+- Aktuelle Standards statt älterer Idiome: native Dialoge mit Invoker Commands statt `confirm()`,
+  `hidden`-Attribut statt `.hidden`-Klasse, `light-dark()`-Tokens, Media Queries als Bereiche
+  (`width <= 700px`), Farben in `oklch()` und abgeleitete per `color-mix()`, private `#`-Methoden,
+  Cascade Layers statt `!important`, keine Inline-Styles.
 
-```bash
-npm run lint           # ESLint: Fehler und toter Code
-npm run format:check   # Prettier: prüft die Formatierung, ändert nichts
-npm run format         # Prettier: formatiert alle Dateien
-```
+</details>
 
-ESLint (Flat Config in `eslint.config.js`) prüft mit den empfohlenen Regeln plus `no-var`, `prefer-const` und `eqeqeq`. Welche globalen Namen erlaubt sind, hängt davon ab, wo eine Datei läuft: Browser-Globals für `public/js`, nur die in Browser und Node gemeinsamen für `shared/`, Node für Server, Skripte und Konfiguration, Node und Jest für die Tests. Prettier (`prettier.config.js`) bildet den bestehenden Stil nach: einfache Anführungszeichen (im CSS doppelte), Semikolons, zwei Leerzeichen, keine Trailing Commas, 120 Zeichen pro Zeile. `index.html` und die Markdown-Dokumente nimmt `.prettierignore` aus: Prettier würde leere HTML-Elemente im XHTML-Stil (`<meta … />`) schließen und Tabellenspalten auf die breiteste Zelle auffüllen. Beide Prüfungen laufen auch in der CI.
+<details>
+<summary><strong>Linter, Formatter und Kontrastprüfung im Detail</strong></summary>
 
-### WCAG 2.1 AA Kontrastprüfung
+<br>
 
-Das Projekt enthält einen automatisierten Kontrast-Checker, der sicherstellt, dass alle Farbkombinationen die WCAG 2.1 AA Anforderungen erfüllen:
-```bash
-npm run contrast-check
-```
-Dieser prüft alle Farbpaare in den Dark- und Light-Themes des Stylesheets. Die
-Tokens liest er aus dem `:root`-Block von `public/css/tokens.css` — über
-`scripts/css-bundle.js`, das die `@import`-Kette auflöst —, teilt jedes
-`light-dark(<hell>, <dunkel>)`-Paar in seine beiden Themes auf und löst
-`var()`-Verweise zwischen Tokens auf. Farben liest er als Hex, `rgb()`,
-`oklch()` und `color-mix()`.
+**ESLint** (Flat Config in `eslint.config.js`) prüft mit den empfohlenen Regeln plus `no-var`,
+`prefer-const` und `eqeqeq`. Welche globalen Namen erlaubt sind, hängt davon ab, wo eine Datei
+läuft: Browser-Globals für `public/js`, nur die in Browser und Node gemeinsamen für `shared/`, Node
+für Server, Skripte und Konfiguration, Node und Jest für die Tests.
 
----
+**Prettier** (`prettier.config.js`) bildet den bestehenden Stil nach: einfache Anführungszeichen
+(im CSS doppelte), Semikolons, zwei Leerzeichen, keine Trailing Commas, 120 Zeichen pro Zeile.
+`index.html` und die Markdown-Dokumente nimmt `.prettierignore` aus: Prettier würde leere
+HTML-Elemente im XHTML-Stil (`<meta … />`) schließen und Tabellenspalten auf die breiteste Zelle
+auffüllen.
 
-## 🎨 CSS-Architektur
+**Der Kontrast-Checker** prüft alle Farbpaare im Light- und Dark-Theme gegen WCAG 2.1 AA. Die Tokens
+liest er aus dem `:root`-Block von `public/css/tokens.css` über `scripts/css-bundle.js`, das die
+`@import`-Kette auflöst. Jedes `light-dark(<hell>, <dunkel>)`-Paar teilt er in seine beiden Themes
+auf und löst `var()`-Verweise zwischen Tokens auf. Farben liest er als Hex, `rgb()`, `oklch()` und
+`color-mix()`. Mehr dazu in [docs/contrast-check.md](docs/contrast-check.md).
 
-Das Stylesheet ist in zwölf Module aufgeteilt, die jeweils einen Abschnitt der
-Oberfläche abdecken. `public/css/style.css` enthält keine eigenen Regeln,
-sondern ist das Manifest: eine `@layer`-Anweisung legt die Reihenfolge der
-**Cascade Layers** fest, und jedes Modul wird per `@import … layer(<name>)` in
-seinen gleichnamigen Layer geladen. Die Seite bindet nur dieses eine Stylesheet ein.
-
-```
-public/css/style.css   →   tokens · base · layout · controls · login
-                           hud · arena · dock · board · modals · responsive · utilities
-```
-
-Die Layer-Reihenfolge ist Teil des Vertrags: `tokens` hat die niedrigste
-Priorität, `responsive` überschreibt mit seinen Breakpoints die Module darunter,
-und `utilities` kommt zuletzt. Es enthält nur die Regel für das
-`hidden`-Attribut, die jede Komponente schlagen muss. Zwischen zwei Layern
-entscheidet die Reihenfolge vor der Spezifität, deshalb braucht keine Regel
-`!important` (das die Reihenfolge der Layer sogar umkehren würde). Ein neues
-Modul gilt erst, wenn es im Manifest steht — `tests/CssModules.test.js` prüft
-genau das, zusammen mit der Regel, dass Custom Properties ausschließlich in
-`tokens.css` deklariert werden.
-
-Innerhalb der Module ist das CSS **nativ verschachtelt** (CSS Nesting): Zustände,
-Pseudo-Elemente und Kindelemente einer Komponente stehen in deren Regelblock
-(`&.active-turn`, `&::before`, `.icon`). `responsive.css` bleibt bewusst flach,
-damit jeder Breakpoint als Liste von Überschreibungen lesbar ist; seine Media
-Queries sind als Bereiche geschrieben (`@media (width <= 700px)`).
-
-Farben stehen als `oklch(<Helligkeit> <Chroma> <Farbton>)`, Theme-abhängige als
-`light-dark(<hell>, <dunkel>)`. Eine Farbe, die aus einem anderen Token entsteht,
-sagt das: Jeder Tint ist sein Akzent mit Transparenz gemischt
-(`color-mix(in srgb, var(--accent-blue) 10%, transparent)`), das Material des
-Headers ist die Fläche zu 72 %. Abstände, Rahmen und Positionen sind Logical
-Properties (`margin-block-end`, `padding-inline`, `inset-block-start` …). Physisch
-bleiben nur die Abstände neben `env(safe-area-inset-left/right)`, weil diese
-Insets feste Bildschirmkanten sind, während `inline-start` der Schreibrichtung
-folgt.
-
-Container Queries gibt es bewusst keine. Die einzige Komponente in mehreren
-Layouts, die Spielerkarte, wird auf dem Smartphone kompakt, weil dort die Höhe
-fehlt, nicht wegen ihrer eigenen Breite: Auf dem Desktop ist sie mit 224 px
-schmaler als die kompakte Karte auf einem 700 px breiten Smartphone (334 px).
-
-Werkzeuge, die das Stylesheet als Ganzes lesen (der Kontrast-Checker und die
-statischen CSS-Tests), gehen über `scripts/css-bundle.js`. Das Skript löst die
-`@import`-Kette auf, legt jedes Modul wie der Browser in seinen `@layer`-Block
-und gibt den zusammengesetzten Stylesheet-Text zurück:
-
-```bash
-node scripts/css-bundle.js   # gibt das aufgelöste Stylesheet auf stdout aus
-```
+</details>
 
 ---
 
-## 🧩 Client-Architektur
+## 🧱 Architektur
 
-Der Client kommt ohne Framework und ohne Build-Schritt aus: `index.html` lädt
-genau ein ES-Modul, den Controller `js/app.js`. Alles andere erreicht den
-Browser über dessen `import`-Anweisungen — auch das geteilte Regelmodul und der
-Socket.io-Client (`/socket.io/socket.io.esm.min.js`). Ein Modul, das nicht
-importiert wird, erreicht weder den Browser noch die Tests.
+```
+Browser                                  Server (Node.js)
+───────                                  ────────────────
+index.html → js/app.js  ◀── Socket.io ──▶  server.js → lib/GameManager.js → lib/MuehleGame.js
+              │                                                                │
+              └────────── shared/muehleRules.js (ein Regelmodul für beide) ────┘
+```
+
+### Server
+
+- **`server.js`** ist ein schlanker Einstieg: Er liefert die Dateien aus, übersetzt Socket-Events in
+  `GameManager`-Aufrufe und bindet das Netzwerk.
+- **`lib/GameManager.js`** paart Spieler, verwaltet die parallelen Spielräume und führt die einzige
+  zählende Zuguhr.
+- **`lib/MuehleGame.js`** ist die autoritative Zustandsmaschine: Sie prüft jede Aktion gegen die
+  Regeln aus `shared/muehleRules.js`.
+
+### Client
+
+Der Client kommt ohne Framework und ohne Build-Schritt aus: `index.html` lädt genau ein ES-Modul,
+den Controller `js/app.js`. Alles andere erreicht den Browser über dessen `import`-Anweisungen, auch
+das geteilte Regelmodul und der Socket.io-Client (`/socket.io/socket.io.esm.min.js`). Ein Modul, das
+nicht importiert wird, erreicht weder den Browser noch die Tests.
 
 ```
 js/app.js  →  /socket.io/socket.io.esm.min.js · /shared/muehleRules.js
               audio · boardRenderer · hudView · dockView · overlays
 ```
 
-Die Aufteilung folgt einer einzigen Regel: **die Views zeichnen, der Controller
-spricht.** `hudView.js`, `dockView.js`, `overlays.js` und `boardRenderer.js`
-bekommen fertige Daten und besitzen keinen Socket; nur `app.js` sendet Aktionen
-an den Server und verteilt dessen Antworten. Deshalb ist der Zug-Countdown in
-den Spielerkarten auch reine Anzeige: er kann gar keinen Zug auslösen, die einzige zählende
-Uhr läuft im `GameManager`.
+Die Aufteilung folgt einer Regel: **Die Views zeichnen, der Controller spricht.** `hudView.js`,
+`dockView.js`, `overlays.js` und `boardRenderer.js` bekommen fertige Daten und besitzen keinen
+Socket; nur `app.js` sendet Aktionen an den Server und verteilt dessen Antworten. Deshalb ist auch
+der Countdown in den Spielerkarten reine Anzeige: Er kann gar keinen Zug auslösen.
 
-Werkzeuge, die den Client als Ganzes lesen (die statischen Client-Tests), gehen
-über `scripts/client-bundle.js` — das Gegenstück zu `css-bundle.js`. Es löst den
-Import-Graphen auf, sodass eine Zusicherung weiterhin gilt, wenn eine Funktion
-in ein anderes Modul umzieht:
+### CSS
+
+Das Stylesheet besteht aus zwölf Modulen, je eines pro Abschnitt der Oberfläche.
+`public/css/style.css` enthält keine eigenen Regeln, sondern ist das **Manifest**: Eine
+`@layer`-Anweisung legt die Reihenfolge der **Cascade Layers** fest, und jedes Modul wird per
+`@import … layer(<name>)` in seinen gleichnamigen Layer geladen. Die Seite bindet nur dieses eine
+Stylesheet ein.
+
+```
+public/css/style.css   →   tokens · base · layout · controls · login
+                           hud · arena · dock · board · modals · responsive · utilities
+```
+
+- **Layer-Reihenfolge**: `tokens` hat die niedrigste Priorität, `responsive` überschreibt mit seinen
+  Breakpoints die Module davor, und `utilities` kommt zuletzt. Es enthält nur die Regel für das
+  `hidden`-Attribut, die jede Komponente schlagen muss. Zwischen zwei Layern entscheidet die
+  Reihenfolge vor der Spezifität, deshalb braucht keine Regel `!important` (das die Reihenfolge der
+  Layer sogar umkehren würde).
+- **Ein Modul gilt erst, wenn es im Manifest steht.** `tests/CssModules.test.js` prüft das, zusammen
+  mit der Regel, dass Custom Properties nur in `tokens.css` stehen.
+- **CSS Nesting**: Zustände, Pseudo-Elemente und Kindelemente einer Komponente stehen in deren
+  Regelblock (`&.active-turn`, `&::before`, `.icon`). `responsive.css` bleibt bewusst flach, damit
+  jeder Breakpoint als Liste von Überschreibungen lesbar ist; seine Media Queries sind Bereiche
+  (`@media (width <= 700px)`).
+- **Farben** stehen als `oklch(<Helligkeit> <Chroma> <Farbton>)`, Theme-abhängige als
+  `light-dark(<hell>, <dunkel>)`. Eine abgeleitete Farbe sagt, woraus sie entsteht: Jeder Tint ist
+  sein Akzent mit Transparenz gemischt (`color-mix(in srgb, var(--accent-blue) 10%, transparent)`),
+  das Material des Headers ist die Fläche zu 72 %.
+- **Logical Properties** für Abstände, Rahmen und Positionen (`margin-block-end`, `padding-inline`,
+  `inset-block-start` …). Physisch bleiben nur die Abstände neben `env(safe-area-inset-left/right)`,
+  weil diese Insets feste Bildschirmkanten sind, während `inline-start` der Schreibrichtung folgt.
+- **Keine Container Queries**, bewusst: Die einzige Komponente in mehreren Layouts, die Spielerkarte,
+  wird auf dem Smartphone kompakt, weil dort die Höhe fehlt, nicht wegen ihrer eigenen Breite. Auf
+  dem Desktop ist sie mit 224 px schmaler als die kompakte Karte auf einem 700 px breiten Smartphone
+  (334 px).
+
+### Hilfsskripte
+
+Werkzeuge, die Stylesheet oder Client als Ganzes lesen (Kontrast-Checker und statische Tests), gehen
+über zwei Skripte. Sie lösen die Imports so auf wie der Browser, damit eine Zusicherung weiter gilt,
+wenn Code in ein anderes Modul umzieht:
 
 ```bash
-node scripts/client-bundle.js   # gibt den geladenen Client-Code auf stdout aus
+node scripts/css-bundle.js      # aufgelöstes Stylesheet, jedes Modul in seinem @layer-Block
+node scripts/client-bundle.js   # aufgelöster Client-Modulgraph ab js/app.js
 ```
 
 ---
@@ -323,107 +484,81 @@ node scripts/client-bundle.js   # gibt den geladenen Client-Code auf stdout aus
 ## 📁 Projektstruktur
 
 ```
-Web-Spiel/
-├── package.json              # Projektkonfiguration, Abhängigkeiten & Scripts
-├── .env.example              # Vorlage für .env: PORT, TRUST_PROXY, TURN_TIMEOUT_MS (alle optional)
-├── eslint.config.js          # ESLint Flat Config (Globals je Laufzeit)
-├── prettier.config.js        # Prettier-Stil des Projekts
-├── .prettierignore           # Von Prettier ausgenommen: package-lock.json, HTML, Markdown
-├── server.js                 # Express HTTP-Server & Socket.io Event-Orchestrierung (IPv6 & IPv4)
-├── Systemmodel.md            # Umfassendes Systemmodell (Architektur, Domänenmodell, State Machines)
-├── CLAUDE.md                 # Vorgaben der Portfolioaufgabe & Projektregeln für Claude Code
-├── scripts/
-│   ├── contrast.js           # WCAG 2.1 Kontrastberechnung; liest Hex, rgb(), oklch() und color-mix()
-│   ├── contrast-check.js     # CLI-Skript zum Prüfen aller CSS-Farbpaare gegen WCAG 2.1 AA
-│   ├── css-bundle.js         # Löst die @import-Kette von style.css samt Cascade Layers auf (für Checker & Tests)
-│   └── client-bundle.js      # Löst den Modul-Import-Graphen ab index.html auf (für die Client-Tests)
-├── shared/
-│   └── muehleRules.js        # Geteiltes Regelmodul: Brettgeometrie, Mühlen- & Schlag-Regeln, Brett-Diff (Server UND Browser)
-├── lib/
-│   ├── MuehleGame.js         # Autoritative Zustandsmaschine auf Basis von shared/muehleRules.js (Phasen, legale Züge, Sieg)
-│   ├── GameManager.js        # Matchmaking-Warteschlange, Verwaltung paralleler Spielräume & Zug-Timer (25 s)
-│   ├── clientAddress.js      # Client-Adresse & Budget-Schlüssel fürs Rate-Limiting (X-Forwarded-For nur von vertrauten Proxys, IPv6 pro /64)
+MuehleJS/
+├── server.js                 # Einstieg: Express, Socket.io-Events → GameManager, IPv6 & IPv4
+├── lib/                      # Serverlogik
+│   ├── MuehleGame.js         # Autoritative Zustandsmaschine (Phasen, legale Züge, Sieg)
+│   ├── GameManager.js        # Matchmaking, parallele Spielräume & Zug-Timer (25 s)
+│   ├── clientAddress.js      # Client-Adresse & Budget-Schlüssel fürs Rate Limiting (Proxy-Vertrauen, IPv6 pro /64)
 │   └── RateLimiter.js        # In-Memory Sliding-Window Rate Limiter (DoS-Schutz)
-├── public/
+├── shared/
+│   └── muehleRules.js        # Geteiltes Regelmodul für Server UND Browser: Geometrie, Mühlen, Schlagen, Brett-Diff
+├── public/                   # Alles, was der Browser lädt
 │   ├── index.html            # Single-Page-App (Login, Matchmaking, Spielbrett, <dialog>-Dialoge)
 │   ├── manifest.webmanifest  # Web App Manifest (Home-Bildschirm, Standalone-Modus)
 │   ├── icon.svg              # App- und Favicon
-│   ├── css/                  # Modulares Stylesheet, per @import in Cascade Layers gebündelt
+│   ├── css/
 │   │   ├── style.css         # Manifest: @layer-Reihenfolge und @import-Liste, keine eigenen Regeln
-│   │   ├── tokens.css        # Design-Tokens (:root), Farben in oklch() als light-dark()-Paare, abgeleitete per color-mix()
+│   │   ├── tokens.css        # Design-Tokens: oklch()-Farben als light-dark()-Paare, abgeleitete per color-mix()
 │   │   ├── base.css          # Reset, Typografie, Touch-Handling, Scrollbars, Icons
 │   │   ├── layout.css        # App-Shell: Header (Verbindungsstatus, Ton) & Screen-Switcher
 │   │   ├── controls.css      # Buttons & Eingabefelder
-│   │   ├── login.css         # Screen 1 & 2: Login/Lobby und Matchmaking-Warteschlange
-│   │   ├── hud.css           # Screen 3: Statuszeile (Phase und Anweisung) & Spielwerkzeuge
-│   │   ├── arena.css         # Screen 3: Spielerkarten mit Zuguhr und die Brettfläche dazwischen
-│   │   ├── dock.css          # Screen 3: Zugprotokoll & Chat (auf Smartphones mit Tab-Leiste)
+│   │   ├── login.css         # Login/Lobby und Matchmaking-Warteschlange
+│   │   ├── hud.css           # Statuszeile (Phase und Anweisung) & Spielwerkzeuge
+│   │   ├── arena.css         # Spielerkarten mit Zuguhr und die Brettfläche dazwischen
+│   │   ├── dock.css          # Zugprotokoll & Chat (auf Smartphones mit Tab-Leiste)
 │   │   ├── board.css         # SVG-Brett (Gradienten, Marker, Stein-Animationen)
 │   │   ├── modals.css        # Native <dialog>-Elemente (::backdrop, Scroll-Sperre) & Toasts
 │   │   ├── responsive.css    # Breakpoints, pointer/hover, prefers-reduced-motion
 │   │   └── utilities.css     # Letzter Layer: das hidden-Attribut, ohne !important
 │   └── js/
-│       ├── audio.js          # Web Audio API Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
-│       ├── boardRenderer.js  # Dynamisches SVG-Spielfeld (Farben via CSS-Tokens), Interaktionen, Hervorhebungen & Stein-Animationen
-│       ├── hudView.js        # Statuszeile, Spielerkarten und die Zuguhr in der Karte des Spielers am Zug
-│       ├── dockView.js       # Zugprotokoll, Chat und die Tab-Leiste auf kleinen Bildschirmen
-│       ├── overlays.js       # Dialog-Antworten (Aufgeben, Spielende), Toasts und Verbindungsanzeige
-│       └── app.js            # Controller: Socket.io-Client, Screen-Wechsel & Brett-Interaktion
+│       ├── app.js            # Controller: Socket.io-Client, Screen-Wechsel & Brett-Interaktion
+│       ├── boardRenderer.js  # SVG-Spielfeld: Interaktion, Hervorhebungen & Stein-Animationen
+│       ├── hudView.js        # Statuszeile, Spielerkarten und Zuguhr
+│       ├── dockView.js       # Zugprotokoll, Chat und Tab-Leiste auf kleinen Bildschirmen
+│       ├── overlays.js       # Dialog-Antworten (Aufgeben, Spielende), Toasts, Verbindungsanzeige
+│       └── audio.js          # Web-Audio-Synthesizer (Setz-, Zug-, Schlag- & Fanfaren-Sounds)
+├── scripts/
+│   ├── contrast.js           # WCAG-2.1-Kontrastberechnung (Hex, rgb(), oklch(), color-mix())
+│   ├── contrast-check.js     # CLI: prüft alle CSS-Farbpaare gegen WCAG 2.1 AA
+│   ├── css-bundle.js         # Löst die @import-Kette von style.css samt Cascade Layers auf
+│   └── client-bundle.js      # Löst den Modul-Import-Graphen ab index.html auf
+├── tests/
+│   ├── MuehleGame.test.js    # Alle Spielregeln und Randfälle
+│   ├── GameRules.test.js     # Abgleich von geteiltem Regelmodul und Server-Engine
+│   ├── GameManager.test.js   # Matchmaking, Verbindungsabbruch und Zug-Timer
+│   ├── Integration.test.js   # End-to-End über WebSockets
+│   ├── Security.test.js      # Rate Limiting und Eingabesäuberung
+│   ├── Environment.test.js   # .env.example vollständig und auskommentiert, Port-Vorrang
+│   ├── Responsive.test.js    # Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
+│   ├── BoardAnimation.test.js # Stein-Animationen und Mühlen-Strahl
+│   ├── AudioMute.test.js     # Ton-Einstellung bei blockiertem localStorage
+│   ├── ContrastCheck.test.js # WCAG-2.1-Kontrastberechnung
+│   ├── CssModules.test.js    # CSS-Manifest: Vollständigkeit, Cascade Layers, light-dark()-Auflösung
+│   ├── ClientModules.test.js # Client-Modulgraph: Vollständigkeit, Reihenfolge, Views ohne Socket
+│   └── ModernStandards.test.js # Keine Rückwärtskompatibilität, aktuelle Standards
 ├── docs/
-│   └── contrast-check.md     # Detaillierte Dokumentation der WCAG 2.1 AA Kontrastverifikation
+│   └── contrast-check.md     # Dokumentation der WCAG-2.1-AA-Kontrastprüfung
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
 │   │   └── code-review.yml   # Issue-Vorlage für Funde aus dem Code Review (Stand: Tag code-review)
 │   └── workflows/
-│       └── node.js.yml       # CI-Pipeline (Node.js 26.x: npm ci, Build, Lint, Formatprüfung, Tests, Kontrastprüfung)
-├── tests/
-│   ├── ContrastCheck.test.js # Unit-Tests für die WCAG 2.1 Kontrastberechnung
-│   ├── MuehleGame.test.js    # Unit-Tests für alle Spielregeln und Randfälle
-│   ├── GameRules.test.js     # Abgleich von geteiltem Regelmodul und Server-Engine
-│   ├── GameManager.test.js   # Unit-Tests für Matchmaking, Verbindungsabbruch und den Zug-Timer
-│   ├── Integration.test.js   # End-to-End WebSocket-Integrationstests
-│   ├── Security.test.js      # Sicherheits- und DoS-Schutztests (Rate Limiting, Eingabesäuberung)
-│   ├── Responsive.test.js    # Strukturtests für Smartphone-Layout, Touch-Ziele & iOS-Anpassungen
-│   ├── BoardAnimation.test.js # Strukturtests für Stein-Animationen und Mühlen-Beam
-│   ├── AudioMute.test.js     # Ton-Einstellung bei blockiertem localStorage
-│   ├── Environment.test.js   # .env.example vollständig und auskommentiert, Port-Vorrang
-│   ├── CssModules.test.js    # Guards für das CSS-Manifest (Vollständigkeit, Cascade Layers, light-dark()-Auflösung des Kontrast-Checkers)
-│   ├── ClientModules.test.js # Guards für den Client-Modulgraphen (Vollständigkeit, Auswertungsreihenfolge, Views ohne Socket)
-│   └── ModernStandards.test.js # Guards gegen Rückwärtskompatibilität und für aktuelle Standards (Dialoge, light-dark(), #-Methoden …)
-├── .gitignore                # Git-Ignore (node_modules, .DS_Store, coverage, .env)
+│       └── node.js.yml       # CI (Node.js 26.x): npm ci, Build, Lint, Formatprüfung, Tests, Kontrast
+├── README.md                 # Diese Dokumentation
+├── Systemmodel.md            # Systemmodell: Architektur, Domänenmodell, Zustandsautomaten, Protokoll
+├── CLAUDE.md                 # Vorgaben der Portfolioaufgabe & Projektregeln für Claude Code
+├── package.json              # Projektkonfiguration, Abhängigkeiten & Skripte
+├── package-lock.json         # Fixierte Abhängigkeitsversionen
+├── .env.example              # Vorlage für .env: PORT, TRUST_PROXY, TURN_TIMEOUT_MS (alle optional)
 ├── .npmrc                    # engine-strict=true (erzwingt die Node-Version aus "engines")
-├── package-lock.json         # Abhängigkeits-Lockfile
-└── README.md                 # Diese Dokumentation
+├── eslint.config.js          # ESLint Flat Config (Globals je Laufzeit)
+├── prettier.config.js        # Prettier-Stil des Projekts
+├── .prettierignore           # Von Prettier ausgenommen: package-lock.json, HTML, Markdown
+└── .gitignore                # node_modules, .DS_Store, coverage, .env
 ```
 
 ---
 
-## 📜 Offizielle Spielregeln im Überblick
-
-1. **Ziel des Spiels**:
-   Den Gegner auf 2 Steine zu reduzieren oder ihn so einzusperren, dass er keinen legalen Zug mehr machen kann.
-2. **Phase 1: Setzphase**:
-   Beide Spieler setzen abwechselnd je einen Stein auf einen freien Punkt (insgesamt je 9 Steine).
-3. **Phase 2: Zugphase**:
-   Sind alle 18 Steine gesetzt, zieht jeder Spieler abwechselnd einen eigenen Stein entlang einer Verbindungslinie auf ein freies Nachbarfeld.
-4. **Phase 3: Springen (Endphase)**:
-   Besitzt ein Spieler nur noch genau 3 Steine, darf er mit seinen Steinen auf jedes beliebige freie Feld springen.
-5. **Mühle & Schlagen**:
-   Entstehen drei Steine einer Farbe in einer horizontalen oder vertikalen geraden Reihe, ist eine **Mühle** geschlossen. Der Spieler darf sofort einen gegnerischen Stein schlagen. Steine in geschlossenen Mühlen sind geschützt, es sei denn, alle gegnerischen Steine stehen in Mühlen.
-6. **Remis & Inaktivität**:
-   Die Partie endet unentschieden, wenn in der Zugphase dieselbe Stellung (gleiches Brett, gleicher Spieler am Zug) zum dritten Mal entsteht oder 50 Züge lang kein Stein geschlagen wird. Wer dreimal in Folge seine Bedenkzeit überschreitet, verliert.
-
----
-
-## 🌐 IPv6 & IPv4 Protokoll-Architektur
-
-Der Server bindet primär an `::` (IPv6 Unspecified). In modernen Betriebssystemen (Linux Kernel / macOS) werden darüber im Dual-Stack-Modus sowohl native IPv6-Anfragen als auch IPv4-Anfragen (via IPv4-mapped IPv6) verarbeitet.
-
-Zusätzlich prüft `server.js` beim Start, ob das Host-Betriebssystem `net.ipv6.bindv6only = 1` erzwingt:
-In diesem Fall startet automatisch ein paralleler sekundärer IPv4-Listener auf `0.0.0.0`, an den Socket.io ebenfalls angebunden wird. Dadurch ist die Erreichbarkeit über **beide Protokolle (IPv6 und IPv4)** unter allen Netzwerkbedingungen garantiert.
-
----
-
 ## 📄 Lizenz
-MIT License.
 
+MIT License.
