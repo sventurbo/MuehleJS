@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sventurbo/MuehleJS/actions/workflows/node.js.yml/badge.svg)](https://github.com/sventurbo/MuehleJS/actions/workflows/node.js.yml)
 ![Node.js 26](https://img.shields.io/badge/Node.js-26-339933)
-![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue)](LICENSE)
 
 Das klassische Strategiespiel **Mühle** (*Nine Men's Morris*) für zwei Personen, gespielt in
 Echtzeit über den Browser. Entstanden als Portfolioaufgabe im Modul Web-Entwicklung (DHBW).
@@ -544,6 +544,7 @@ MuehleJS/
 │   │   └── code-review.yml   # Issue-Vorlage für Funde aus dem Code Review (Stand: Tag code-review)
 │   └── workflows/
 │       └── node.js.yml       # CI (Node.js 26.x): npm ci, Build, Lint, Formatprüfung, Tests, Kontrast
+├── LICENSE                   # MIT-Lizenz
 ├── README.md                 # Diese Dokumentation
 ├── Systemmodel.md            # Systemmodell: Architektur, Domänenmodell, Zustandsautomaten, Protokoll
 ├── CLAUDE.md                 # Vorgaben der Portfolioaufgabe & Projektregeln für Claude Code
@@ -561,4 +562,4 @@ MuehleJS/
 
 ## 📄 Lizenz
 
-MIT License.
+Veröffentlicht unter der [MIT-Lizenz](LICENSE).
