@@ -11,7 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [26.x]
+        # The newest major, plus every older line that "engines" admits: the
+        # current LTS and the Node.js Ubuntu 26.04 LTS ships (22.x).
+        node-version: [22.x, 24.x, 26.x]
 
     steps:
       - uses: actions/checkout@v7

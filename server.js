@@ -156,19 +156,46 @@ io.on('connection', socket => {
 // ── Network binding ─────────────────────────────────────────────────────────
 
 /**
+ * Errors of the IPv6 listener that mean "this host has no IPv6". Only these
+ * justify the IPv4 fallback: a port that is taken or needs root fails on
+ * 0.0.0.0 just the same and has to be reported, not hidden behind a fallback.
+ */
+const NO_IPV6_ERRORS = new Set(['EAFNOSUPPORT', 'EADDRNOTAVAIL']);
+
+/**
+ * Ends a start that cannot succeed with a readable reason and exit code 1.
+ *
+ * Without this, the error ended up in the uncaughtException guard below: the
+ * process logged it as handled and, with nothing left listening, quit with
+ * exit code 0, so a script or process manager saw a successful start.
+ */
+function abortStart(err) {
+  const hint = err.code === 'EADDRINUSE' ? ' Is another server running? Pick another port: npm start 8080' : '';
+  console.error(`[Network] Cannot listen on port ${PORT}: ${err.message}.${hint}`);
+  process.exit(1);
+}
+
+/**
  * Starts listening so the game is reachable over IPv6 *and* IPv4.
  *
- * The unspecified IPv6 address '::' already serves IPv4 clients on a normal
- * dual-stack host. Two cases need help, and both are handled here:
+ * Node binds '::' as a dual-stack socket (the `ipv6Only` option of listen()
+ * defaults to false), so it serves IPv4 clients as well. Two cases need help,
+ * and both are handled here:
  *   - the host has no IPv6 at all  → fall back to a plain 0.0.0.0 listener,
- *   - the host sets bindv6only=1   → '::' is IPv6-only, so a second listener
- *     on 0.0.0.0 is added (EADDRINUSE simply means it was not needed).
+ *   - the system cannot put IPv4 on an IPv6 socket → a second listener on
+ *     0.0.0.0 is added (EADDRINUSE simply means '::' already covers IPv4).
  */
 function startServer() {
+  if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+    abortStart(new RangeError('a port is a whole number between 1 and 65535'));
+  }
+
   primaryServer.once('error', errV6 => {
+    if (!NO_IPV6_ERRORS.has(errV6.code)) abortStart(errV6);
     console.warn(`[Network] IPv6 binding on '::' failed (${errV6.code}). Falling back to IPv4 0.0.0.0...`);
 
     const v4Server = http.createServer(app);
+    v4Server.once('error', abortStart);
     io.attach(v4Server);
     v4Server.listen(PORT, '0.0.0.0', () => {
       console.log(`[Network] Server listening on IPv4: http://127.0.0.1:${PORT}`);
