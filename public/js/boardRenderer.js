@@ -220,18 +220,18 @@ export class BoardRenderer {
       if (pt) this.onPointClick?.(pt);
     });
 
-    // Tastaturbedienung: Pfeiltasten bewegen den Fokus von Feld zu Feld,
-    // Enter/Leertaste löst den ausgewählten Punkt aus (Issue #58).
+    // Keyboard play: the arrow keys move the focus from point to point, Enter
+    // and Space activate the focused one (issue #58).
     this.#initKeyboardNavigation();
   }
 
   /**
-   * Tastaturbedienung des Bretts.
+   * Keyboard control of the board.
    *
-   * Jedes Feld ist ein fokussierbarer Button. Die Pfeiltasten bewegen den Fokus
-   * zum nächsten Feld in die jeweilige Himmelsrichtung (fehlt eines, wird im
-   * Lesezyklus weitergeschaltet), Enter und Leertaste lösen den Fokuspunkt aus
-   * – dieselbe Aktion, die auch ein Klick auslöst.
+   * Every point is a focusable button. The arrow keys move the focus to the
+   * nearest point in that direction (where there is none, the focus moves on
+   * in reading order), and Enter and Space activate the focused point, the
+   * same action a click triggers.
    */
   #initKeyboardNavigation() {
     const points = Array.from(this.interactiveLayer.querySelectorAll('.board-point-group')).map(group => {
@@ -244,8 +244,8 @@ export class BoardRenderer {
       if (group) group.focus();
     };
 
-    // Nächstes Feld in eine Himmelsrichtung; nichts weiter in die Richtung =>
-    // im Lesezyklus (top-to-bottom, left-to-right) weitermachen.
+    // Nearest point in one direction; with nothing further that way, continue
+    // in reading order (top to bottom, left to right).
     const moveFocus = (dx, dy) => {
       const active = document.activeElement;
       if (!active || !active.classList.contains('board-point-group')) return;

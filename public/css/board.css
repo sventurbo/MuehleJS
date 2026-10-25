@@ -67,9 +67,9 @@
 
 .grid-label {
   fill: var(--board-label);
-  /* Voll deckend, damit die Koordinaten lesbar bleiben und die
-     Kontrastprüfung die tatsächlich gerenderte Farbe prüft (Issue #59).
-     rem statt einer festen px-Schriftgröße. */
+  /* Fully opaque, so the coordinates stay readable and the contrast check
+     tests the colour that is actually rendered (issue #59). In rem rather
+     than a fixed px font size. */
   font-size: 0.7rem;
 }
 
@@ -79,7 +79,7 @@
   stroke: var(--accent-blue);
 }
 
-/* Tastaturfokus sichtbar machen (Issue #58). */
+/* Visible keyboard focus (issue #58). */
 .board-point-group:focus-visible .grid-socket {
   stroke: var(--accent-blue);
   stroke-width: 2.5;
