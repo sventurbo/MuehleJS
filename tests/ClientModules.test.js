@@ -76,3 +76,28 @@ describe('The views draw, the controller talks', () => {
     expect(elsewhere).not.toContain('.emit(');
   });
 });
+
+describe('What the controller makes of the connection', () => {
+  const controller = code(fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8'));
+  const dock = code(fs.readFileSync(path.join(jsDir, 'dockView.js'), 'utf8'));
+
+  /** The body of the handler app.js registers for `event`. */
+  const handlerOf = event => {
+    const start = controller.indexOf(`this.socket.on('${event}'`);
+    expect(start).toBeGreaterThan(-1);
+    return controller.slice(start, controller.indexOf('\n    });', start));
+  };
+
+  test('a dropped connection ends a running game at once, not only after a reconnect', () => {
+    // The server forgets the session the moment the socket drops; a board that
+    // waits for a reconnect stays dead for as long as the server is gone.
+    expect(handlerOf('disconnect')).toContain('this.#terminateSession(');
+    expect(controller).not.toContain('connectionLost');
+  });
+
+  test('own chat messages are told apart by colour, since both players may pick the same name', () => {
+    expect(dock).toContain('const isMine = msg.color === this.myColor;');
+    expect(dock).not.toMatch(/msg\.sender\s*===/);
+    expect(controller).toContain('this.dock.reset(this.myColor)');
+  });
+});

@@ -63,10 +63,9 @@ class MuehleApp {
     this.validDestinations = [];
 
     // True while the server holds something for us (a queue slot or a running
-    // game). Socket.io reconnects with a fresh socket id, so anything the
-    // server was holding is gone by then and the session has to be ended here.
+    // game). The server drops all of it the moment the connection does, so a
+    // disconnect has to end the session here as well.
     this.sessionActive = false;
-    this.connectionLost = false;
 
     this.screens = {
       login: document.getElementById('screen-login'),
@@ -162,25 +161,23 @@ class MuehleApp {
   #initSocket() {
     this.socket = io();
 
-    this.socket.on('connect', () => {
-      this.overlays.setConnected(true);
+    this.socket.on('connect', () => this.overlays.setConnected(true));
 
-      // Reconnecting gives us a new socket id, so the server has already ended
-      // and forgotten the game we were in. Terminate it instead of leaving a
-      // board on screen that no longer accepts a single move.
-      if (this.connectionLost) {
-        this.connectionLost = false;
-        if (this.sessionActive) {
-          this.#terminateSession('Die Verbindung wurde unterbrochen – die Partie wurde beendet.');
-        }
-      }
-    });
-
+    // The server ends the session of a dropped socket at once (the opponent
+    // wins), and a reconnect comes back under a new socket id. A running game
+    // or search is therefore over now, whether the connection returns or not:
+    // waiting for the reconnect left a dead board on screen for as long as the
+    // server stayed down.
     this.socket.on('disconnect', () => {
-      this.connectionLost = true;
       this.overlays.setConnected(false);
       this.hud.stopCountdown();
-      this.overlays.toast('Verbindung zum Server unterbrochen', 'error');
+
+      if (!this.sessionActive) {
+        this.overlays.toast('Verbindung zum Server unterbrochen', 'error');
+        return;
+      }
+      const ended = this.screens.game.hidden ? 'die Suche wurde abgebrochen' : 'die Partie wurde beendet';
+      this.#terminateSession(`Verbindung zum Server unterbrochen – ${ended}.`);
     });
 
     // The server no longer knows this socket's game (opponent gone, or we
@@ -261,7 +258,7 @@ class MuehleApp {
       myName: this.myName,
       opponentName: this.opponentName
     });
-    this.dock.reset(this.myName);
+    this.dock.reset(this.myColor);
 
     this.#switchScreen('game');
     this.dock.addSystemNote(`Spiel gestartet! Du spielst als ${RULES.colorName(this.myColor)}.`);
@@ -352,7 +349,7 @@ class MuehleApp {
    * Ends the current session locally and returns to the lobby.
    *
    * Used whenever the server cannot possibly still know about us — after a
-   * reconnect, or when it answers `gameNotFound`. The requirement is that a
+   * disconnect, or when it answers `gameNotFound`. The requirement is that a
    * connection error simply terminates the game; without this the client kept
    * showing a board that silently swallowed every click.
    */
@@ -366,7 +363,9 @@ class MuehleApp {
 
     this.overlays.closeGameDialogs();
     this.#switchScreen('login');
-    if (message) this.overlays.toast(message, 'warning');
+    // The game vanished without the player doing anything, so the reason stays
+    // until they click it away instead of fading while they look elsewhere.
+    if (message) this.overlays.toast(message, 'warning', { sticky: true });
   }
 
   // ── Board interaction ─────────────────────────────────────────────────────

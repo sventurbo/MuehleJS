@@ -33,7 +33,7 @@ export class DockView {
     this.tabs = Array.from(document.querySelectorAll('[data-dock-tab]'));
     this.panels = Array.from(document.querySelectorAll('[data-dock-panel]'));
     this.activeTab = 'log';
-    this.myName = '';
+    this.myColor = null;
 
     this.tabs.forEach(tab => {
       tab.addEventListener('click', () => this.activateTab(tab.dataset.dockTab));
@@ -51,8 +51,8 @@ export class DockView {
   }
 
   /** Empties log and chat for a new game and shows the log tab. */
-  reset(myName) {
-    this.myName = myName;
+  reset(myColor) {
+    this.myColor = myColor;
     this.chatMessages.replaceChildren();
     this.moveLogList.replaceChildren();
     this.activateTab('log');
@@ -93,9 +93,12 @@ export class DockView {
     this.#appendLogEntry(text, 'log-system');
   }
 
-  /** A chat message from either player. */
+  /**
+   * A chat message from either player. Whose it is follows from the colour:
+   * both players may well have chosen the same name.
+   */
   addChatMessage(msg) {
-    const isMine = msg.sender === this.myName;
+    const isMine = msg.color === this.myColor;
 
     const item = document.createElement('div');
     item.className = `chat-msg ${isMine ? 'chat-me' : 'chat-other'}`;
