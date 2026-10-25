@@ -114,7 +114,7 @@ Aktionen an den Server. `tests/ClientModules.test.js` prüft genau das.
 ### Komponentenbeschreibung
 
 #### Serverseitige Module
-- **`server.js`**: Initialisiert Express, serviert statische Dateien (`/public`), konfiguriert Socket.io mit Payload-Grenzen (`maxHttpBufferSize: 10KB`), bindet das Dual-Stack IPv6/IPv4-Netzwerk und fängt Ausnahmen global ab. Die Konfiguration kommt aus der Umgebung (`PORT`, `TRUST_PROXY`, `TURN_TIMEOUT_MS`), die `npm start` über Nodes `--env-file-if-exists=.env` optional aus einer `.env`-Datei ergänzt (Vorlage: `.env.example`). Beim Port gilt: Kommandozeile (`npm start 8080`) vor `PORT` vor `3000` (`resolvePort()`).
+- **`server.js`**: Initialisiert Express, serviert statische Dateien (`/public`), konfiguriert Socket.io mit Payload-Grenzen (`maxHttpBufferSize: 10KB`), bindet das Dual-Stack IPv6/IPv4-Netzwerk und fängt Ausnahmen global ab. Nur ein fehlender IPv6-Stack führt zum IPv4-Fallback; ein belegter Port, ein Port, der Root-Rechte braucht, oder eine ungültige Portnummer beenden den Start mit einer klaren Meldung und Exit-Code 1. Die Konfiguration kommt aus der Umgebung (`PORT`, `TRUST_PROXY`, `TURN_TIMEOUT_MS`), die `npm start` über Nodes `--env-file-if-exists=.env` optional aus einer `.env`-Datei ergänzt (Vorlage: `.env.example`). Beim Port gilt: Kommandozeile (`npm start 8080`) vor `PORT` vor `3000` (`resolvePort()`).
 - **`lib/GameManager.js`**: Verwaltet die Matchmaking-Warteschlange, Socket-zu-Spieler-Mappings (`socketMap`), Räume (`games`) und koordiniert Event-Aufrufe. Hier liegt auch der **Zug-Timer**: pro Partie eine eigene Uhr (Standard 25 s), die bei jeder angenommenen Aktion neu startet und bei Ablauf einen automatischen legalen Zug auslöst.
 - **`shared/muehleRules.js`**: Das geteilte Regelmodul — Brettgeometrie (24 Punkte, 32 Adjazenzkanten, 16 Mühlenlinien), Mühlen- und Schlag-Regeln sowie der Brett-Diff, alles zustandsfrei. Server-Engine und Browser laden **dieselbe Datei** als ES-Modul (der Server per `import`, die Seite über den Mount `/shared`), weshalb es keine zweite Brett-Definition gibt, die auseinanderlaufen könnte.
 - **`lib/MuehleGame.js`**: Rein deterministische, autoritative Mühle-Zustandsmaschine auf Basis des geteilten Regelmoduls. Verwaltet Brett, Phase, Zugrecht und Historie und validiert Setzen, Ziehen, Springen sowie Sieg-/Verlustbedingungen. Über `getLegalActions()` / `makeRandomLegalMove()` liefert sie außerdem die vollständige Zugmenge des Spielers am Zug — die Grundlage des automatischen Zugs bei Zeitablauf.
@@ -323,6 +323,8 @@ stateDiagram-v2
     }
 
     Screen_Game --> Modal_GameOver: Event "gameOver" oder "opponentDisconnected"
+    Screen_Game --> Screen_Login: Eigene Verbindung bricht ab (disconnect)
+    Screen_Queue --> Screen_Login: Eigene Verbindung bricht ab (disconnect)
     Modal_GameOver --> Screen_Queue: Klick auf "Erneut spielen"
     Modal_GameOver --> Screen_Login: Klick auf "Zurück zur Startseite" oder Esc
 ```
@@ -390,6 +392,7 @@ sequenceDiagram
 
     Note over P1: Netzwerkverlust / Tab geschlossen
     P1-xS: TCP FIN / Socket Disconnect
+    Note over P1: Client erhält "disconnect"<br/>beendet die Partie sofort und<br/>kehrt zur Anmeldung zurück
     Note over S: Socket.io erkennt disconnect
     Note over S: GameManager.handlePlayerDisconnect(socketId)<br/>Spieler aus socketMap entfernt<br/>Partie als FINISHED markiert<br/>Gewinner = Schwarz
     S-->>P2: emit("opponentDisconnected", { winner: "B", endReason: "Gegner getrennt" })
@@ -488,12 +491,12 @@ sequenceDiagram
 ```mermaid
 graph TD
     subgraph Schutzebenen["Mehrstufiges Schutzkonzept"]
-        T1["1. Transportebene: maxHttpBufferSize (10 KB Limit) & express.json Limit"]
-        T2["2. Rate-Limiting: Sliding-Window Token-Bucket pro IP & Socket"]
+        T1["1. Transportebene: maxHttpBufferSize (10 KB Limit), kein Body-Parser"]
+        T2["2. Rate-Limiting: Sliding Window pro Adresse & Socket"]
         T3["3. DoS-Abwehr: Obergrenzen (maxQueueSize: 500, maxActiveGames: 1000)"]
         T4["4. Call-Stack-Schutz: Iterative Queue-Bereinigung statt Rekursion"]
         T5["5. Integrität: 100% Autoritatives Servermodell (keine Client-Manipulation)"]
-        T6["6. XSS-Schutz: Serverseitige HTML-Sanitization & Client-Entity-Escaping"]
+        T6["6. XSS-Schutz: Steuerzeichen-Filter im Server & Escaping im Client"]
         T7["7. Entropie: Kryptografische UUIDs (crypto.randomUUID)"]
     end
 ```
@@ -501,9 +504,10 @@ graph TD
 ### Implementierte Härtungsmaßnahmen
 1. **DoS- und Overflow-Schutz (DOS-01 & DOS-03):**
    - WebSocket-Payloads sind über `maxHttpBufferSize: 1e4` (10 KB) abgeriegelt.
+   - HTTP-Request-Bodies werden nie gelesen: Keine Route nimmt einen Body an, deshalb ist kein Body-Parser registriert. Damit entfällt auch der DoS über komprimierte Bodies in `body-parser` (GHSA-27r3-jxmh-p828).
    - `enqueuePlayer()` nutzt eine iterative `while`-Schleife zur Bereinigung veralteter Sockets, wodurch selbst bei 5.000 getrennten Sockets kein `RangeError: Maximum call stack size exceeded` ausgelöst wird.
    - Die Warteschlange ist auf maximal 500 Einträge, aktive Spiele auf maximal 1.000 Instanzen limitiert.
-   - Anmeldungen sind auf 5 pro 5 Sekunden je Socket und 20 pro 5 Sekunden je Adresse gedrosselt. Das Adressbudget ist bewusst größer, damit sich Spieler hinter derselben NAT-Adresse (gleiches WLAN, zwei Tabs) nicht gegenseitig ausbremsen.
+   - Anmeldungen sind auf 5 pro 5 Sekunden je Socket und 100 pro 5 Sekunden je Adresse gedrosselt. Das Adressbudget ist bewusst groß: Hinter einer NAT-Adresse (Hochschul-WLAN, zwei Tabs) oder einem Reverse Proxy ohne `TRUST_PROXY` teilen sich alle Spieler ein Budget, und ein ganzer Kurs muss sich gleichzeitig anmelden können. Mit 20 wurde bei 40 gleichzeitigen Anmeldungen die Hälfte abgewiesen.
 2. **Anti-Spam & Rate-Limiting (CH-05):**
    - Chatnachrichten sind auf maximal 4 Nachrichten pro 2 Sekunden gedrosselt. Bei über 10 wiederholten Verstößen wird der Socket automatisch zwangsgetrennt (`socket.disconnect(true)`).
 3. **Zustandsintegrität (MQ-04 & MQ-05):**
@@ -513,3 +517,4 @@ graph TD
 4. **Fehlertoleranz:**
    - Alle Socket-Handler sind in `try/catch`-Blöcken gekapselt.
    - Unhandled Rejections und unvorhergesehene Ausnahmen werden über globale Exception-Handler abgefangen, sodass der Node.js-Prozess niemals abstürzt.
+   - Ein Start, der nicht gelingen kann (Port belegt, fehlende Rechte, ungültiger Port), endet dagegen mit klarer Meldung und Exit-Code 1, statt als scheinbar erfolgreicher Start ohne Listener.
