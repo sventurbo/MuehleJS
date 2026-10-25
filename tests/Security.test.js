@@ -244,6 +244,17 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         expect(wasThrottled(tab2)).toBe(false);
       });
 
+      test('a whole course behind one NAT address can log in at the same moment', () => {
+        // Game day: everyone presses "Spieler suchen" at once from the university
+        // WLAN, which reaches the server through a single public address.
+        const course = Array.from({ length: 80 }, (_, i) => mockSocket(`student_${i}`, '198.51.100.20'));
+
+        course.forEach((socket, i) => gm.enqueuePlayer(socket, `Student_${i}`));
+
+        expect(course.some(wasThrottled)).toBe(false);
+        expect(gm.games.size).toBe(40);
+      });
+
       test('still caps the logins of many sockets from one address', () => {
         const budget = gm.queueIpLimiter.max;
         const sockets = Array.from({ length: budget + 1 }, (_, i) => mockSocket(`flood_${i}`, '203.0.113.7'));
@@ -320,8 +331,8 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
       );
 
-    // More than any per-address budget, so the limit must trip if the key holds.
-    const FLOOD = 30;
+    // More than the per-address budget, so the limit must trip if the key holds.
+    const FLOOD = new GameManager({}).queueIpLimiter.max + 10;
 
     test('ignores a spoofed header when no proxy is trusted', () => {
       const socket = makeSocket('s1', '203.0.113.7', '198.51.100.1');
