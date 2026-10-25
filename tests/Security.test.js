@@ -3,6 +3,7 @@ import { RateLimiter } from '../lib/RateLimiter.js';
 import { GameManager, sanitizeText } from '../lib/GameManager.js';
 import { compileTrustProxy, getClientAddress, rateLimitKey } from '../lib/clientAddress.js';
 import http from 'node:http';
+import { gzipSync } from 'node:zlib';
 import { io as serverIo, app as serverApp } from '../server.js';
 import { loadClientScripts } from '../scripts/client-bundle.js';
 
@@ -243,6 +244,17 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         expect(wasThrottled(tab2)).toBe(false);
       });
 
+      test('a whole course behind one NAT address can log in at the same moment', () => {
+        // Game day: everyone presses "Spieler suchen" at once from the university
+        // WLAN, which reaches the server through a single public address.
+        const course = Array.from({ length: 80 }, (_, i) => mockSocket(`student_${i}`, '198.51.100.20'));
+
+        course.forEach((socket, i) => gm.enqueuePlayer(socket, `Student_${i}`));
+
+        expect(course.some(wasThrottled)).toBe(false);
+        expect(gm.games.size).toBe(40);
+      });
+
       test('still caps the logins of many sockets from one address', () => {
         const budget = gm.queueIpLimiter.max;
         const sockets = Array.from({ length: budget + 1 }, (_, i) => mockSocket(`flood_${i}`, '203.0.113.7'));
@@ -319,8 +331,8 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
       );
 
-    // More than any per-address budget, so the limit must trip if the key holds.
-    const FLOOD = 30;
+    // More than the per-address budget, so the limit must trip if the key holds.
+    const FLOOD = new GameManager({}).queueIpLimiter.max + 10;
 
     test('ignores a spoofed header when no proxy is trusted', () => {
       const socket = makeSocket('s1', '203.0.113.7', '198.51.100.1');
@@ -612,7 +624,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
   });
 
-  describe('DOS-03: express.json body limit (Issue #21)', () => {
+  describe('DOS-03: request bodies are never parsed (issues #21, GHSA-27r3-jxmh-p828)', () => {
     let httpServer;
     let port;
 
@@ -628,7 +640,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       httpServer.close(done);
     });
 
-    const postJson = body =>
+    const post = (body, headers = {}) =>
       new Promise((resolve, reject) => {
         const req = http.request(
           {
@@ -636,7 +648,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
             port,
             path: '/api/status',
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), ...headers }
           },
           res => {
             res.resume();
@@ -647,15 +659,24 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         req.end(body);
       });
 
-    test('rejects JSON bodies above 10 KB with 413', async () => {
-      const body = JSON.stringify({ padding: 'x'.repeat(11 * 1024) });
-      expect(await postJson(body)).toBe(413);
+    test('the app registers no body parser, since no route takes a body', () => {
+      const parsers = serverApp.router.stack.filter(layer => ['jsonParser', 'urlencodedParser'].includes(layer.name));
+      expect(parsers).toEqual([]);
     });
 
-    test('accepts JSON bodies below 10 KB', async () => {
-      const body = JSON.stringify({ padding: 'x'.repeat(9 * 1024) });
-      // There is no POST route, so a parsed body falls through to 404.
-      expect(await postJson(body)).toBe(404);
+    test('a large JSON body is answered without being read', async () => {
+      const body = JSON.stringify({ padding: 'x'.repeat(200 * 1024) });
+      expect(await post(body)).toBe(404);
+    });
+
+    test('a compressed body with trailing bytes cannot reach a decompressor', async () => {
+      // The payload of GHSA-27r3-jxmh-p828: one valid gzip frame, then garbage.
+      const body = Buffer.concat([gzipSync('{"a":1}'), Buffer.from('trailing bytes')]);
+      const reply = await post(body, { 'Content-Encoding': 'gzip' });
+
+      expect(reply).toBe(404);
+      // The server is still there and answers the next request normally.
+      expect(await post('{}')).toBe(404);
     });
   });
 });

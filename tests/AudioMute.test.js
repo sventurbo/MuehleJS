@@ -1,6 +1,7 @@
 /**
  * AudioMute.test.js
- * Guards the mute preference against a blocked storage.
+ * Guards the mute preference against a blocked storage, and the sound against
+ * a browser that refuses to play any.
  *
  * A browser with site data blocked throws a SecurityError on the very access
  * to localStorage instead of handing back an empty store. audio.js reads the
@@ -10,6 +11,7 @@
  * throw, and pin that it still comes up and the Ton button still toggles.
  */
 
+import { jest } from '@jest/globals';
 import { SoundController } from '../public/js/audio.js';
 
 /** Installs `storage` as the global localStorage the controller reads. */
@@ -39,8 +41,50 @@ function blockStorage() {
   });
 }
 
+/**
+ * Installs an AudioContext stand-in that stays suspended and whose resume()
+ * rejects, as Safari's does when it cannot start an audio device.
+ */
+function useRefusingAudioDevice() {
+  globalThis.AudioContext = class {
+    state = 'suspended';
+    currentTime = 0;
+    destination = {};
+    resume() {
+      return Promise.reject(new DOMException('Failed to start the audio device', 'InvalidStateError'));
+    }
+    createOscillator() {
+      return {
+        frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+        connect() {},
+        start() {},
+        stop() {}
+      };
+    }
+    createGain() {
+      return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} };
+    }
+  };
+}
+
+/** Collects the unhandled rejections that happen while `run` and its follow-ups execute. */
+async function unhandledRejectionsOf(run) {
+  const rejections = [];
+  const record = reason => rejections.push(reason);
+  process.on('unhandledRejection', record);
+  try {
+    run();
+    // Let the rejected promises settle and Node report the unhandled ones.
+    await new Promise(resolve => setTimeout(resolve, 20));
+  } finally {
+    process.off('unhandledRejection', record);
+  }
+  return rejections;
+}
+
 afterEach(() => {
   delete globalThis.localStorage;
+  delete globalThis.AudioContext;
 });
 
 describe('The sound controller with a working storage', () => {
@@ -102,5 +146,39 @@ describe('The sound controller with a blocked storage', () => {
 
     expect(controller.toggleMute()).toBe(true);
     expect(controller.isMuted()).toBe(true);
+  });
+});
+
+describe('The sound controller without a working audio output', () => {
+  // The warnings are expected here; keep them out of the test output.
+  beforeEach(() => jest.spyOn(console, 'warn').mockImplementation(() => {}));
+  afterEach(() => jest.restoreAllMocks());
+
+  test('a refused audio device never surfaces as an unhandled rejection', async () => {
+    useStorage(workingStorage());
+    useRefusingAudioDevice();
+    const controller = new SoundController();
+
+    const rejections = await unhandledRejectionsOf(() => {
+      controller.unlock();
+      controller.playPlace();
+      controller.playWin();
+    });
+
+    expect(rejections).toEqual([]);
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  test('an audio context the browser will not create leaves the game silent, not broken', () => {
+    useStorage(workingStorage());
+    globalThis.AudioContext = class {
+      constructor() {
+        throw new DOMException('Too many audio contexts', 'NotSupportedError');
+      }
+    };
+    const controller = new SoundController();
+
+    expect(() => controller.unlock()).not.toThrow();
+    expect(() => controller.playMill()).not.toThrow();
   });
 });

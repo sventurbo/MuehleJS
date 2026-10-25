@@ -150,9 +150,13 @@ Bewusst behalten, weil sie keine Rückwärtskompatibilität sind:
 
 ## Projektregel: nur die neueste Version jeder Software
 
-- **Node.js**: immer die neueste Hauptversion, nicht die LTS-Linie (derzeit 26). Bei einer
-  neuen Hauptversion `engines` in `package.json`, die Schnellanleitung in der README und die
-  CI-Matrix gemeinsam anheben.
+- **Node.js**: entwickelt wird mit der neuesten Hauptversion, nicht mit der LTS-Linie (derzeit
+  26), und die CI-Matrix enthält sie. Die Grenze setzt die Aufgabe: Das Projekt muss auf einem
+  Ubuntu-Rechner mit dessen Node.js bauen. `engines` in `package.json` nennt deshalb die älteste
+  Version, mit der der Code wirklich läuft (derzeit `^22.18.0 || >=24.2.0` wegen
+  `import.meta.main`; Ubuntu 26.04 LTS liefert 22.22), nicht die neueste. Die CI prüft jede
+  zugelassene Linie (`tests/Environment.test.js`). Bei einer neuen Hauptversion kommt sie zur
+  CI-Matrix hinzu; `engines` steigt nur, wenn der Code eine neuere Version wirklich braucht.
 - **npm**: die neueste Version (derzeit 11).
 - **Abhängigkeiten und devDependencies**: jeweils die neueste Version. Keine ältere
   Hauptversion pinnen, nichts per `overrides` zurückhalten.

@@ -1,7 +1,7 @@
 # Mühle – Multiplayer im Browser
 
 [![CI](https://github.com/sventurbo/MuehleJS/actions/workflows/node.js.yml/badge.svg)](https://github.com/sventurbo/MuehleJS/actions/workflows/node.js.yml)
-![Node.js 26](https://img.shields.io/badge/Node.js-26-339933)
+![Node.js 22.18+ / 24.2+](https://img.shields.io/badge/Node.js-22.18%2B%20%2F%2024.2%2B-339933)
 [![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-blue)](LICENSE)
 
 Das klassische Strategiespiel **Mühle** (*Nine Men's Morris*) für zwei Personen, gespielt in
@@ -115,11 +115,14 @@ ihn so einzusperren, dass er keinen legalen Zug mehr hat.
 
 - **Der Server ist autoritativ**: Er prüft jede Aktion, dem Client wird nie vertraut.
 - **Der Server stürzt nicht ab**: `try/catch`-Guards und globale Exception-Handler. Bricht eine
-  Verbindung ab, endet die Partie sauber, und der verbliebene Spieler wird benachrichtigt.
-- **DoS-Schutz**: Ein In-Memory-Rate-Limiter (Sliding Window) bremst Spam auf Socket.io- und
-  HTTP-Ebene. Anmeldeversuche zählen pro Verbindung und pro Adressblock (siehe
-  [Reverse Proxy](#betrieb-hinter-einem-reverse-proxy)).
-- **Eingabesäuberung**: Alle Eingaben werden serverseitig bereinigt (HTML-Sanitization).
+  Verbindung ab, endet die Partie sofort: Der verbliebene Spieler gewinnt und wird benachrichtigt,
+  der getrennte kehrt zur Anmeldung zurück.
+- **DoS-Schutz**: Ein In-Memory-Rate-Limiter (Sliding Window) bremst Spam auf Socket.io-Ebene.
+  Anmeldeversuche zählen pro Verbindung und pro Adressblock (siehe
+  [Reverse Proxy](#betrieb-hinter-einem-reverse-proxy)); das Adressbudget reicht für einen ganzen
+  Kurs hinter einer NAT-Adresse. HTTP-Request-Bodies liest der Server gar nicht erst.
+- **Eingabesäuberung**: Der Server prüft jede Eingabe auf Typ und Länge und entfernt
+  Steuerzeichen; der Client gibt fremde Texte nur escaped aus.
 - **IPv6 und IPv4**: Der Server lauscht auf `::` im Dual-Stack-Modus und startet bei Bedarf einen
   eigenen IPv4-Listener (siehe [Netzwerk](#netzwerk-ipv6-und-ipv4)).
 
@@ -134,9 +137,10 @@ Skripte. `tests/ModernStandards.test.js` wacht darüber.
 
 ## 🚀 Installation und Start
 
-**Voraussetzung**: Node.js **26 oder neuer** mit npm 11. Das Projekt läuft auf jedem System mit
-Node.js, etwa Ubuntu, Debian oder macOS. Wie bei den Browsern wird nur die jeweils neueste
-Hauptversion unterstützt.
+**Voraussetzung**: Node.js **22.18 oder neuer** (in der 24er-Linie ab 24.2) mit npm. Das reicht
+von dem Node.js, das Ubuntu 26.04 LTS über `apt install nodejs npm` mitbringt (22.22), über die
+aktuelle LTS-Version 24 bis zur neuesten Version 26, mit der das Projekt entwickelt wird. Das
+Projekt läuft auf jedem System mit Node.js, etwa Ubuntu, Debian oder macOS.
 
 ```bash
 npm install        # 1. Abhängigkeiten installieren
@@ -167,11 +171,13 @@ zuletzt der Standard `3000`. Die Datei `.env` liest nur `npm start`, nicht `node
 
 <br>
 
-Die Anforderung steht in `package.json` unter `engines` und wird über `.npmrc`
-(`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version sofort mit
-einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern. Erscheint
-eine neue Node.js-Hauptversion, werden `engines`, dieser Abschnitt und die CI-Matrix in
-`.github/workflows/node.js.yml` gemeinsam angehoben.
+Die Anforderung steht in `package.json` unter `engines` (`^22.18.0 || >=24.2.0`) und wird über
+`.npmrc` (`engine-strict=true`) durchgesetzt: `npm install` bricht auf einer älteren Node-Version
+sofort mit einer klaren `EBADENGINE`-Meldung ab, statt später an unpassender Stelle zu scheitern.
+Die Untergrenze ist die erste Version mit `import.meta.main`, mit dem `server.js` erkennt, dass es
+gestartet und nicht nur von einem Test importiert wurde. Ohne diese Prüfung endete der Server auf
+einer zu alten Version still, ohne zu lauschen. Die CI prüft jede zugelassene Linie (22, 24 und
+26), `tests/Environment.test.js` hält die Grenze fest.
 
 npm führt Installationsskripte von Abhängigkeiten nur aus, wenn `allowScripts` in `package.json`
 sie erlaubt. Die beiden Jest-Abhängigkeiten `@parcel/watcher` und `unrs-resolver` sind dort
@@ -254,11 +260,19 @@ damit beliebig viele Budgets zur Verfügung.
 
 ### Netzwerk: IPv6 und IPv4
 
-Der Server bindet an `::` (IPv6 Unspecified). Unter Linux und macOS nimmt dieser Socket im
-Dual-Stack-Modus auch IPv4-Verbindungen an (als IPv4-mapped IPv6). Erzwingt das Betriebssystem
-`net.ipv6.bindv6only = 1`, startet `server.js` zusätzlich einen IPv4-Listener auf `0.0.0.0`, an den
-Socket.io ebenfalls angebunden wird. So ist das Spiel in jedem Fall über **beide Protokolle**
-erreichbar, auch auf einem reinen IPv4-Rechner.
+Der Server bindet an `::` (IPv6 Unspecified). Node.js öffnet diesen Socket als Dual-Stack-Socket
+(die Option `ipv6Only` von `listen()` ist standardmäßig aus, auch bei
+`net.ipv6.bindv6only = 1`), er nimmt also auch IPv4-Verbindungen an (als IPv4-mapped IPv6). Die
+übrigen Fälle behandelt `server.js` selbst:
+
+| Situation | Verhalten |
+|---|---|
+| Rechner ohne IPv6 (z. B. Kernel mit `ipv6.disable=1`) | `::` scheitert mit `EAFNOSUPPORT`, der Server lauscht auf `0.0.0.0` |
+| System, das IPv4 nicht über einen IPv6-Socket annimmt | ein zweiter Listener auf `0.0.0.0` übernimmt IPv4 |
+| Port belegt, ohne Rechte (z. B. 80) oder ungültig | klare Fehlermeldung und Exit-Code 1, kein stiller Fallback |
+
+An jeden Listener wird Socket.io angebunden. So ist das Spiel in jedem Fall über **beide
+Protokolle** erreichbar, auch auf einem reinen IPv4-Rechner.
 
 ---
 
@@ -311,7 +325,7 @@ nicht versehentlich abschalten.
 ## 🧪 Tests und Qualitätssicherung
 
 ```bash
-npm test                 # Jest: 355 Tests in 13 Dateien
+npm test                 # Jest: 367 Tests in 13 Dateien
 npm run lint             # ESLint: Fehler und toter Code
 npm run format:check     # Prettier: prüft die Formatierung, ändert nichts
 npm run format           # Prettier: formatiert alle Dateien
@@ -343,10 +357,13 @@ sind, läuft Jest im ESM-Modus (`--experimental-vm-modules`, im `test`-Skript be
   Partien und ein gestoppter Timer bei Verbindungsabbruch (`jest.useFakeTimers()`).
 - Verbindungsabbruch und saubere Beendigung.
 - Vollständiger Client-Server-Integrationsfluss über WebSockets.
-- Sicherheit und DoS-Schutz (Rate Limiting inkl. Adressblock-Budget und Proxy-Vertrauen,
-  Eingabesäuberung).
+- Sicherheit und DoS-Schutz (Rate Limiting inkl. Adressblock-Budget, Anmeldung eines ganzen Kurses
+  hinter einer NAT-Adresse und Proxy-Vertrauen, Eingabesäuberung, keine Body-Parser).
 - Konfiguration: `.env.example` dokumentiert jede Umgebungsvariable des Servers, `npm start` lädt
   `.env`, und ein Port auf der Kommandozeile hat Vorrang.
+- Build und Start: `engines` lässt das Node.js von Ubuntu 26.04 LTS, die LTS-Version und die
+  neueste Version zu und die CI prüft die älteste davon; ein belegter oder ungültiger Port beendet
+  den Start mit Exit-Code 1.
 
 **Client**
 - Brett-Diff für die Stein-Animationen: Jede Aktion zufällig gespielter Partien wird als genau das
@@ -356,9 +373,11 @@ sind, läuft Jest im ESM-Modus (`--experimental-vm-modules`, im `test`-Skript be
 - Anmeldeformular (`required`, `pattern`, Absenden per `submit`, gemerkter Name), die Rückmeldung am
   Brett statt Toasts bei wirkungslosen Klicks und der Hinweis auf einen automatischen Zug, der bis
   zum Anklicken stehen bleibt.
-- Ton-Einstellung auch bei blockiertem `localStorage` (abgeschaltete Website-Daten).
+- Ton-Einstellung auch bei blockiertem `localStorage` (abgeschaltete Website-Daten); ein
+  verweigertes Audiogerät lässt das Spiel nur stumm, ohne unbehandelte Promise-Ablehnung.
 - Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die
-  Architekturregel, dass nur `app.js` mit dem Socket spricht.
+  Architekturregel, dass nur `app.js` mit dem Socket spricht; ein Verbindungsabbruch beendet die
+  Partie sofort, und eigene Chatnachrichten werden an der Farbe erkannt, nicht am Namen.
 
 **Standards**
 - Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine
@@ -543,7 +562,7 @@ MuehleJS/
 │   ├── ISSUE_TEMPLATE/
 │   │   └── code-review.yml   # Issue-Vorlage für Funde aus dem Code Review (Stand: Tag code-review)
 │   └── workflows/
-│       └── node.js.yml       # CI (Node.js 26.x): npm ci, Build, Lint, Formatprüfung, Tests, Kontrast
+│       └── node.js.yml       # CI (Node.js 22.x, 24.x, 26.x): npm ci, Build, Lint, Formatprüfung, Tests, Kontrast
 ├── LICENSE                   # MIT-Lizenz
 ├── README.md                 # Diese Dokumentation
 ├── Systemmodel.md            # Systemmodell: Architektur, Domänenmodell, Zustandsautomaten, Protokoll
