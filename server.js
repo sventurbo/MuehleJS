@@ -39,7 +39,9 @@ app.use(express.static(path.join(import.meta.dirname, 'public')));
 // The rule module the browser and lib/MuehleGame.js share. Serving it from its
 // own folder keeps a single copy on disk instead of one per side.
 app.use('/shared', express.static(path.join(import.meta.dirname, 'shared')));
-app.use(express.json({ limit: '10kb' })); // DOS-03: bounded request bodies
+// DOS-03: no route takes a request body, so none is ever parsed. Without a body
+// parser a body is never read into memory or decompressed, which also keeps
+// body-parser's DoS through compressed bodies (GHSA-27r3-jxmh-p828) out.
 
 export const primaryServer = http.createServer(app);
 
