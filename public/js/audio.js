@@ -147,18 +147,33 @@ export class SoundController {
     this.#init();
   }
 
-  /** Creates the audio context on first use and resumes a suspended one. */
+  /**
+   * Creates the audio context on first use and resumes a suspended one.
+   *
+   * Both steps can fail without anything being wrong with the game: the
+   * constructor throws when the browser refuses another context, and resume()
+   * rejects when there is no audio device to start (Safari: "Failed to start
+   * the audio device"). Sound is decoration, so either failure only means
+   * silence, and is logged instead of surfacing as an unhandled rejection.
+   *
+   * @returns {boolean} whether a context exists to schedule sounds on.
+   */
   #init() {
-    this.ctx ??= new AudioContext();
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    try {
+      this.ctx ??= new AudioContext();
+    } catch (err) {
+      console.warn('[Audio] No audio context, the game stays silent:', err);
+      return false;
     }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(err => console.warn('[Audio] Could not start the audio output:', err));
+    }
+    return true;
   }
 
   /** Plays one of the SOUNDS entries, unless the player has muted the game. */
   #play(notes) {
-    if (this.muted) return;
-    this.#init();
+    if (this.muted || !this.#init()) return;
 
     try {
       const now = this.ctx.currentTime;
