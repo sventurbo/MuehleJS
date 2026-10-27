@@ -61,6 +61,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_chat_1',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn(),
         disconnect: jest.fn()
       };
@@ -69,6 +70,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_chat_2',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn(),
         disconnect: jest.fn()
       };
@@ -154,6 +156,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         connected: true,
         handshake: { address: '127.0.0.1', headers: {} },
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
 
@@ -176,6 +179,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         connected: true,
         handshake: { address, headers: {} },
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       });
 
@@ -264,6 +268,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         connected: true,
         handshake: { address: '10.0.0.1', headers: {} },
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
 
@@ -272,6 +277,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         connected: true,
         handshake: { address: '10.0.0.2', headers: {} },
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
 
@@ -304,6 +310,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         headers: forwardedFor === undefined ? {} : { 'x-forwarded-for': forwardedFor }
       },
       join: jest.fn(),
+      leave: jest.fn(),
       emit: jest.fn()
     });
 
@@ -402,6 +409,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       connected: true,
       handshake: { address, headers: {} },
       join: jest.fn(),
+      leave: jest.fn(),
       emit: jest.fn()
     });
 
@@ -482,6 +490,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_empty',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
       gm.enqueuePlayer(socket, '');
@@ -494,6 +503,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_ws',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
       gm.enqueuePlayer(socket, '   ');
@@ -505,6 +515,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_long',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
       gm.enqueuePlayer(socket, 'ThisNameIsWayTooLong');
@@ -517,6 +528,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_exact',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
       gm.enqueuePlayer(socket, '123456789012');
@@ -529,6 +541,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_short',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
       gm.enqueuePlayer(socket, 'Alice');
@@ -541,6 +554,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         id: 'sock_control',
         connected: true,
         join: jest.fn(),
+        leave: jest.fn(),
         emit: jest.fn()
       };
       gm.enqueuePlayer(socket, String.fromCharCode(0).repeat(12));

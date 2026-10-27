@@ -101,6 +101,75 @@ describe('Full Server & Socket.io Integration Flow', () => {
   });
 });
 
+describe('Game rooms over the socket interface', () => {
+  let httpServer;
+  let ioServer;
+  let gameManager;
+  let url;
+  const clients = [];
+
+  beforeAll(done => {
+    httpServer = http.createServer(express());
+    ioServer = new Server(httpServer);
+    gameManager = new GameManager(ioServer);
+
+    ioServer.on('connection', socket => {
+      socket.on('login', data => gameManager.enqueuePlayer(socket, data.username));
+      socket.on('forfeit', () => gameManager.handleForfeit(socket));
+      socket.on('leaveGame', () => gameManager.leaveGame(socket.id));
+      socket.on('chatMessage', data => gameManager.handleChatMessage(socket, data.text));
+      socket.on('disconnect', () => gameManager.handlePlayerDisconnect(socket.id));
+    });
+
+    httpServer.listen(0, '127.0.0.1', () => {
+      url = `http://127.0.0.1:${httpServer.address().port}`;
+      done();
+    });
+  });
+
+  afterAll(done => {
+    clients.forEach(client => client.disconnect());
+    ioServer.close();
+    httpServer.close(done);
+  });
+
+  const nextEvent = (client, event) => new Promise(resolve => client.once(event, resolve));
+
+  const connect = () => {
+    const client = Client(url);
+    clients.push(client);
+    return nextEvent(client, 'connect').then(() => client);
+  };
+
+  const pair = async ([first, firstName], [second, secondName]) => {
+    const started = Promise.all([nextEvent(first, 'gameStart'), nextEvent(second, 'gameStart')]);
+    first.emit('login', { username: firstName });
+    await nextEvent(first, 'queueWaiting');
+    second.emit('login', { username: secondName });
+    await started;
+  };
+
+  test('chat from a finished game does not follow a player into the next one', async () => {
+    const [alice, bob, carol] = await Promise.all([connect(), connect(), connect()]);
+
+    await pair([alice, 'Alice'], [bob, 'Bob']);
+    const gameOver = nextEvent(alice, 'gameOver');
+    bob.emit('forfeit');
+    await gameOver;
+    alice.emit('leaveGame');
+
+    await pair([alice, 'Alice'], [carol, 'Carol']);
+    const firstChat = nextEvent(alice, 'chatMessage');
+    bob.emit('chatMessage', { text: 'Bob aus der alten Partie' });
+    // The server handles Bob's events in order: once he hears back, his chat is through.
+    bob.emit('forfeit');
+    await nextEvent(bob, 'gameNotFound');
+    carol.emit('chatMessage', { text: 'Carol in der neuen Partie' });
+
+    expect(await firstChat).toMatchObject({ sender: 'Carol', text: 'Carol in der neuen Partie' });
+  });
+});
+
 describe('Turn timer over the socket interface', () => {
   const TURN_TIMEOUT_MS = 400;
 

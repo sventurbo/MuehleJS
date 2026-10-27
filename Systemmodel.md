@@ -152,8 +152,10 @@ classDiagram
         +handlePlacePiece(socket, point)
         +handleMovePiece(socket, from, to)
         +handleRemovePiece(socket, point)
+        +handleForfeit(socket)
         +handleChatMessage(socket, text)
         +handleTurnTimeout(gameId)
+        +leaveGame(socketId)
         +handlePlayerDisconnect(socketId)
         +getStats()
     }
@@ -289,6 +291,7 @@ stateDiagram-v2
         TurnBlack_Move --> FINISHED: Remis (Stellung zum 3. Mal / 50 Züge ohne Schlagen)
     }
 
+    SETTING --> FINISHED: Gegner samt Vorrat auf 2 Steine reduziert
     SETTING --> FINISHED: Aufgabe / Disconnect / 3 Zeitüberschreitungen in Folge
     MOVING --> FINISHED: Aufgabe / Disconnect / 3 Zeitüberschreitungen in Folge
 
@@ -396,7 +399,7 @@ sequenceDiagram
     Note over S: Socket.io erkennt disconnect
     Note over S: GameManager.handlePlayerDisconnect(socketId)<br/>Spieler aus socketMap entfernt<br/>Partie als FINISHED markiert<br/>Gewinner = Schwarz
     S-->>P2: emit("opponentDisconnected", { winner: "B", endReason: "Gegner getrennt" })
-    Note over S: gameSession aus games-Map gelöscht<br/>Kein Serverabsturz!
+    Note over S: Beide Sockets verlassen den Raum gameId<br/>gameSession aus games-Map gelöscht<br/>Kein Serverabsturz!
 ```
 
 Ein Client, der nach dem Abbruch mit einer neuen Socket-ID weiterzuspielen versucht, erhält bei der
@@ -451,7 +454,7 @@ sequenceDiagram
 | Parallele Partien | Jede `GameSession` besitzt ihre eigene Uhr; Timer laufen unabhängig voneinander. |
 | Inaktivität | `consecutiveTimeouts` zählt pro Farbe die Zeitüberschreitungen in Folge; jede eigene Aktion setzt den Zähler zurück. Beim dritten Mal verliert der Spieler, statt dass der Server weiter für ihn zieht. Sonst hielten zwei untätige Spieler eine Partie ewig am Leben. |
 | Spielende | `#broadcastGameState()` stoppt die Uhr, sobald die Partie beendet ist (Sieg oder Remis) — ein beendetes Spiel bekommt keinen neuen Timer. |
-| Verbindungsabbruch | `#endSession()` / `leaveGame()` stoppen die Uhr, bevor die Session aus `games` entfernt wird. Der Callback kann also nie auf eine Partie feuern, die es nicht mehr gibt. |
+| Verbindungsabbruch | `#endSession()` (auch beim Verlassen per `leaveGame()`) stoppt die Uhr, bevor die Session aus `games` entfernt wird. Der Callback kann also nie auf eine Partie feuern, die es nicht mehr gibt. |
 | Prozess-Lebensdauer | Alle Timer sind `unref()`-ed und halten den Node-Prozess nicht künstlich am Leben. |
 
 **Warum serverseitig:** Ein Countdown im Browser ist manipulierbar (Debugger, angehaltener Tab, verändertes Skript) und damit als Regel wertlos. Der Client erhält deshalb nur die Restzeit und zeichnet sie; die Entscheidung über den Ablauf trifft ausschließlich der Server.
@@ -470,7 +473,7 @@ sequenceDiagram
 | `removePiece` | `{ point: string }` | `awaitingRemoval == true`; Stein gehört Gegner; Mühlenschutz beachtet | `gameStateUpdate` oder `actionError` |
 | `forfeit` | *(kein)* | Spieler in aktivem Spiel | `gameStateUpdate` und `gameOver` mit Forfeit-Grund |
 | `chatMessage` | `{ text: string }` | Chat-Rate-Limit aktiv; Text getrimmt (max. 150 Zeichen) | Broadcast `chatMessage` an Raum |
-| `leaveGame` | *(kein)* | Suche abbrechen oder Spiel verlassen; in einer laufenden Partie gewinnt der Gegner | Bereinigung der Session, ggf. `opponentDisconnected` an den Gegner |
+| `leaveGame` | *(kein)* | Suche abbrechen oder Spiel verlassen; in einer laufenden Partie gewinnt der Gegner | Bereinigung der Session für beide Spieler, die dabei den Raum verlassen; ggf. `opponentDisconnected` an den Gegner |
 | `disconnect` | *(Transport)* | Automatisch bei Verbindungsverlust | `opponentDisconnected` an verbleibenden Spieler |
 
 ### Server ➔ Client Events

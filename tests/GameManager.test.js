@@ -11,6 +11,7 @@ describe('GameManager Matchmaking & Session Management', () => {
     id,
     connected: true,
     join: jest.fn(),
+    leave: jest.fn(),
     emit: jest.fn()
   });
 
@@ -148,6 +149,25 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       expect(socket2.emit).not.toHaveBeenCalledWith('opponentDisconnected', expect.anything());
       expect(gameManager.games.has(gameId)).toBe(false);
+    });
+
+    test('leaving a finished game closes it for both players, so its chat reaches no one', () => {
+      const socket1 = createMockSocket('sock_1');
+      const socket2 = createMockSocket('sock_2');
+      gameManager.enqueuePlayer(socket1, 'Alice');
+      gameManager.enqueuePlayer(socket2, 'Bob');
+      const gameId = gameManager.socketMap.get('sock_1').gameId;
+
+      gameManager.handleForfeit(socket2);
+      gameManager.leaveGame('sock_1');
+
+      expect(gameManager.socketMap.size).toBe(0);
+      expect(socket1.leave).toHaveBeenCalledWith(gameId);
+      expect(socket2.leave).toHaveBeenCalledWith(gameId);
+
+      roomEmitMock.mockClear();
+      gameManager.handleChatMessage(socket2, 'Noch da?');
+      expect(roomEmitMock).not.toHaveBeenCalled();
     });
 
     test('a session is never orphaned when both players leave a running game', () => {
