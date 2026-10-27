@@ -326,7 +326,7 @@ nicht versehentlich abschalten.
 ## 🧪 Tests und Qualitätssicherung
 
 ```bash
-npm test                 # Jest: 367 Tests in 13 Dateien
+npm test                 # Jest: 371 Tests in 13 Dateien
 npm run lint             # ESLint: Fehler und toter Code
 npm run format:check     # Prettier: prüft die Formatierung, ändert nichts
 npm run format           # Prettier: formatiert alle Dateien
@@ -345,14 +345,16 @@ sind, läuft Jest im ESM-Modus (`--experimental-vm-modules`, im `test`-Skript be
 - Vollständige Geometrie (24 Punkte, 32 Kanten, 16 Mühlen).
 - Setzphase, Zugphase, Springphase (bei 3 Steinen).
 - Mühlenerkennung und Schlag-Regeln (inkl. Mühlenschutz-Ausnahme).
-- Sieg durch Steinedezimierung (< 3 Steine) und durch Einsperren (keine legalen Züge).
+- Sieg durch Steinedezimierung (< 3 Steine, in der Setzphase samt Vorrat) und durch Einsperren
+  (keine legalen Züge).
 - Remis durch dreifache Stellungswiederholung und nach 50 Zügen ohne Schlagen; ein Schlag setzt
   beide Zähler zurück.
 - Identität des geteilten Regelmoduls (`shared/muehleRules.js`) mit der Server-Engine: Beide Seiten
   benutzen dasselbe Objekt, nicht zwei Kopien.
 
 **Server**
-- Matchmaking-Warteschlange und Sitzungsisolation.
+- Matchmaking-Warteschlange und Sitzungsisolation: Nach einer Partie verlassen beide Spieler ihren
+  Raum, der Chat einer alten Partie erreicht niemanden in der nächsten.
 - Zug-Timer: Ablauf nach 25 Sekunden, Zurücksetzen bei jedem Zug, automatischer legaler Zug (auch
   beim Schlagen), Niederlage nach drei Zeitüberschreitungen in Folge, unabhängige Uhren paralleler
   Partien und ein gestoppter Timer bei Verbindungsabbruch (`jest.useFakeTimers()`).

@@ -295,6 +295,42 @@ describe('MuehleGame Rule Engine', () => {
       expect(game.endReason).toContain('weniger als 3 Steine');
     });
 
+    describe('in the setting phase, stones in hand count', () => {
+      beforeEach(() => {
+        game.unplacedPieces.W = 1;
+        game.unplacedPieces.B = 2;
+        game.piecesOnBoard.W = 3;
+        game.board['a7'] = 'W';
+        game.board['d7'] = 'W';
+        game.board['g7'] = 'W';
+        game.turn = 'W';
+        game.awaitingRemoval = true;
+      });
+
+      test('a player left with 2 stones on the board and in hand loses at once', () => {
+        game.piecesOnBoard.B = 1;
+        game.board['a1'] = 'B';
+
+        const res = game.removePiece('W', 'a1');
+        expect(res.success).toBe(true);
+        expect(game.winner).toBe('W');
+        expect(game.phase).toBe('FINISHED');
+        expect(game.endReason).toContain('weniger als 3 Steine');
+      });
+
+      test('a player with 3 stones on the board and in hand plays on', () => {
+        game.piecesOnBoard.B = 2;
+        game.board['a1'] = 'B';
+        game.board['d1'] = 'B';
+
+        const res = game.removePiece('W', 'a1');
+        expect(res.success).toBe(true);
+        expect(game.winner).toBeNull();
+        expect(game.phase).toBe('SETTING');
+        expect(game.turn).toBe('B');
+      });
+    });
+
     test('player wins when opponent has no legal moves left (trapped)', () => {
       game.phase = 'MOVING';
       game.unplacedPieces.W = 0;
