@@ -1,6 +1,3 @@
-/* ==========================================================================
-   Reset & base
-   ========================================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -8,11 +5,9 @@
 }
 
 html {
-  /* Stops mobile browsers from inflating text when the device is rotated. */
   text-size-adjust: 100%;
 }
 
-/* Touch handling: a quick second tap on a control must not zoom the page. */
 button,
 input,
 select,
@@ -25,7 +20,6 @@ body {
   font-family: var(--font-stack);
   background-color: var(--bg-main);
   color: var(--text-main);
-  /* dvh tracks the collapsing mobile toolbars. */
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -43,7 +37,6 @@ h4 {
   font-weight: 600;
 }
 
-/* Thin, unobtrusive scrollbars in the log and chat panes. */
 .move-log-list,
 .chat-messages,
 .rules-body {
@@ -52,7 +45,6 @@ h4 {
   overscroll-behavior: contain;
 }
 
-/* Shared inline-icon sizing. All icons are stroked with currentColor. */
 .icon {
   width: 18px;
   height: 18px;

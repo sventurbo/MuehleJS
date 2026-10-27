@@ -14,13 +14,13 @@ This document records the WCAG 2.1 Level AA contrast verification for both light
 - **Thresholds**:
   - Normal text (< 18pt / < 14pt bold): ≥ 4.5:1
   - Large text (≥ 18pt / ≥ 14pt bold) and UI graphics: ≥ 3:1
-- **Date**: 2026-10-07
+- **Date**: 2026-10-27
 - **Script version**: `scripts/contrast-check.js` (Node.js, no external dependencies)
 - **Source**: the `:root` block of `public/css/tokens.css`, reached through `scripts/css-bundle.js`, which resolves the layered `@import` chain of `public/css/style.css`. Every `light-dark(<light>, <dark>)` pair is split into its two themes and every `var()` reference between tokens is resolved. Colours are read as hex, `rgb()`, `oklch()` or `color-mix()`; translucent colours are checked without their alpha
 
 ## Results
 
-The tables are the output of `npm run contrast-check` (`runContrastCheck()` in `scripts/contrast-check.js`) under Node.js 26. FG and BG are the token values resolved to sRGB hex; ratios are rounded to two decimals, as the checker reports them.
+The tables are the output of `npm run contrast-check` (`runContrastCheck()` in `scripts/contrast-check.js`) under Node.js 22.22; the CI runs the same check on 22, 24 and 26. FG and BG are the token values resolved to sRGB hex; ratios are rounded to two decimals, as the checker reports them.
 
 ### Dark Mode (`prefers-color-scheme: dark`)
 

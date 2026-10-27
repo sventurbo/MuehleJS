@@ -1,22 +1,6 @@
-/**
- * boardRenderer.js
- * Crisp SVG board renderer for Mühle.
- * Manages coordinates, pieces, selection highlights, valid move markers, and mill effects.
- *
- * Colours live in css/board.css. Gradient stops are addressed by class so the
- * board follows the active light/dark theme instead of hardcoding hex values.
- *
- * The board's DOM is built once and then patched: every stone keeps its SVG
- * node for as long as it stays on its point, and every point keeps its four
- * markers. Only that lets CSS animate a stone at all — a freshly inserted node
- * has no previous state to transition from — and it keeps a board update down
- * to a handful of class toggles.
- */
-
 import * as RULES from '/shared/muehleRules.js';
 
 export const POINT_COORDS = {
-  // Outer square
   'a7': { x: 60, y: 60 },
   'd7': { x: 300, y: 60 },
   'g7': { x: 540, y: 60 },
@@ -26,7 +10,6 @@ export const POINT_COORDS = {
   'a1': { x: 60, y: 540 },
   'a4': { x: 60, y: 300 },
 
-  // Middle square
   'b6': { x: 140, y: 140 },
   'd6': { x: 300, y: 140 },
   'f6': { x: 460, y: 140 },
@@ -36,7 +19,6 @@ export const POINT_COORDS = {
   'b2': { x: 140, y: 460 },
   'b4': { x: 140, y: 300 },
 
-  // Inner square
   'c5': { x: 220, y: 220 },
   'd5': { x: 300, y: 220 },
   'e5': { x: 380, y: 220 },
@@ -47,49 +29,32 @@ export const POINT_COORDS = {
   'c4': { x: 220, y: 300 }
 };
 
-/* Radius of the invisible tap/click target around each intersection, in SVG
-   user units. Neighbouring points are 80 units apart, so 36 still leaves the
-   targets disjoint while giving a fingertip roughly 44 CSS px on a phone. */
 const HIT_RADIUS_POINTER = 28;
 const HIT_RADIUS_TOUCH = 36;
 
-/* A captured stone is removed on `animationend`. That event never fires while
-   the board is hidden, so the node is dropped after this long regardless. */
+// animationend never fires while the board is hidden or motion is reduced.
 const LEAVE_FALLBACK_MS = 1000;
-
-/* A mill beam removes itself when its 2.5 s `millBeam` fade ends. The fallback
-   covers a hidden board and reduced motion, where the beam is shown without
-   any animation, so it must outlast the fade. */
 const MILL_BEAM_FALLBACK_MS = 3000;
 
-/* How long a point stays marked after a click that could not do anything. It
-   outlasts the shake in board.css; with reduced motion only the red glow is
-   left, so the mark is removed by this timer rather than by `animationend`. */
 const REJECT_FEEDBACK_MS = 600;
 
-// The rows follow the board: one square or one direction per line.
 // prettier-ignore
 const BOARD_LINES = [
-  // Outer square
   ['a7', 'd7'], ['d7', 'g7'], ['g7', 'g4'], ['g4', 'g1'],
   ['g1', 'd1'], ['d1', 'a1'], ['a1', 'a4'], ['a4', 'a7'],
 
-  // Middle square
   ['b6', 'd6'], ['d6', 'f6'], ['f6', 'f4'], ['f4', 'f2'],
   ['f2', 'd2'], ['d2', 'b2'], ['b2', 'b4'], ['b4', 'b6'],
 
-  // Inner square
   ['c5', 'd5'], ['d5', 'e5'], ['e5', 'e4'], ['e4', 'e3'],
   ['e3', 'd3'], ['d3', 'c3'], ['c3', 'c4'], ['c4', 'c5'],
 
-  // Cross bridges
-  ['d7', 'd6'], ['d6', 'd5'], // North
-  ['g4', 'f4'], ['f4', 'e4'], // East
-  ['d1', 'd2'], ['d2', 'd3'], // South
-  ['a4', 'b4'], ['b4', 'c4']  // West
+  ['d7', 'd6'], ['d6', 'd5'],
+  ['g4', 'f4'], ['f4', 'e4'],
+  ['d1', 'd2'], ['d2', 'd3'],
+  ['a4', 'b4'], ['b4', 'c4']
 ];
 
-/** The 32 connecting lines of the three squares and their four bridges. */
 function boardLinesMarkup() {
   return BOARD_LINES.map(([from, to]) => {
     const a = POINT_COORDS[from];
@@ -98,7 +63,6 @@ function boardLinesMarkup() {
   }).join('');
 }
 
-/** The faint coordinate labels, pushed outwards from their own point. */
 function gridLabelsMarkup() {
   return Object.entries(POINT_COORDS)
     .map(([pt, c]) => {
@@ -109,22 +73,13 @@ function gridLabelsMarkup() {
     .join('');
 }
 
-/**
- * One interactive group per point, holding everything that point can ever show:
- * the hit area, the socket, and the three markers (destination, selection,
- * capture target). The markers are hidden in CSS and switched on by the
- * `is-*` classes `render()` sets, so no node is ever created during play.
- */
 function pointGroupsMarkup(hitRadius) {
   return Object.entries(POINT_COORDS)
     .map(
       ([pt, c]) => `
     <g class="board-point-group" role="button" tabindex="0" aria-label="Feld ${pt}" data-point="${pt}" transform="translate(${c.x}, ${c.y})">
-      <!-- Transparent wide hit area for easy clicking / tapping -->
       <circle cx="0" cy="0" r="${hitRadius}" fill="transparent" class="hit-area" />
-      <!-- Base socket, inside the group so hover/press feedback can reach it -->
       <circle cx="0" cy="0" r="6" class="grid-socket" stroke-width="1.5" />
-      <!-- Markers; the stone is appended after them and therefore paints on top -->
       <g class="point-markers">
         <circle cx="0" cy="0" r="16" class="dest-indicator" stroke-width="1.5" />
         <circle cx="0" cy="0" r="5" class="dest-dot" />
@@ -146,8 +101,6 @@ export class BoardRenderer {
     this.removablePoints = [];
     this.hitRadius = BoardRenderer.hitRadius();
 
-    // Stones currently on screen: point -> { color, el }. Stones that are still
-    // fading out after a capture are already gone from here.
     this.pieces = new Map();
     this.gameId = null;
 
@@ -159,13 +112,11 @@ export class BoardRenderer {
       <svg viewBox="0 0 600 600" class="muehle-svg" preserveAspectRatio="xMidYMid meet">
         <title>Mühle-Spielbrett mit 24 Feldern</title>
         <defs>
-          <!-- Board surface: a very subtle vignette, themed via CSS -->
           <radialGradient id="boardGrad" cx="50%" cy="50%" r="75%">
             <stop offset="0%" class="plate-stop-start" />
             <stop offset="100%" class="plate-stop-end" />
           </radialGradient>
 
-          <!-- Stone gradients, themed via CSS -->
           <radialGradient id="whitePieceGrad" cx="34%" cy="28%" r="78%">
             <stop offset="0%" class="stone-w-stop-hi" />
             <stop offset="100%" class="stone-w-stop-lo" />
@@ -176,10 +127,7 @@ export class BoardRenderer {
             <stop offset="100%" class="stone-b-stop-lo" />
           </radialGradient>
 
-          <!-- Soft glow for the mill beam -->
-          <!-- Sized in board units: a mill beam is a straight line whose
-               bounding box has zero height or width, so a region relative to
-               that box would be empty and the beam would not be drawn. -->
+          <!-- userSpaceOnUse: a straight beam has no bounding box of its own. -->
           <filter id="goldGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="600" height="600">
             <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
             <feMerge>
@@ -189,18 +137,15 @@ export class BoardRenderer {
           </filter>
         </defs>
 
-        <!-- Board Surface Plate -->
         <rect x="12" y="12" width="576" height="576" rx="28" class="board-plate" fill="url(#boardGrad)" stroke-width="1"/>
         <rect x="26" y="26" width="548" height="548" rx="20" fill="none" class="board-plate-inner" stroke-width="1"/>
 
         <g id="grid-lines" class="grid-lines">${boardLinesMarkup()}</g>
 
-        <!-- Active Mill Glowing Lines Group -->
         <g id="mill-glow-lines"></g>
 
         <g id="grid-labels" class="grid-labels" text-anchor="middle" dominant-baseline="central">${gridLabelsMarkup()}</g>
 
-        <!-- Interactive Pieces and Target Markers Layer -->
         <g id="interactive-layer">${pointGroupsMarkup(this.hitRadius)}</g>
       </svg>
     `;
@@ -213,26 +158,14 @@ export class BoardRenderer {
       this.pointGroups[group.getAttribute('data-point')] = group;
     });
 
-    // One delegated listener: the groups outlive every render, and a stone that
-    // is still fading out lets the click through to its point.
     this.interactiveLayer.addEventListener('click', e => {
       const pt = e.target.closest('.board-point-group')?.getAttribute('data-point');
       if (pt) this.onPointClick?.(pt);
     });
 
-    // Keyboard play: the arrow keys move the focus from point to point, Enter
-    // and Space activate the focused one (issue #58).
     this.#initKeyboardNavigation();
   }
 
-  /**
-   * Keyboard control of the board.
-   *
-   * Every point is a focusable button. The arrow keys move the focus to the
-   * nearest point in that direction (where there is none, the focus moves on
-   * in reading order), and Enter and Space activate the focused point, the
-   * same action a click triggers.
-   */
   #initKeyboardNavigation() {
     const points = Array.from(this.interactiveLayer.querySelectorAll('.board-point-group')).map(group => {
       const pt = group.getAttribute('data-point');
@@ -244,8 +177,6 @@ export class BoardRenderer {
       if (group) group.focus();
     };
 
-    // Nearest point in one direction; with nothing further that way, continue
-    // in reading order (top to bottom, left to right).
     const moveFocus = (dx, dy) => {
       const active = document.activeElement;
       if (!active || !active.classList.contains('board-point-group')) return;
@@ -300,18 +231,6 @@ export class BoardRenderer {
     });
   }
 
-  /**
-   * Updates the board display with the given game state.
-   *
-   * The capture targets are derived from `gameState` here rather than passed in,
-   * so a `.removal-target` ring can never outlive the state it was computed
-   * from: the click handler in app.js asks the same function with the same
-   * state and therefore always accepts what the board shows.
-   *
-   * Nothing is created here — every marker already exists and only its `is-*`
-   * class changes, so a full board update is 24 class toggles, not 24 rebuilt
-   * subtrees.
-   */
   render(gameState, playerColor, selectedPoint = null, validDestinations = []) {
     this.selectedPoint = selectedPoint;
     this.validDestinations = validDestinations;
@@ -325,15 +244,11 @@ export class BoardRenderer {
     Object.keys(POINT_COORDS).forEach(pt => {
       const isRemovable = this.removablePoints.includes(pt);
 
-      // Markers: a calm ring plus a centre dot for a destination, an accent ring
-      // for the selected stone, a tinted target ring for a capturable one.
       const group = this.pointGroups[pt];
       group.classList.toggle('is-destination', this.validDestinations.includes(pt));
       group.classList.toggle('is-selected', this.selectedPoint === pt);
       group.classList.toggle('is-capturable', isRemovable);
 
-      // Stone state. Toggled on the existing node, never by rewriting its class
-      // attribute, which would cut short a running entry animation.
       const piece = this.pieces.get(pt);
       if (piece) {
         piece.el.classList.toggle('piece-selectable', canSelect && piece.color === playerColor);
@@ -342,13 +257,6 @@ export class BoardRenderer {
     });
   }
 
-  /**
-   * Brings the stones on screen in line with `gameState.board`, touching only
-   * the points that changed: a placed stone pops in, a moved stone travels from
-   * its old point, a captured stone fades out. A new game starts from a clean
-   * board instead of animating the previous game's stones away, and without
-   * the last game's mill beam.
-   */
   #syncPieces(gameState) {
     const board = gameState.board;
     const sameGame = gameState.gameId === this.gameId;
@@ -374,17 +282,12 @@ export class BoardRenderer {
     placed.forEach(pt => this.#addPiece(pt, board[pt], sameGame ? { enter: true } : {}));
   }
 
-  /**
-   * Puts a stone on `pt`. `from` makes it travel there from another point,
-   * `enter` lets it pop in; with neither it simply appears.
-   */
   #addPiece(pt, color, { from = null, enter = false } = {}) {
     const group = this.pointGroups[pt];
     const isWhite = color === 'W';
     const fillGrad = isWhite ? 'url(#whitePieceGrad)' : 'url(#blackPieceGrad)';
 
     if (from) {
-      // Paint the travelling stone above every point it crosses on the way.
       this.interactiveLayer.append(group);
     }
 
@@ -392,9 +295,7 @@ export class BoardRenderer {
       'beforeend',
       `
       <g class="game-piece ${isWhite ? 'piece-white' : 'piece-black'}">
-        <!-- Stone body -->
         <circle cx="0" cy="0" r="21" class="stone-body" fill="${fillGrad}" stroke-width="1"/>
-        <!-- Single specular highlight -->
         <ellipse cx="-5.5" cy="-7.5" rx="7.5" ry="4.5" class="stone-gloss" transform="rotate(-30 -5.5 -7.5)"/>
       </g>
     `
@@ -402,7 +303,6 @@ export class BoardRenderer {
     const el = group.lastElementChild;
 
     if (from) {
-      // Start offset in local user units; the keyframes glide it back to 0.
       el.style.setProperty('--travel-x', `${POINT_COORDS[from].x - POINT_COORDS[pt].x}px`);
       el.style.setProperty('--travel-y', `${POINT_COORDS[from].y - POINT_COORDS[pt].y}px`);
       BoardRenderer.#playOnce(el, 'piece-arriving');
@@ -413,11 +313,6 @@ export class BoardRenderer {
     this.pieces.set(pt, { color, el });
   }
 
-  /**
-   * Takes the stone off `pt`, letting it fade out first when `animate` is set.
-   * It leaves `this.pieces` immediately, so the next render already treats the
-   * point as empty while the old node finishes its exit.
-   */
   #removePiece(pt, animate) {
     const piece = this.pieces.get(pt);
     if (!piece) return;
@@ -433,22 +328,11 @@ export class BoardRenderer {
     setTimeout(() => el.remove(), LEAVE_FALLBACK_MS);
   }
 
-  /**
-   * Runs the animation behind `className` once. The class is dropped again
-   * afterwards so the animation cannot replay when the node is re-inserted
-   * or its screen is shown again.
-   */
   static #playOnce(el, className) {
     el.classList.add(className);
     el.addEventListener('animationend', () => el.classList.remove(className), { once: true });
   }
 
-  /**
-   * Answers a click that could not do anything (an occupied point, the
-   * opponent's turn, no line to the selected stone) right where the player
-   * looked: the point shakes briefly and glows red, instead of a toast
-   * appearing in a corner of the screen.
-   */
   rejectPoint(pt) {
     const group = this.pointGroups[pt];
     if (!group) return;
@@ -456,19 +340,10 @@ export class BoardRenderer {
     setTimeout(() => group.classList.remove('is-rejected'), REJECT_FEEDBACK_MS);
   }
 
-  /**
-   * Coarse pointers (fingers) need a larger target than a mouse cursor.
-   */
   static hitRadius() {
     return window.matchMedia('(pointer: coarse)').matches ? HIT_RADIUS_TOUCH : HIT_RADIUS_POINTER;
   }
 
-  /**
-   * Lays a gold beam over a freshly closed mill; without a mill it clears
-   * every beam. Each beam is its own node and removes only itself, so a mill
-   * closed while another is still glowing gets its full fade instead of being
-   * wiped by the earlier beam's timer.
-   */
   highlightMill(millPoints) {
     if (!millPoints || millPoints.length < 3) {
       this.millGlowLayer.replaceChildren();

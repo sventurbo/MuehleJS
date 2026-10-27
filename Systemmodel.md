@@ -114,11 +114,11 @@ Aktionen an den Server. `tests/ClientModules.test.js` prüft genau das.
 ### Komponentenbeschreibung
 
 #### Serverseitige Module
-- **`server.js`**: Initialisiert Express, serviert statische Dateien (`/public`), konfiguriert Socket.io mit Payload-Grenzen (`maxHttpBufferSize: 10KB`), bindet das Dual-Stack IPv6/IPv4-Netzwerk und fängt Ausnahmen global ab. Nur ein fehlender IPv6-Stack führt zum IPv4-Fallback; ein belegter Port, ein Port, der Root-Rechte braucht, oder eine ungültige Portnummer beenden den Start mit einer klaren Meldung und Exit-Code 1. Die Konfiguration kommt aus der Umgebung (`PORT`, `TRUST_PROXY`, `TURN_TIMEOUT_MS`), die `npm start` über Nodes `--env-file-if-exists=.env` optional aus einer `.env`-Datei ergänzt (Vorlage: `.env.example`). Beim Port gilt: Kommandozeile (`npm start 8080`) vor `PORT` vor `3000` (`resolvePort()`).
+- **`server.js`**: Initialisiert Express, serviert `public/` und das geteilte Regelmodul unter `/shared`, konfiguriert Socket.io mit Payload-Grenzen (`maxHttpBufferSize: 10KB`), bindet das Dual-Stack IPv6/IPv4-Netzwerk und fängt Ausnahmen global ab. Nur ein fehlender IPv6-Stack führt zum IPv4-Fallback; ein belegter Port, ein Port, der Root-Rechte braucht, oder eine ungültige Portnummer beenden den Start mit einer klaren Meldung und Exit-Code 1. Die Konfiguration kommt aus der Umgebung (`PORT`, `TRUST_PROXY`, `TURN_TIMEOUT_MS`), die `npm start` über Nodes `--env-file-if-exists=.env` optional aus einer `.env`-Datei ergänzt (Vorlage: `.env.example`). Beim Port gilt: Kommandozeile (`npm start 8080`) vor `PORT` vor `3000` (`resolvePort()`).
 - **`lib/GameManager.js`**: Verwaltet die Matchmaking-Warteschlange, Socket-zu-Spieler-Mappings (`socketMap`), Räume (`games`) und koordiniert Event-Aufrufe. Hier liegt auch der **Zug-Timer**: pro Partie eine eigene Uhr (Standard 25 s), die bei jeder angenommenen Aktion neu startet und bei Ablauf einen automatischen legalen Zug auslöst.
 - **`shared/muehleRules.js`**: Das geteilte Regelmodul — Brettgeometrie (24 Punkte, 32 Adjazenzkanten, 16 Mühlenlinien), Mühlen- und Schlag-Regeln sowie der Brett-Diff, alles zustandsfrei. Server-Engine und Browser laden **dieselbe Datei** als ES-Modul (der Server per `import`, die Seite über den Mount `/shared`), weshalb es keine zweite Brett-Definition gibt, die auseinanderlaufen könnte.
 - **`lib/MuehleGame.js`**: Rein deterministische, autoritative Mühle-Zustandsmaschine auf Basis des geteilten Regelmoduls. Verwaltet Brett, Phase, Zugrecht und Historie und validiert Setzen, Ziehen, Springen sowie Sieg-/Verlustbedingungen. Über `getLegalActions()` / `makeRandomLegalMove()` liefert sie außerdem die vollständige Zugmenge des Spielers am Zug — die Grundlage des automatischen Zugs bei Zeitablauf.
-- **`lib/RateLimiter.js`**: In-Memory Sliding-Window Token-Bucket-Filter zum Schutz vor Chat-Floods (CH-05), Queue-Flooding (DOS-01) und Aktions-Spam.
+- **`lib/RateLimiter.js`**: In-Memory Sliding-Window-Filter zum Schutz vor Chat-Floods (CH-05), Queue-Flooding (DOS-01) und Aktions-Spam.
 - **`lib/clientAddress.js`**: Ermittelt die Adresse, unter der ein Client limitiert wird. `X-Forwarded-For` wird nur ausgewertet, wenn die Gegenstelle als vertrauenswürdiger Proxy konfiguriert ist (`TRUST_PROXY`); anschließend wird die Adresse auf ihren Block reduziert (IPv4 und IPv4-mapped IPv6 auf die reine IPv4-Adresse, natives IPv6 auf sein `/64`-Präfix), damit ein Client mit eigenem Präfix sein Kontingent nicht durch Adresswechsel umgehen kann.
 
 #### Clientseitige Module
@@ -126,7 +126,7 @@ Aktionen an den Server. `tests/ClientModules.test.js` prüft genau das.
 - **`public/js/hudView.js`**: Die Statuszeile (Phase und Anweisung in einem Satz, eingefärbt nach dem Spieler am Zug), beide Spielerkarten und die Zuguhr, die wie bei einer Schachuhr in der Karte des Spielers am Zug läuft. Gespeist aus den Server-Events `turnTimer` / `turnTimeout`, reine Anzeige ohne eigene Zeitlogik und ohne Socket.
 - **`public/js/dockView.js`**: Zugprotokoll und Chat samt Tab-Leiste und Ungelesen-Markierung auf kleinen Bildschirmen. Der ausgewählte Tab steht nur in `aria-selected`, das auch das Stylesheet liest. Hier liegt die Escaping-Grenze: Name und Text einer Nachricht gehen durch `escapeHtml()`, bevor Markup entsteht.
 - **`public/js/overlays.js`**: Toasts, Verbindungsanzeige und die Antworten der nativen `<dialog>`-Elemente. Regel- und Aufgeben-Dialog öffnen und schließen sich über Invoker Commands (`command`/`commandfor`) ohne Skript; die View reicht nur den `returnValue` von Aufgeben- und Spielende-Dialog an den Controller weiter. Die Scroll-Sperre hinter einem offenen Dialog leistet CSS (`body:has(dialog:modal)`).
-- **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und legt Ziel-, Auswahl- und Schlagmarker einmalig an; ein Zustandswechsel schaltet nur noch deren `is-*`-Klasse um. Das Brett wird einmal aufgebaut und danach nur gepatcht: `diffBoards()` aus dem geteilten Regelmodul bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten.
+- **`public/js/boardRenderer.js`**: Dynamischer SVG-Renderer. Verankert jeden Knotenpunkt per `transform="translate(x, y)"` und legt Ziel-, Auswahl- und Schlagmarker einmalig an; ein Zustandswechsel schaltet nur noch deren `is-*`-Klasse um. Das Brett wird einmal aufgebaut und danach nur gepatcht: `diffBoards()` aus dem geteilten Regelmodul bestimmt, welche Steine gesetzt, gezogen oder geschlagen wurden; nur diese werden per CSS-Animation eingeblendet, verschoben bzw. ausgeblendet, alle übrigen behalten ihren SVG-Knoten. Jeder Punkt ist ein fokussierbarer Button; die Pfeiltasten führen den Fokus, Enter und Leertaste lösen dieselbe Aktion wie ein Klick aus (`tests/Responsive.test.js`, `tests/BoardAnimation.test.js`).
 - **`public/js/audio.js`**: Reiner Web-Audio-API Synthesizer für Soundeffekte (Klicks, Züge, Mühlenklang, Schlag-Impact, Fanfaren). Jeder Effekt ist als Notenliste beschrieben; ein einziger Scheduler spielt sie.
 - **`public/css/`**: Modulares Stylesheet. `style.css` ist reines Manifest: eine `@layer`-Anweisung legt die Cascade Layers fest, und jedes der zwölf Module wird per `@import … layer(<name>)` in seinen Layer geladen — `tokens` mit der niedrigsten Priorität (Design-Tokens, Farben in `oklch()` als `light-dark()`-Paare, abgeleitete Farben per `color-mix()`), dazwischen die Module je Screen bzw. Komponente, jeweils nativ verschachtelt, danach `responsive` (Breakpoints als Bereichs-Media-Queries, Pointer-Typ, `prefers-reduced-motion`) und zuletzt `utilities` (das `hidden`-Attribut). Den Vorrang regelt allein die Layer-Reihenfolge, kein `!important`. Werkzeuge, die das Stylesheet als Ganzes lesen (`scripts/contrast-check.js`, die statischen CSS-Tests), gehen über `scripts/css-bundle.js`, das die `@import`-Kette auflöst.
 
@@ -323,7 +323,7 @@ stateDiagram-v2
     }
 
     Screen_Game --> Modal_GameOver: Event "gameOver" oder "opponentDisconnected"
-    Screen_Game --> Screen_Login: Eigene Verbindung bricht ab (disconnect)
+    Screen_Game --> Screen_Login: Event "gameNotFound" oder eigene Verbindung bricht ab (disconnect)
     Screen_Queue --> Screen_Login: Eigene Verbindung bricht ab (disconnect)
     Modal_GameOver --> Screen_Queue: Klick auf "Erneut spielen"
     Modal_GameOver --> Screen_Login: Klick auf "Zurück zur Startseite" oder Esc
@@ -350,8 +350,8 @@ sequenceDiagram
     Note over S: queueLimiter Prüfung<br/>Alice in Queue gefunden -> Match!
     Note over S: Zufällige Farbwahl (z.B. Alice=W, Bob=B)<br/>Crypto UUID generiert (gameId)<br/>Raum gameId erstellt
 
-    S-->>P1: emit("gameStart", { color: "W", opponent: "Bob", state })
-    S-->>P2: emit("gameStart", { color: "B", opponent: "Alice", state })
+    S-->>P1: emit("gameStart", { yourColor: "W", opponentName: "Bob", state })
+    S-->>P2: emit("gameStart", { yourColor: "B", opponentName: "Alice", state })
 ```
 
 ---
@@ -399,11 +399,15 @@ sequenceDiagram
     Note over S: gameSession aus games-Map gelöscht<br/>Kein Serverabsturz!
 ```
 
+Ein Client, der nach dem Abbruch mit einer neuen Socket-ID weiterzuspielen versucht, erhält bei der
+nächsten Aktion `gameNotFound`. Der Client beendet daraufhin die lokale Sitzung und kehrt zur
+Anmeldung zurück, statt auf einem Brett zu bleiben, das keine Aktion mehr annimmt.
+
 ---
 
 ### 5.4 Zug-Timer & automatischer Zug
 
-Jede einzelne Entscheidung — Setzen, Ziehen und das Schlagen nach einer Mühle — ist auf **25 Sekunden** begrenzt (konfigurierbar über `TURN_TIMEOUT_MS`). Die Uhr gehört zur Partie, nicht zum Client: `GameManager` hält pro `GameSession` genau einen `setTimeout`, der bei jeder angenommenen Aktion über `_broadcastGameState()` neu gestellt wird.
+Jede einzelne Entscheidung — Setzen, Ziehen und das Schlagen nach einer Mühle — ist auf **25 Sekunden** begrenzt (konfigurierbar über `TURN_TIMEOUT_MS`). Die Uhr gehört zur Partie, nicht zum Client: `GameManager` hält pro `GameSession` genau einen `setTimeout`, den `#startTurnTimer()` bei jeder angenommenen Aktion neu stellt.
 
 ```mermaid
 sequenceDiagram
@@ -412,9 +416,9 @@ sequenceDiagram
     participant S as Server (GameManager & MuehleGame)
     actor P2 as Spieler Schwarz
 
-    Note over S: _startTurnTimer(gameId)<br/>setTimeout(25 s) für Weiß
-    S-->>P1: emit("turnTimer", { turn: "W", durationMs: 25000 })
-    S-->>P2: emit("turnTimer", { turn: "W", durationMs: 25000 })
+    Note over S: #startTurnTimer(gameId)<br/>setTimeout(25 s) für Weiß
+    S-->>P1: emit("turnTimer", { turn: "W", awaitingRemoval: false, durationMs: 25000, remainingMs: 25000 })
+    S-->>P2: emit("turnTimer", { turn: "W", awaitingRemoval: false, durationMs: 25000, remainingMs: 25000 })
     Note over P1,P2: Beide Clients zeichnen den Countdown-Ring
 
     Note over P1: Weiß zieht nicht (Denkpause, AFK, Tab im Hintergrund)
@@ -426,8 +430,8 @@ sequenceDiagram
     S-->>P2: emit("gameStateUpdate", { state, lastAction: { auto: true } })
 
     Note over S: Zug angenommen -> Uhr neu gestellt, jetzt für Schwarz
-    S-->>P1: emit("turnTimer", { turn: "B", durationMs: 25000 })
-    S-->>P2: emit("turnTimer", { turn: "B", durationMs: 25000 })
+    S-->>P1: emit("turnTimer", { turn: "B", awaitingRemoval: false, durationMs: 25000, remainingMs: 25000 })
+    S-->>P2: emit("turnTimer", { turn: "B", awaitingRemoval: false, durationMs: 25000, remainingMs: 25000 })
 
     alt Schwarz überschreitet die Bedenkzeit zum dritten Mal in Folge
         Note over S: consecutiveTimeouts.B == 3<br/>kein automatischer Zug mehr<br/>MuehleGame.forfeit("B", Grund)
@@ -446,8 +450,8 @@ sequenceDiagram
 | Schlagen nach Mühle | Eigene 25 Sekunden, da es eine eigene Entscheidung ist. Sonst könnte eine Partie im Zustand `awaitingRemoval` unbegrenzt blockieren. |
 | Parallele Partien | Jede `GameSession` besitzt ihre eigene Uhr; Timer laufen unabhängig voneinander. |
 | Inaktivität | `consecutiveTimeouts` zählt pro Farbe die Zeitüberschreitungen in Folge; jede eigene Aktion setzt den Zähler zurück. Beim dritten Mal verliert der Spieler, statt dass der Server weiter für ihn zieht. Sonst hielten zwei untätige Spieler eine Partie ewig am Leben. |
-| Spielende | `_broadcastGameState()` stoppt die Uhr, sobald die Partie beendet ist (Sieg oder Remis) — ein beendetes Spiel bekommt keinen neuen Timer. |
-| Verbindungsabbruch | `_endSession()` / `leaveGame()` stoppen die Uhr, bevor die Session aus `games` entfernt wird. Der Callback kann also nie auf eine Partie feuern, die es nicht mehr gibt. |
+| Spielende | `#broadcastGameState()` stoppt die Uhr, sobald die Partie beendet ist (Sieg oder Remis) — ein beendetes Spiel bekommt keinen neuen Timer. |
+| Verbindungsabbruch | `#endSession()` / `leaveGame()` stoppen die Uhr, bevor die Session aus `games` entfernt wird. Der Callback kann also nie auf eine Partie feuern, die es nicht mehr gibt. |
 | Prozess-Lebensdauer | Alle Timer sind `unref()`-ed und halten den Node-Prozess nicht künstlich am Leben. |
 
 **Warum serverseitig:** Ein Countdown im Browser ist manipulierbar (Debugger, angehaltener Tab, verändertes Skript) und damit als Regel wertlos. Der Client erhält deshalb nur die Restzeit und zeichnet sie; die Entscheidung über den Ablauf trifft ausschließlich der Server.
@@ -464,9 +468,9 @@ sequenceDiagram
 | `placePiece` | `{ point: string }` | Phase `SETTING`; `turn == player`; Punkt in `POINTS` & frei | `gameStateUpdate` oder `actionError` |
 | `movePiece` | `{ from: string, to: string }` | Phase `MOVING`; `board[from] == player`; Ziel frei; Nachbar oder Jump | `gameStateUpdate` oder `actionError` |
 | `removePiece` | `{ point: string }` | `awaitingRemoval == true`; Stein gehört Gegner; Mühlenschutz beachtet | `gameStateUpdate` oder `actionError` |
-| `forfeit` | *(kein)* | Spieler in aktivem Spiel | `gameOver` mit Forfeit-Grund |
+| `forfeit` | *(kein)* | Spieler in aktivem Spiel | `gameStateUpdate` und `gameOver` mit Forfeit-Grund |
 | `chatMessage` | `{ text: string }` | Chat-Rate-Limit aktiv; Text getrimmt (max. 150 Zeichen) | Broadcast `chatMessage` an Raum |
-| `leaveGame` | *(kein)* | Spieler verlässt beendetes Spiel | Bereinigung der Session |
+| `leaveGame` | *(kein)* | Suche abbrechen oder Spiel verlassen; in einer laufenden Partie gewinnt der Gegner | Bereinigung der Session, ggf. `opponentDisconnected` an den Gegner |
 | `disconnect` | *(Transport)* | Automatisch bei Verbindungsverlust | `opponentDisconnected` an verbleibenden Spieler |
 
 ### Server ➔ Client Events
@@ -474,12 +478,13 @@ sequenceDiagram
 | Event | Payload | Beschreibung |
 |:---|:---|:---|
 | `queueWaiting` | `{ position: number, message: string }` | Bestätigt Warteschlangenplatz |
-| `gameStart` | `{ gameId, yourColor, yourName, opponentName, state }` | Startet Spielarena und teilt Farben zu |
+| `gameStart` | `{ gameId, yourColor, yourName, opponentName, opponentColor, state }` | Startet Spielarena und teilt Farben zu |
 | `gameStateUpdate` | `{ state: Object, lastAction: Object }` | Überträgt autoritativen Spielzustand (`lastAction.auto === true` bei einem Zug, den die Uhr ausgelöst hat) |
 | `turnTimer` | `{ turn, awaitingRemoval, durationMs, remainingMs }` | Startet/erneuert den Countdown; wird nach jeder angenommenen Aktion gesendet |
 | `turnTimeout` | `{ player, timeoutMs, consecutiveTimeouts, timeoutLimit, action, autoMove, message }` | Die Bedenkzeit ist abgelaufen; nennt den Spieler, den automatisch ausgeführten Zug und die wievielte Zeitüberschreitung in Folge es war |
 | `gameOver` | `{ winner: string \| null, winnerName: string \| null, endReason: string, state }` | Zeigt Spielende-Modal an; `winner == null` bedeutet Remis |
 | `opponentDisconnected`| `{ winner, winnerName, endReason, state }` | Informiert über Verbindungsabbruch des Gegners |
+| `gameNotFound` | `{ message: string }` | Die Partie des Sockets existiert nicht mehr (Gegner weg oder neue Socket-ID); der Client beendet die Sitzung |
 | `actionError` | `{ message: string }` | Informiert den Client über Regelverstoß oder Rate-Limit |
 | `serverError` | `{ message: string }` | Informiert über Server- oder Warteschlangenüberlastung |
 | `chatMessage` | `{ sender: string, color: string, text: string, timestamp: number }` | Übermittelt Chatnachricht an beide Clients |

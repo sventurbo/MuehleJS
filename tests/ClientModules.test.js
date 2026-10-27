@@ -1,14 +1,3 @@
-/**
- * ClientModules.test.js
- * Guards for the split client, the JavaScript counterpart of CssModules.test.js.
- *
- * public/index.html loads one ES module, the controller, and everything else
- * reaches the browser — and the static client tests — through its imports.
- * These assertions keep that graph complete and in evaluation order, and they
- * pin the one architectural rule the split exists for: the views draw, the
- * controller talks to the server.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { listScripts, resolveScript, loadClientScripts } from '../scripts/client-bundle.js';
@@ -18,7 +7,6 @@ const jsDir = path.join(root, 'public', 'js');
 const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 const scripts = listScripts();
 
-/** Strips comments, so assertions only see code a browser would run. */
 function code(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 }
@@ -81,7 +69,6 @@ describe('What the controller makes of the connection', () => {
   const controller = code(fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8'));
   const dock = code(fs.readFileSync(path.join(jsDir, 'dockView.js'), 'utf8'));
 
-  /** The body of the handler app.js registers for `event`. */
   const handlerOf = event => {
     const start = controller.indexOf(`this.socket.on('${event}'`);
     expect(start).toBeGreaterThan(-1);
@@ -89,8 +76,6 @@ describe('What the controller makes of the connection', () => {
   };
 
   test('a dropped connection ends a running game at once, not only after a reconnect', () => {
-    // The server forgets the session the moment the socket drops; a board that
-    // waits for a reconnect stays dead for as long as the server is gone.
     expect(handlerOf('disconnect')).toContain('this.#terminateSession(');
     expect(controller).not.toContain('connectionLost');
   });

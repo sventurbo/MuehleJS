@@ -1,8 +1,3 @@
-/* ==========================================================================
-   Screen 3: Arena
-   The two player panels and the board they flank.
-   ========================================================================== */
-
 .game-arena {
   display: flex;
   align-items: center;
@@ -37,7 +32,6 @@
   border-block-end: 1px solid var(--hairline);
 }
 
-/* Avatars are real discs matching the board stones, not glyphs. */
 .stone-avatar {
   width: 34px;
   height: 34px;
@@ -60,9 +54,6 @@
   min-width: 0;
 }
 
-/* Turn clock: the seconds the server grants for the current decision, drawn
-   as a shrinking ring on the panel of the player on turn, like a chess clock.
-   Display only — the clock that counts runs in GameManager. */
 .turn-clock {
   position: relative;
   flex: none;
@@ -74,12 +65,10 @@
   justify-content: center;
   color: var(--text-muted);
 
-  /* Own turn: the ring picks up the green of the active panel. */
   &.is-mine {
     color: var(--accent-green);
   }
 
-  /* Last five seconds: red, on both sides of the board. */
   &.is-urgent {
     color: var(--accent-red);
 
@@ -94,7 +83,6 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  /* The arc starts at twelve o'clock and empties clockwise. */
   rotate: -90deg;
 }
 
@@ -157,7 +145,6 @@
   color: var(--text-muted);
 }
 
-/* Narrow phone panels swap the long stat labels for the short ones. */
 .label-short {
   display: none;
 }
@@ -172,7 +159,6 @@
   color: var(--text-main);
 }
 
-/* Pips for stones still in hand */
 .pips-container {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
@@ -187,8 +173,6 @@
     background-color var(--dur-3) var(--ease-out),
     box-shadow var(--dur-3) var(--ease-out);
 
-  /* Filled = still in hand, hollow = already placed. Reads the same in both
-     themes and for both stone colours, unlike tinting alone. */
   &.inactive {
     background: transparent;
     box-shadow: inset 0 0 0 1px var(--pip-inactive);
@@ -205,9 +189,6 @@
   box-shadow: inset 0 0 0 1px var(--stone-b-rim);
 }
 
-/* Board */
-/* The board shrinks to keep the whole arena visible at 1024x768, the
-   documented minimum, instead of pushing the dock below the fold. */
 .board-wrapper {
   flex: 1;
   max-width: min(540px, calc(100vh - 316px));

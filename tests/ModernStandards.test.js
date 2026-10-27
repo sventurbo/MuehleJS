@@ -1,14 +1,3 @@
-/**
- * ModernStandards.test.js
- * The game targets the current versions of Chrome, Firefox, Safari and Node.js
- * only. These guards keep backward-compatibility code from creeping back in —
- * vendor prefixes, fallback declarations, vendor meta tags, legacy module
- * formats, feature detection for APIs every supported engine ships — and pin
- * the current standards that replaced the older idioms: native dialogs driven
- * by invoker commands, the hidden attribute, light-dark() tokens, media query
- * ranges, oklch() and color-mix() colours and private class members.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadStylesheet } from '../scripts/css-bundle.js';
@@ -17,7 +6,6 @@ import { loadClientScripts } from '../scripts/client-bundle.js';
 const root = path.join(import.meta.dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
-/** Strips comments, so assertions only see what an engine would run. */
 const code = source => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 const css = loadStylesheet().replace(/\/\*[\s\S]*?\*\//g, '');
@@ -25,7 +13,6 @@ const html = read('public/index.html');
 const clientJs = code(loadClientScripts());
 const tokens = read('public/css/tokens.css');
 
-/** The opening tag of the element with the given id. */
 const tagOf = id => html.match(new RegExp('<[a-z]+\\b[^>]*\\bid="' + id + '"[^>]*>'))?.[0] ?? '';
 const serverFiles = [
   'server.js',
@@ -57,7 +44,6 @@ describe('Stylesheet', () => {
 
   test('writes colours as oklch(), and derived ones with color-mix()', () => {
     expect(css).not.toMatch(/\b(?:rgba?|hsla?)\(/);
-    // A hex colour in a declaration; ids in selectors are not matched.
     expect(css).not.toMatch(/(?:^|[;{])\s*[\w-]+\s*:[^;{}]*#[\da-f]{3,8}\b/im);
     expect(tokens).toContain('oklch(');
     expect(tokens).toMatch(/color-mix\(in srgb, var\(--[\w-]+\) \d+%, transparent\)/);
@@ -87,8 +73,6 @@ describe('Page', () => {
   });
 
   test('styles nothing inline, neither in the page nor in the markup the client builds', () => {
-    // Values that change at runtime (a stone's travel offset, the countdown
-    // ring) are set through element.style; fixed styles belong in the CSS.
     expect(html).not.toMatch(/\sstyle=/);
     expect(clientJs).not.toMatch(/\sstyle=/);
   });

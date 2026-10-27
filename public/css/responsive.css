@@ -1,15 +1,3 @@
-/* ==========================================================================
-   Adaptations
-   Everything that reacts to the device rather than to the app state, imported
-   last because these rules override the modules above.
-
-   Desktop keeps the three-column arena; tablets stack it; phones (<= 700px)
-   get a touch-first layout where the board is the largest element on screen.
-   Below that: coarse pointers, hover capability and reduced motion.
-   ========================================================================== */
-
-/* ── Tablets and small laptops: both player panels share one row above the
-      board, so the board stays as close to the top of the screen as possible ── */
 @media (width <= 1023px) {
   .game-arena {
     display: grid;
@@ -45,10 +33,7 @@
   }
 }
 
-/* ── Phones: board first, everything else condensed. Landscape phones are
-      wider than 700px but just as cramped, so they get the same treatment. ── */
 @media (width <= 700px), (orientation: landscape) and (height <= 560px) and (width <= 1023px) {
-  /* Header */
   .app-header {
     position: static;
     height: auto;
@@ -67,7 +52,6 @@
     margin-inline-end: 0;
   }
 
-  /* Login */
   #screen-login {
     padding: var(--sp-4);
     padding-block-end: calc(var(--sp-4) + env(safe-area-inset-bottom));
@@ -87,8 +71,6 @@
     width: 28px;
     height: 28px;
   }
-  /* The name field and the search button each get their own full-width row —
-     side by side they left the input too narrow to type a name into. */
   .input-group {
     flex-direction: column;
     align-items: stretch;
@@ -99,14 +81,12 @@
   }
   .text-input,
   .chat-form input {
-    /* 16px keeps iOS Safari from zooming the page in on focus. */
     font-size: 1rem;
   }
   .text-input {
     min-height: 48px;
   }
 
-  /* Queue */
   #screen-queue {
     padding: var(--sp-4);
     padding-block-end: calc(var(--sp-4) + env(safe-area-inset-bottom));
@@ -119,7 +99,6 @@
     width: 100%;
   }
 
-  /* Game screen */
   #screen-game {
     padding-block-start: var(--sp-2);
     padding-block-end: calc(var(--sp-4) + env(safe-area-inset-bottom));
@@ -137,8 +116,6 @@
     gap: var(--sp-2);
     border-radius: var(--radius-sm);
   }
-  /* The tools shrink to their icons (they keep their aria-label), so the
-     banner beside them keeps enough room for its sentence. */
   .btn-tool {
     padding: 0 var(--sp-2);
   }
@@ -146,10 +123,6 @@
     display: none;
   }
 
-  /* Arena: both player panels share one compact row above the board. The
-     compact card is a media query, not a container query, on purpose: it
-     answers the lack of height on a phone, not the card's own width. A
-     desktop card (224px) is narrower than a compact one at 700px (334px). */
   .game-arena {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -228,7 +201,6 @@
     height: 5px;
   }
 
-  /* Dock: log and chat share one slot behind a tab bar. */
   .game-bottom-dock {
     display: block;
   }
@@ -242,7 +214,6 @@
   .dock-panel.is-active {
     display: flex;
   }
-  /* The tab already names the panel. */
   .panel-header {
     display: none;
   }
@@ -257,8 +228,6 @@
     border-radius: var(--radius-sm);
   }
 
-  /* Dialogs become near-full-height sheets that keep clear of the notch and
-     the home indicator */
   .modal {
     width: calc(100% - 2 * var(--sp-4));
     inset-block: max(var(--sp-4), env(safe-area-inset-top)) max(var(--sp-4), env(safe-area-inset-bottom));
@@ -287,7 +256,6 @@
     font-size: 0.875rem;
   }
 
-  /* Toasts span the width so long messages stay readable */
   .toast-container {
     inset-inline: var(--sp-3);
     inset-block-end: calc(var(--sp-3) + env(safe-area-inset-bottom));
@@ -298,10 +266,8 @@
   }
 }
 
-/* ── Narrow phones (<= 360px, e.g. iPhone SE 1st gen): trim the last pixels ── */
 @media (width <= 360px) {
   .conn-status {
-    /* Only the state dot remains; the label would crowd the brand out. */
     font-size: 0;
     gap: 0;
     padding: 4px;
@@ -318,10 +284,7 @@
   }
 }
 
-/* ── Phones in landscape: player panels flank the board, which is sized by
-      the short edge so as much of it as possible stays on screen ── */
 @media (orientation: landscape) and (height <= 560px) and (width <= 1023px) {
-  /* Centring would push the top of a tall card out of reach when it overflows. */
   #screen-login,
   #screen-queue {
     justify-content: flex-start;
@@ -352,7 +315,6 @@
   }
 }
 
-/* ── Touch pointers: every control reaches the 44px comfortable target ── */
 @media (pointer: coarse) {
   .btn {
     min-height: 48px;
@@ -380,8 +342,6 @@
   }
 }
 
-/* ── Hover affordances: only for devices with a real pointer. On touch, :hover
-      sticks to the last tapped element until something else is tapped ── */
 @media (hover: hover) and (pointer: fine) {
   .btn-icon:hover {
     background: var(--btn-icon-hover);
@@ -432,10 +392,6 @@
   }
 }
 
-/* ── Reduced motion: every animation and transition collapses to an instant.
-      The universal selector is enough, because this layer comes after every
-      module that animates something. Within this layer only the mill beam
-      below sets an animation, and it switches its own off on purpose. ── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -451,9 +407,6 @@
     width: 112px;
     height: 112px;
   }
-  /* A near-zero fade would leave the beam at its final opacity of 0 (the
-     animation outranks a plain `opacity`), so it shows without one and the
-     renderer's timer removes it. */
   .mill-gold-beam {
     animation: none;
   }

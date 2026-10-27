@@ -1,25 +1,9 @@
-/**
- * hudView.js
- * Everything around the board that shows *state*: the status row (phase and
- * what to do now), both player panels and the turn clock on the panel of the
- * player on turn.
- *
- * The view is a pure function of the state it is handed — it never talks to the
- * socket and never decides anything. In particular the countdown only draws the
- * clock the server announced; stopping or tampering with the interval here
- * changes nothing about the game, because the only clock that counts runs in
- * GameManager.
- */
-
 import * as RULES from '/shared/muehleRules.js';
 
-/** Nine pips per player, so the stones in hand can be read at a glance. */
 const PIECES_PER_PLAYER = 9;
 
-/** Last five seconds of a turn are drawn in red on both sides of the board. */
 const URGENT_MS = 5000;
 
-/** How often the ring is redrawn. Four steps per second is smooth enough. */
 const TICK_MS = 200;
 
 export class HudView {
@@ -28,8 +12,6 @@ export class HudView {
     this.statusBanner = document.getElementById('hud-status-banner');
     this.instructionText = document.getElementById('hud-instruction-text');
 
-    // Both player panels share one shape, so they are addressed by colour
-    // instead of being written out twice.
     this.panels = {
       W: this.#panel('w', 'white'),
       B: this.#panel('b', 'black')
@@ -40,12 +22,10 @@ export class HudView {
     this.opponentName = '';
     this.state = null;
 
-    // { turn, durationMs, endsAt } while a turn is being timed.
     this.countdown = null;
     this.tick = null;
   }
 
-  /** Collects one panel's nodes, its clock included, and creates its pips once and for all. */
   #panel(idPart, colorClass) {
     const pipsContainer = document.getElementById(`player-${idPart}-pips`);
     const pips = [];
@@ -72,22 +52,17 @@ export class HudView {
     };
   }
 
-  /** Tells the HUD who is playing, at the start of a game. */
   setPlayers({ myColor, myName, opponentName }) {
     this.myColor = myColor;
     this.myName = myName;
     this.opponentName = opponentName;
   }
 
-  /** Clears the HUD between two games. */
   reset() {
     this.stopCountdown();
     this.state = null;
   }
 
-  /**
-   * Redraws the whole HUD from one game state.
-   */
   render(state) {
     if (!state) return;
     this.state = state;
@@ -100,7 +75,6 @@ export class HudView {
     this.#renderCountdown();
   }
 
-  /** Names, stones in hand, captured stones and whose turn it is. */
   #renderPanels(state) {
     ['W', 'B'].forEach(color => {
       const panel = this.panels[color];
@@ -109,7 +83,6 @@ export class HudView {
       panel.card.classList.toggle('active-turn', state.turn === color && !RULES.isGameOver(state));
       panel.name.textContent = isMine ? `${this.myName} (Du)` : this.opponentName;
       panel.piecesLeft.textContent = state.unplacedPieces[color];
-      // What this player captured is what their opponent lost.
       panel.captured.textContent = state.capturedPieces[RULES.getOpponent(color)];
 
       const inHand = state.unplacedPieces[color];
@@ -120,7 +93,6 @@ export class HudView {
     });
   }
 
-  /** "Setzphase" / "Zugphase" / "Springphase", the lead of the status row. */
   #renderPhase(state) {
     if (state.phase === 'SETTING') {
       this.phaseText.textContent = 'Setzphase';
@@ -132,11 +104,6 @@ export class HudView {
     }
   }
 
-  /**
-   * The status row, tinted by whose turn it is. It is the one place on screen
-   * that says so in words; the highlighted player panel and its clock repeat
-   * it at a glance.
-   */
   #renderStatus(state, isMyTurn) {
     let tone = 'opponent-turn';
     if (RULES.isGameOver(state)) tone = 'finished';
@@ -146,10 +113,6 @@ export class HudView {
     this.instructionText.textContent = this.#instructionFor(state, isMyTurn);
   }
 
-  /**
-   * What the player should do (or wait for) right now, in one sentence. The
-   * phase already leads the row, so the sentence does not repeat it.
-   */
   #instructionFor(state, isMyTurn) {
     if (RULES.isGameOver(state)) return state.endReason || 'Partie abgeschlossen.';
 
@@ -172,12 +135,6 @@ export class HudView {
     return 'Du bist am Zug: Ziehe einen Stein auf ein freies Nachbarfeld.';
   }
 
-  /**
-   * Takes over the clock the server just announced and keeps the ring updated.
-   *
-   * The remaining time is anchored on the local clock the moment the event
-   * arrives, so a skewed system time cannot shift the display.
-   */
   startCountdown(data) {
     if (!data) return;
 
@@ -200,7 +157,6 @@ export class HudView {
     this.#renderCountdown();
   }
 
-  /** Stops and hides the countdown (game over, lost connection, new game). */
   stopCountdown() {
     if (this.tick) {
       clearInterval(this.tick);
@@ -210,14 +166,6 @@ export class HudView {
     this.#renderCountdown();
   }
 
-  /**
-   * Draws the remaining seconds and the shrinking ring on the panel of the
-   * player on turn, like a chess clock; the other panel's clock is hidden.
-   *
-   * Once it hits zero the display stays at 0 until the server has played the
-   * automatic move and announced the next turn — the client never decides that
-   * a turn is over.
-   */
   #renderCountdown() {
     const timer = this.countdown;
     const running = timer && this.state && !RULES.isGameOver(this.state);

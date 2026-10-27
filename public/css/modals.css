@@ -1,13 +1,3 @@
-/* ==========================================================================
-   Overlays
-   Dialogs (game over, rules, surrender) and the transient toasts, both drawn
-   above the game screen.
-   ========================================================================== */
-
-/* ── Dialogs ──
-   Native <dialog> elements opened as modals: the browser moves them into the
-   top layer, makes the page behind them inert, traps focus and closes them on
-   Escape. Only their look is defined here. */
 .modal {
   width: calc(100% - 2 * var(--sp-5));
   max-height: calc(100% - 2 * var(--sp-5));
@@ -31,7 +21,6 @@
   }
 }
 
-/* While a dialog is open the page behind it must not scroll either. */
 body:has(dialog:modal) {
   overflow: hidden;
 }
@@ -47,7 +36,6 @@ body:has(dialog:modal) {
   }
 }
 
-/* Game over and surrender: a short verdict with its buttons stacked below. */
 .game-over-box,
 .confirm-box {
   max-width: 420px;
@@ -99,7 +87,6 @@ body:has(dialog:modal) {
   }
 }
 
-/* Rules: a header that stays put above a body that scrolls. */
 .rules-card {
   max-width: 620px;
   max-height: min(84vh, 100% - 2 * var(--sp-5));
@@ -187,7 +174,6 @@ body:has(dialog:modal) {
   }
 }
 
-/* ── Toasts ── */
 .toast-container {
   position: fixed;
   inset-block-end: var(--sp-6);
@@ -233,8 +219,6 @@ body:has(dialog:modal) {
   background: var(--accent-red);
 }
 
-/* A toast that stays until it is clicked away: a button that reads like the
-   other toasts, with a cross at its end. */
 .toast-sticky {
   font-family: inherit;
   line-height: inherit;

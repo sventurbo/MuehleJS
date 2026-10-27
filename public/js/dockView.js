@@ -1,17 +1,3 @@
-/**
- * dockView.js
- * The dock below the board: the move log and the chat.
- *
- * On desktop both panels are visible side by side; on a phone they share one
- * slot behind a tab bar, which is why this view also owns the tabs and the
- * unread marker on the chat tab.
- *
- * Every string that comes from the other player (their name, their message) is
- * written through escapeHtml() or textContent. The server deliberately does not
- * escape, so this is the boundary where markup is made safe.
- */
-
-/** Escapes text for the one place that has to build markup by hand. */
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -19,10 +5,6 @@ function escapeHtml(text) {
 }
 
 export class DockView {
-  /**
-   * @param {Object} handlers
-   * @param {Function} handlers.onSend Called with the typed chat message.
-   */
   constructor({ onSend } = {}) {
     this.moveLogList = document.getElementById('move-log-list');
     this.chatMessages = document.getElementById('chat-messages');
@@ -50,7 +32,6 @@ export class DockView {
     });
   }
 
-  /** Empties log and chat for a new game and shows the log tab. */
   reset(myColor) {
     this.myColor = myColor;
     this.chatMessages.replaceChildren();
@@ -58,18 +39,11 @@ export class DockView {
     this.activateTab('log');
   }
 
-  /**
-   * Switches the small-screen dock between move log and chat.
-   * On desktop both panels are visible, so this only tracks which one is
-   * "current" for the unread marker.
-   */
   activateTab(name) {
     if (!name) return;
     this.activeTab = name;
 
     this.tabs.forEach(tab => {
-      // aria-selected tells screen readers which tab is selected, and the
-      // stylesheet reads it too, so the state is kept in one place.
       tab.setAttribute('aria-selected', String(tab.dataset.dockTab === name));
     });
 
@@ -83,20 +57,14 @@ export class DockView {
     }
   }
 
-  /** A move made on the board. */
   addMove(text) {
     this.#appendLogEntry(text);
   }
 
-  /** A note about the game itself (start, mill, timeout). */
   addSystemNote(text) {
     this.#appendLogEntry(text, 'log-system');
   }
 
-  /**
-   * A chat message from either player. Whose it is follows from the colour:
-   * both players may well have chosen the same name.
-   */
   addChatMessage(msg) {
     const isMine = msg.color === this.myColor;
 
@@ -111,7 +79,6 @@ export class DockView {
     this.chatMessages.append(item);
     this.#scrollToBottom(this.chatMessages);
 
-    // Phone layout: mark the hidden chat tab when the opponent writes.
     if (!isMine && this.chatUnreadDot && this.#isTabbed() && this.activeTab !== 'chat') {
       this.chatUnreadDot.hidden = false;
     }
@@ -129,7 +96,6 @@ export class DockView {
     element.scrollTop = element.scrollHeight;
   }
 
-  /** True while the tab bar is on screen (phone-sized viewports). */
   #isTabbed() {
     const tabBar = document.querySelector('.dock-tabs');
     return !!tabBar && tabBar.offsetParent !== null;

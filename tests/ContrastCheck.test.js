@@ -97,8 +97,6 @@ describe('WCAG 2.1 Contrast Calculation', () => {
     });
   });
 
-  // Expected values were taken from Chromium's getComputedStyle for the same
-  // colours, so the checker reads them the way the browser draws them.
   describe('parseOklch', () => {
     test('reads white and black', () => {
       expect(parseOklch('oklch(100% 0 0)')).toBe('#ffffff');
@@ -134,9 +132,7 @@ describe('WCAG 2.1 Contrast Calculation', () => {
       expect(mix.alpha).toBeCloseTo(0.4, 10);
     });
     test('mixes in oklch the short way round the hue circle', () => {
-      // Chromium: oklch(0.539974 0.285457 326.643)
       expect(resolveColor('color-mix(in oklch, #ff0000, #0000ff)')).toBe('#ba00c2');
-      // Chromium: oklch(0.556741 0.189725 299.144)
       expect(resolveColor('color-mix(in oklch, 30% #c9221c, #2f6fe0)')).toBe('#8550d1');
     });
     test('returns null when a colour in it cannot be read', () => {

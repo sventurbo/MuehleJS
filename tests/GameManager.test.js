@@ -87,10 +87,8 @@ describe('GameManager Matchmaking & Session Management', () => {
     const gameId = gameManager.socketMap.get('sock_1').gameId;
     expect(gameManager.games.has(gameId)).toBe(true);
 
-    // Alice disconnects
     gameManager.handlePlayerDisconnect('sock_1');
 
-    // Bob should receive opponentDisconnected
     expect(socket2.emit).toHaveBeenCalledWith(
       'opponentDisconnected',
       expect.objectContaining({
@@ -98,7 +96,6 @@ describe('GameManager Matchmaking & Session Management', () => {
       })
     );
 
-    // Game session is cleaned up
     expect(gameManager.games.has(gameId)).toBe(false);
   });
 
@@ -110,8 +107,6 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       gameManager.leaveGame('sock_1');
 
-      // Regression: the player stayed queued and was pulled into a game from
-      // the login screen as soon as the next player signed in.
       expect(gameManager.waitingQueue.length).toBe(0);
 
       const socket2 = createMockSocket('sock_2');
@@ -135,8 +130,6 @@ describe('GameManager Matchmaking & Session Management', () => {
           endReason: expect.stringContaining('verlassen')
         })
       );
-      // Regression: the session used to stay in `games` forever, so a client
-      // could exhaust maxActiveGames by looping login + leaveGame.
       expect(gameManager.games.has(gameId)).toBe(false);
       expect(gameManager.socketMap.size).toBe(0);
     });
@@ -224,10 +217,6 @@ describe('GameManager Matchmaking & Session Management', () => {
   describe('turn timer (25 s per decision, enforced server-side)', () => {
     let manager;
 
-    /**
-     * Pairs two fresh sockets and hands back everything a timer test needs:
-     * the session, and the sockets addressed by the colour they were dealt.
-     */
     const startGame = (gameManagerInstance, idA, idB) => {
       const socketA = createMockSocket(idA);
       const socketB = createMockSocket(idB);
@@ -248,8 +237,6 @@ describe('GameManager Matchmaking & Session Management', () => {
     const emittedTo = event => roomEmitMock.mock.calls.filter(call => call[0] === event);
 
     beforeEach(() => {
-      // Fake timers have to be in place before the manager exists, so every
-      // timer it owns (turn clock and limiter cleanup) is under test control.
       jest.useFakeTimers();
       manager = new GameManager(ioMock);
     });
@@ -299,12 +286,10 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       jest.advanceTimersByTime(25000);
 
-      // Exactly one move was played, by the engine, for the player who timed out.
       expect(game.moveHistory).toHaveLength(1);
       const played = game.moveHistory[0];
       expect(played.player).toBe('W');
       expect(played.action).toBe('place');
-      // ... and it is one of the moves that were legal a moment earlier.
       expect(legalBefore.some(a => a.action === 'place' && a.point === played.point)).toBe(true);
       expect(game.board[played.point]).toBe('W');
       expect(game.turn).toBe('B');
@@ -340,7 +325,6 @@ describe('GameManager Matchmaking & Session Management', () => {
           message: expect.any(String)
         })
       );
-      // The state update carries the same flag, so the move log can mark it.
       expect(roomEmitMock).toHaveBeenCalledWith(
         'gameStateUpdate',
         expect.objectContaining({
@@ -357,8 +341,6 @@ describe('GameManager Matchmaking & Session Management', () => {
       expect(game.moveHistory).toHaveLength(1);
       expect(session.turnDeadline).toBe(Date.now() + 25000);
 
-      // 40 s after the game started, but only 20 s after the last move: the
-      // clock was restarted, so Black still has time.
       jest.advanceTimersByTime(20000);
       expect(game.moveHistory).toHaveLength(1);
 
@@ -370,7 +352,6 @@ describe('GameManager Matchmaking & Session Management', () => {
     test('the capture after a closed mill is timed as well', () => {
       const { game, socketOf } = startGame(manager, 'sock_1', 'sock_2');
 
-      // White closes a7-d7-g7; Black's stones stay outside any mill.
       manager.handlePlacePiece(socketOf('W'), 'a7');
       manager.handlePlacePiece(socketOf('B'), 'b6');
       manager.handlePlacePiece(socketOf('W'), 'd7');
@@ -393,13 +374,10 @@ describe('GameManager Matchmaking & Session Management', () => {
     test('a game played entirely on the clock stays a legal game', () => {
       const { game, session } = startGame(manager, 'sock_1', 'sock_2');
 
-      // 40 expirations carry the game well past the setting phase.
       for (let i = 0; i < 40 && game.phase !== 'FINISHED'; i++) {
         const legalBefore = game.getLegalActions(game.turn);
         const historyBefore = game.moveHistory.length;
 
-        // This test is about the automatic move, not about inactivity: without
-        // the reset the third timeout in a row would end the game.
         session.consecutiveTimeouts = { W: 0, B: 0 };
         jest.advanceTimersByTime(25000);
 
@@ -413,7 +391,6 @@ describe('GameManager Matchmaking & Session Management', () => {
         );
       }
 
-      // The board the engine ends up with still matches its own counters.
       const state = game.getState();
       ['W', 'B'].forEach(color => {
         const onBoard = Object.values(state.board).filter(v => v === color).length;
@@ -440,12 +417,10 @@ describe('GameManager Matchmaking & Session Management', () => {
     test('the third timeout in a row loses the game instead of moving again', () => {
       const { game, session } = startGame(manager, 'sock_1', 'sock_2');
 
-      // White, Black, White, Black: two timeouts each, all answered with a move.
       jest.advanceTimersByTime(4 * 25000);
       expect(game.moveHistory).toHaveLength(4);
       roomEmitMock.mockClear();
 
-      // White's third timeout in a row.
       jest.advanceTimersByTime(25000);
 
       expect(game.moveHistory).toHaveLength(4);
@@ -462,7 +437,6 @@ describe('GameManager Matchmaking & Session Management', () => {
         })
       );
 
-      // The decided game gets no new clock.
       expect(session.turnTimer).toBeNull();
       roomEmitMock.mockClear();
       jest.advanceTimersByTime(60000);
@@ -475,8 +449,6 @@ describe('GameManager Matchmaking & Session Management', () => {
       jest.advanceTimersByTime(4 * 25000);
       expect(session.consecutiveTimeouts).toEqual({ W: 2, B: 2 });
 
-      // A free point on no line with a white stone: placing there closes no
-      // mill, so the turn passes to Black.
       const freePoint = game
         .getLegalActions('W')
         .map(action => action.point)
@@ -484,7 +456,6 @@ describe('GameManager Matchmaking & Session Management', () => {
       manager.handlePlacePiece(socketOf('W'), freePoint);
       expect(session.consecutiveTimeouts).toEqual({ W: 0, B: 2 });
 
-      // Black's run goes on: their next timeout is their third.
       jest.advanceTimersByTime(25000);
       expect(game.winner).toBe('W');
     });
@@ -492,7 +463,6 @@ describe('GameManager Matchmaking & Session Management', () => {
     test('a draw ends the game for both players without a winner', () => {
       const { game, session, socketOf } = startGame(manager, 'sock_1', 'sock_2');
 
-      // A quiet moving-phase position one move short of the fifty-move limit.
       Object.assign(game, {
         phase: 'MOVING',
         unplacedPieces: { W: 0, B: 0 },
@@ -529,7 +499,6 @@ describe('GameManager Matchmaking & Session Management', () => {
 
       jest.advanceTimersByTime(6000);
 
-      // Only the second game ran out of time; the first one was reset by its move.
       expect(first.game.moveHistory).toHaveLength(1);
       expect(first.game.moveHistory[0].auto).toBeUndefined();
       expect(second.game.moveHistory).toHaveLength(1);

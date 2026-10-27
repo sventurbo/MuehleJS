@@ -193,6 +193,8 @@ Jede dieser Regeln ist durch Tests abgesichert.
 - **Sprache**:
   - Deutsch: UI-Texte, Fehlermeldungen an Clients, `README.md` und `Systemmodel.md`.
   - Englisch: Code, Kommentare und Commit-Messages.
+- **Kommentare**: nur wo eine Entscheidung, ein Fallback oder ein Sicherheitsgrund nicht aus dem
+  Code hervorgeht. Keine Wiederholung des Codes, keine langen Dateiköpfe.
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `refactor:`, `style:`, `test:`,
   `build:`, `ci:`, `docs:`).
 - **Formatierung**: Prettier formatiert, ESLint prüft. Vor jedem Commit `npm run format`
@@ -201,7 +203,7 @@ Jede dieser Regeln ist durch Tests abgesichert.
   geht. Die CI (`.github/workflows/node.js.yml`: `npm ci`, Build, Lint, Formatprüfung, Tests,
   Kontrastprüfung) muss grün sein.
 - **Dokumentation**: Ändern sich Protokoll, Architektur oder Funktionen, werden
-  `README.md` (inklusive Testanzahl und Projektstruktur) und die Mermaid-Diagramme in
-  `Systemmodel.md` mitgezogen.
+  `README.md` (inklusive Testanzahl und Projektstruktur), die Mermaid-Diagramme in
+  `Systemmodel.md` und bei Farbänderungen `docs/contrast-check.md` mitgezogen.
 - **CSS-Refactorings**: die berechneten Stile aller Elemente im Browser vorher und nachher
   vergleichen.
