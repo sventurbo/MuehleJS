@@ -1,14 +1,3 @@
-/**
- * BoardAnimation.test.js
- * Static guards for the stone animations on the board.
- *
- * The animations only work because boardRenderer.js patches the board instead
- * of rebuilding it: a freshly inserted SVG node has no previous state to
- * animate from. These assertions pin that decision and the renderer/CSS
- * contract (class names, keyframes, custom properties) so a later refactor
- * cannot quietly bring back a board that just jumps.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadStylesheet } from '../scripts/css-bundle.js';
@@ -18,7 +7,6 @@ const css = loadStylesheet();
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
 const appJs = fs.readFileSync(path.join(publicDir, 'js', 'app.js'), 'utf8');
 
-/** Returns the declarations of the first rule whose selector is exactly `selector`. */
 function ruleBody(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = css.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`));
@@ -26,7 +14,6 @@ function ruleBody(selector) {
   return match[1];
 }
 
-/** Returns the body of the first media query whose prelude contains `needle`. */
 function mediaBlock(needle) {
   const start = css.indexOf(needle);
   expect(start).toBeGreaterThan(-1);
@@ -100,8 +87,6 @@ describe('Stone animations', () => {
 
   test('reduced motion collapses every animation, including these', () => {
     const reduced = mediaBlock('@media (prefers-reduced-motion: reduce)');
-    // No !important: the rule wins because the responsive layer comes after
-    // board.css (pinned in CssModules.test.js), whatever the selectors.
     expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*animation-duration:\s*0\.001ms;/);
     expect(reduced).toMatch(/\*,[\s\S]*?\{[^}]*transition-duration:\s*0\.001ms;/);
   });
@@ -109,8 +94,6 @@ describe('Stone animations', () => {
 
 describe('Mill beam', () => {
   test('the glow filter is sized in board units, so a straight beam is drawn at all', () => {
-    // A horizontal or vertical line has a zero-height/width bounding box; a
-    // filter region relative to it is empty and hides the element entirely.
     expect(boardJs).toMatch(/<filter id="goldGlow" filterUnits="userSpaceOnUse"/);
   });
 
@@ -172,8 +155,6 @@ describe('Feedback for a click that does nothing', () => {
 
   test('the board markup carries no inline style', () => {
     expect(boardJs).not.toMatch(/\sstyle="/);
-    // base.css lists the group in a shared touch-action rule, so match the
-    // board's own rule rather than the first one naming the selector.
     expect(css).toMatch(/\n\.board-point-group\s*\{\s*cursor:\s*pointer;/);
   });
 });

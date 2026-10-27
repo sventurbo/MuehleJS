@@ -93,7 +93,8 @@ ihn so einzusperren, dass er keinen legalen Zug mehr hat.
 - **Keine externen Assets**: Icons sind Inline-SVG in `currentColor` (keine Emoji, keine
   Icon-Fonts), Soundeffekte entstehen per Web-Audio-Synthesizer.
 - **Barrierearm**: Kontraste nach WCAG 2.1 AA (automatisch geprüft), `prefers-reduced-motion` wird
-  respektiert, auch von den Stein-Animationen.
+  respektiert, auch von den Stein-Animationen. Das Brett ist per Tastatur bedienbar: Pfeiltasten
+  bewegen den Fokus von Punkt zu Punkt, Enter und Leertaste setzen oder ziehen wie ein Klick.
 
 ### Desktop und Smartphone
 
@@ -377,7 +378,9 @@ sind, läuft Jest im ESM-Modus (`--experimental-vm-modules`, im `test`-Skript be
   verweigertes Audiogerät lässt das Spiel nur stumm, ohne unbehandelte Promise-Ablehnung.
 - Vollständigkeit und Auswertungsreihenfolge des Client-Modulgraphen (ab `js/app.js`) sowie die
   Architekturregel, dass nur `app.js` mit dem Socket spricht; ein Verbindungsabbruch beendet die
-  Partie sofort, und eigene Chatnachrichten werden an der Farbe erkannt, nicht am Namen.
+  Partie sofort, eine unbekannte Partie (`gameNotFound`) führt zurück zur Anmeldung, und eigene
+  Chatnachrichten werden an der Farbe erkannt, nicht am Namen.
+- Tastaturbedienung des Bretts: Fokusführung mit den Pfeiltasten, Auslösen mit Enter und Leertaste.
 
 **Standards**
 - Keine Rückwärtskompatibilität: keine Vendor-Präfixe oder Fallback-Paare im CSS, keine

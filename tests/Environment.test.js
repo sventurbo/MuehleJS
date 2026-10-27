@@ -1,17 +1,3 @@
-/**
- * Environment.test.js
- * Guards for the environment the server is built and started in.
- *
- * `npm start` loads an optional .env file with Node's --env-file-if-exists,
- * and .env.example documents what may go into it. These assertions keep the
- * example in step with the variables the server actually reads, and pin the
- * port precedence that makes `npm start <port>` reliable with a .env present.
- *
- * They also pin the Node.js versions `npm install` accepts, so the project
- * builds on an Ubuntu machine with the Node.js it ships, and that a start that
- * cannot succeed says so and fails, instead of ending as a success.
- */
-
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -24,7 +10,6 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const example = read('.env.example');
 const pkg = JSON.parse(read('package.json'));
 
-/** The variables server.js reads, as `process.env.NAME` or (in resolvePort) `env.NAME`. */
 const serverVariables = [...new Set(Array.from(read('server.js').matchAll(/\benv\.([A-Z][A-Z_]*)\b/g), m => m[1]))];
 
 describe('.env.example', () => {
@@ -68,10 +53,6 @@ describe('Port precedence', () => {
   });
 });
 
-/**
- * Whether `version` lies in an npm range of `^x.y.z` and `>=x.y.z`
- * alternatives, the only forms the "engines" field uses.
- */
 function satisfies(version, range) {
   const parse = text => text.split('.').map(Number);
   const compare = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
@@ -84,7 +65,6 @@ function satisfies(version, range) {
 }
 
 describe('Node.js version', () => {
-  // .npmrc sets engine-strict, so a version outside this range stops `npm install`.
   const engines = pkg.engines.node;
 
   test('npm install accepts the Node.js of Ubuntu 26.04 LTS, the current LTS and the newest release', () => {
@@ -108,7 +88,6 @@ describe('Node.js version', () => {
 });
 
 describe('Server start', () => {
-  /** Runs `node server.js <port>` until it gives up (or 10 s pass). */
   const startServer = port =>
     spawnSync(process.execPath, ['server.js', String(port)], { cwd: root, encoding: 'utf8', timeout: 10000 });
 

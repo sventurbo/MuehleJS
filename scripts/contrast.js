@@ -1,11 +1,3 @@
-/**
- * WCAG 2.1 Contrast Calculation Module
- *
- * Provides functions for calculating relative luminance and contrast ratios
- * per WCAG 2.1 §1.4.3, and for reading the CSS colours the design tokens are
- * written in: hex, rgb(), oklch() and color-mix() of those.
- */
-
 export function hexToRgb(hex) {
   const clean = hex.replace('#', '');
   const expanded =
@@ -46,17 +38,10 @@ export function contrastRatio(hex1, hex2) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-// ── Reading CSS colours ─────────────────────────────────────────────────────
-// Every colour is read into sRGB channels from 0 to 255 plus an alpha from 0
-// to 1, the form the luminance formula above works on. The OKLab matrices are
-// the ones CSS Color 4 specifies for oklab() and oklch().
-
-/** A linear-light sRGB channel (0–1) encoded with the sRGB transfer curve. */
 function linearToSrgb(c) {
   return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
 }
 
-/** OKLCH (lightness 0–1, chroma, hue in degrees) to sRGB channels 0–255. */
 function oklchToRgb(L, C, H) {
   const hue = (H * Math.PI) / 180;
   const a = C * Math.cos(hue);
@@ -69,16 +54,10 @@ function oklchToRgb(L, C, H) {
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s
   ];
-  // Colours outside the sRGB gamut are clipped to it.
   const [r, g, bl] = linear.map(c => 255 * linearToSrgb(Math.min(1, Math.max(0, c))));
   return { r, g, b: bl };
 }
 
-/**
- * sRGB channels 0–255 to OKLCH. A grey has no hue, so its hue is null.
- * sRGBtoLinear() uses WCAG's threshold 0.03928 instead of the sRGB curve's
- * 0.04045; no 8-bit channel value lies between the two, so both agree.
- */
 function rgbToOklch({ r, g, b }) {
   const [lr, lg, lb] = [r, g, b].map(sRGBtoLinear);
   const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
@@ -92,22 +71,14 @@ function rgbToOklch({ r, g, b }) {
   return { L, C, H };
 }
 
-/** A number, or a percentage of `full` ('50%' of 1 is 0.5). */
 function amount(token, full) {
   return token.endsWith('%') ? (parseFloat(token) / 100) * full : parseFloat(token);
 }
 
-/** `rgb(r g b)` or `rgb(r g b / a)` in the space-separated syntax. */
 const RGB_RE = /^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*(?:\/\s*([\d.]+%?)\s*)?\)$/;
 
-/** `oklch(L C H)` or `oklch(L C H / a)`; L and C may be percentages. */
 const OKLCH_RE = /^oklch\(\s*([\d.]+%?)\s+([\d.]+%?)\s+([\d.]+|none)\s*(?:\/\s*([\d.]+%?)\s*)?\)$/;
 
-/**
- * Reads a CSS colour into `{ r, g, b, alpha }`, or returns null for anything
- * that is not a literal colour (a var() reference, a keyword other than
- * `transparent`, the legacy comma syntax).
- */
 export function parseColor(value) {
   const text = value.trim();
   if (text === 'transparent') return { r: 0, g: 0, b: 0, alpha: 0 };
@@ -125,7 +96,7 @@ export function parseColor(value) {
   const oklch = OKLCH_RE.exec(text);
   if (oklch) {
     const L = amount(oklch[1], 1);
-    const C = amount(oklch[2], 0.4); // CSS Color 4: 100% chroma is 0.4
+    const C = amount(oklch[2], 0.4);
     const H = oklch[3] === 'none' ? 0 : Number(oklch[3]);
     return { ...oklchToRgb(L, C, H), alpha: oklch[4] ? amount(oklch[4], 1) : 1 };
   }
@@ -134,7 +105,6 @@ export function parseColor(value) {
   return null;
 }
 
-/** Splits at the commas that are not inside parentheses. */
 function splitTopLevel(text) {
   const parts = [''];
   let depth = 0;
@@ -147,14 +117,12 @@ function splitTopLevel(text) {
   return parts.map(part => part.trim());
 }
 
-/** One argument of color-mix(): a colour with an optional percentage before or after it. */
 function mixStop(part) {
   const match = /^(?:(\d*\.?\d+)%\s+)?(.+?)(?:\s+(\d*\.?\d+)%)?$/s.exec(part);
   const percent = match[1] ?? match[3];
   return { color: parseColor(match[2]), percent: percent === undefined ? null : Number(percent) };
 }
 
-/** Mixes two hues the short way round the circle; a missing hue takes the other's. */
 function mixHue(h1, h2, weight) {
   if (h1 === null) return h2 ?? 0;
   if (h2 === null) return h1;
@@ -164,13 +132,6 @@ function mixHue(h1, h2, weight) {
   return (h1 + delta * weight + 360) % 360;
 }
 
-/**
- * Reads `color-mix(in srgb | oklch, <colour> [p%], <colour> [p%])` as CSS
- * Color 5 defines it: a missing percentage is whatever the other one leaves
- * of 100%, a sum below 100% lowers the alpha, and channels are mixed
- * premultiplied by their alpha. Mixing a colour with `transparent` therefore
- * keeps the colour and only scales its alpha, which is what the tints do.
- */
 export function parseColorMix(value) {
   const match = /^color-mix\(\s*in\s+(srgb|oklch)\s*,([\s\S]*)\)$/.exec(value.trim());
   if (!match) return null;
@@ -185,9 +146,8 @@ export function parseColorMix(value) {
   if (sum <= 0) return null;
 
   const [c1, c2] = stops.map(stop => stop.color);
-  const weight = p2 / sum; // share of the second colour
+  const weight = p2 / sum;
   const alpha = c1.alpha * (1 - weight) + c2.alpha * weight;
-  // Premultiplied mix of one component, divided by the mixed alpha again.
   const mix = (v1, v2) => (alpha === 0 ? 0 : (v1 * c1.alpha * (1 - weight) + v2 * c2.alpha * weight) / alpha);
 
   let rgb;
@@ -200,7 +160,6 @@ export function parseColorMix(value) {
   return { ...rgb, alpha: alpha * Math.min(1, sum / 100) };
 }
 
-/** `{ r, g, b }` with channels from 0 to 255 as `#rrggbb`. */
 function toHex({ r, g, b }) {
   const channel = c =>
     Math.round(Math.min(255, Math.max(0, c)))
@@ -209,23 +168,14 @@ function toHex({ r, g, b }) {
   return `#${channel(r)}${channel(g)}${channel(b)}`;
 }
 
-/**
- * Reads `rgb(r g b)` or `rgb(r g b / alpha)` into a hex colour. The alpha is
- * dropped: every translucent token is checked as if it were opaque.
- */
 export function parseRgb(rgb) {
   return RGB_RE.test(rgb) ? toHex(parseColor(rgb)) : null;
 }
 
-/** Reads `oklch(L C H)` or `oklch(L C H / alpha)` into a hex colour, alpha dropped. */
 export function parseOklch(oklch) {
   return OKLCH_RE.test(oklch.trim()) ? toHex(parseColor(oklch)) : null;
 }
 
-/**
- * A token value as a hex colour, or null when it is not a literal colour. The
- * alpha is dropped, as for rgb(): translucent tokens are checked as if opaque.
- */
 export function resolveColor(value) {
   if (!value) return null;
   const color = parseColor(value);

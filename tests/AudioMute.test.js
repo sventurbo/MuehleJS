@@ -1,25 +1,10 @@
-/**
- * AudioMute.test.js
- * Guards the mute preference against a blocked storage, and the sound against
- * a browser that refuses to play any.
- *
- * A browser with site data blocked throws a SecurityError on the very access
- * to localStorage instead of handing back an empty store. audio.js reads the
- * preference while the module is evaluated, so a throw there would abort the
- * module and, with it, app.js and every other module in the page's graph.
- * These tests construct the real controller against storage stand-ins that
- * throw, and pin that it still comes up and the Ton button still toggles.
- */
-
 import { jest } from '@jest/globals';
 import { SoundController } from '../public/js/audio.js';
 
-/** Installs `storage` as the global localStorage the controller reads. */
 function useStorage(storage) {
   Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
 }
 
-/** A localStorage that works, seeded with the given entries. */
 function workingStorage(entries = {}) {
   const data = { ...entries };
   return {
@@ -31,7 +16,6 @@ function workingStorage(entries = {}) {
   };
 }
 
-/** A localStorage whose very access throws, as a blocked one does. */
 function blockStorage() {
   Object.defineProperty(globalThis, 'localStorage', {
     get() {
@@ -41,10 +25,6 @@ function blockStorage() {
   });
 }
 
-/**
- * Installs an AudioContext stand-in that stays suspended and whose resume()
- * rejects, as Safari's does when it cannot start an audio device.
- */
 function useRefusingAudioDevice() {
   globalThis.AudioContext = class {
     state = 'suspended';
@@ -67,14 +47,12 @@ function useRefusingAudioDevice() {
   };
 }
 
-/** Collects the unhandled rejections that happen while `run` and its follow-ups execute. */
 async function unhandledRejectionsOf(run) {
   const rejections = [];
   const record = reason => rejections.push(reason);
   process.on('unhandledRejection', record);
   try {
     run();
-    // Let the rejected promises settle and Node report the unhandled ones.
     await new Promise(resolve => setTimeout(resolve, 20));
   } finally {
     process.off('unhandledRejection', record);
@@ -150,7 +128,6 @@ describe('The sound controller with a blocked storage', () => {
 });
 
 describe('The sound controller without a working audio output', () => {
-  // The warnings are expected here; keep them out of the test output.
   beforeEach(() => jest.spyOn(console, 'warn').mockImplementation(() => {}));
   afterEach(() => jest.restoreAllMocks());
 

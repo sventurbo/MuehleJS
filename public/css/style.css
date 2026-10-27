@@ -1,34 +1,14 @@
-/* ==========================================================================
-   Mühle (Nine Men's Morris) — Minimal Design System
-   One accent colour, neutral surfaces, hairline borders, materials over glows.
-   Responsive from 320px phones up to desktop (>= 1024x768), touch-first below
-   the 700px breakpoint. Current Chrome, Firefox and Safari (incl. iOS) only:
-   no vendor prefixes, no fallbacks for older engines.
-
-   This file is the manifest and holds no rules of its own: it pulls every
-   module into a cascade layer of the same name. The @layer statement fixes the
-   precedence independently of selector specificity: tokens lowest, then the
-   components, then the device adaptations that override them, and the
-   utilities ([hidden]) last, because nothing may override those. The order
-   alone settles every conflict, so no rule needs !important.
-
-   Anything that reads the stylesheet as a whole (scripts/contrast-check.js,
-   the static CSS tests) goes through scripts/css-bundle.js, which resolves
-   these imports. A module that is not listed here reaches neither the browser
-   nor those checks.
-   ========================================================================== */
-
 @layer tokens, base, layout, controls, login, hud, arena, dock, board, modals, responsive, utilities;
 
-@import url("tokens.css") layer(tokens); /* design tokens, light-dark() pairs */
-@import url("base.css") layer(base); /* reset, typography, scrollbars, icons */
-@import url("layout.css") layer(layout); /* app shell: header, screen switcher */
-@import url("controls.css") layer(controls); /* buttons & inputs */
-@import url("login.css") layer(login); /* screen 1 & 2: login/lobby, queue */
-@import url("hud.css") layer(hud); /* screen 3: phase, turn badge, countdown */
-@import url("arena.css") layer(arena); /* screen 3: player panels & board */
-@import url("dock.css") layer(dock); /* screen 3: move log & chat */
-@import url("board.css") layer(board); /* SVG board internals & stone animations */
-@import url("modals.css") layer(modals); /* dialogs & toasts */
-@import url("responsive.css") layer(responsive); /* breakpoints, pointer/hover, motion */
-@import url("utilities.css") layer(utilities); /* [hidden], above every component */
+@import url("tokens.css") layer(tokens);
+@import url("base.css") layer(base);
+@import url("layout.css") layer(layout);
+@import url("controls.css") layer(controls);
+@import url("login.css") layer(login);
+@import url("hud.css") layer(hud);
+@import url("arena.css") layer(arena);
+@import url("dock.css") layer(dock);
+@import url("board.css") layer(board);
+@import url("modals.css") layer(modals);
+@import url("responsive.css") layer(responsive);
+@import url("utilities.css") layer(utilities);

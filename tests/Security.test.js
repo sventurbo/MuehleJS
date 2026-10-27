@@ -11,13 +11,12 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
   describe('RateLimiter Unit Tests', () => {
     test('allows requests within threshold and blocks excess', () => {
       const limiter = new RateLimiter({ windowMs: 1000, max: 3 });
-      expect(limiter.isLimited('user1')).toBe(false); // 1
-      expect(limiter.isLimited('user1')).toBe(false); // 2
-      expect(limiter.isLimited('user1')).toBe(false); // 3
-      expect(limiter.isLimited('user1')).toBe(true); // 4 -> Blocked!
-      expect(limiter.isLimited('user1')).toBe(true); // 5 -> Blocked!
+      expect(limiter.isLimited('user1')).toBe(false);
+      expect(limiter.isLimited('user1')).toBe(false);
+      expect(limiter.isLimited('user1')).toBe(false);
+      expect(limiter.isLimited('user1')).toBe(true);
+      expect(limiter.isLimited('user1')).toBe(true);
 
-      // Independent keys
       expect(limiter.isLimited('user2')).toBe(false);
     });
 
@@ -79,19 +78,15 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('rate limits chat messages when sent in rapid succession', () => {
-      // Only chat broadcasts count: the room also carries game events (the turn
-      // timer announces itself there as soon as the game starts).
       const chatBroadcasts = () => roomEmitMock.mock.calls.filter(call => call[0] === 'chatMessage').length;
 
-      // Send 4 messages (within limit)
       for (let i = 0; i < 4; i++) {
         gm.handleChatMessage(socket1, `Msg ${i}`);
       }
       expect(chatBroadcasts()).toBe(4);
 
-      // 5th message exceeds limit!
       gm.handleChatMessage(socket1, 'Spam Message');
-      expect(chatBroadcasts()).toBe(4); // NOT broadcasted!
+      expect(chatBroadcasts()).toBe(4);
       expect(socket1.emit).toHaveBeenCalledWith(
         'actionError',
         expect.objectContaining({
@@ -101,7 +96,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('disconnects abusive flooders after repeated violations', () => {
-      // Exceed threshold multiple times
       for (let i = 0; i < 20; i++) {
         gm.handleChatMessage(socket1, `Spam ${i}`);
       }
@@ -116,9 +110,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('forwards chat text verbatim - escaping belongs to the renderer (CH-01/CH-02)', () => {
-      // Escaping here as well produced literal "&amp;" / "&lt;b&gt;" on screen.
-      // The client renders every message through textContent / escapeHtml, so
-      // the payload must arrive exactly as it was typed.
       gm.handleChatMessage(socket1, '<script>alert(1)</script> Hello & Welcome!');
       expect(roomEmitMock).toHaveBeenCalledWith(
         'chatMessage',
@@ -166,12 +157,10 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         emit: jest.fn()
       };
 
-      // Up to 5 allowed
       for (let i = 0; i < 5; i++) {
         gm.enqueuePlayer(spamSocket, `Spammer_${i}`);
       }
 
-      // 6th attempt is throttled
       gm.enqueuePlayer(spamSocket, 'Spammer_6');
       expect(spamSocket.emit).toHaveBeenCalledWith(
         'actionError',
@@ -199,8 +188,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         const socket = mockSocket('hopping_socket', '10.1.0.0');
         const budget = gm.queueLimiter.max;
 
-        // A fresh address per attempt keeps the per-address limit out of play,
-        // so only the per-socket count can stop the next login.
         for (let i = 0; i < budget; i++) {
           socket.handshake.address = `10.1.0.${i}`;
           gm.enqueuePlayer(socket, `Player_${i}`);
@@ -231,7 +218,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       });
 
       test('players sharing one address get their own budget', () => {
-        // Same WLAN behind NAT, or two tabs on one machine.
         const tab1 = mockSocket('tab_1', '192.168.0.10');
         const tab2 = mockSocket('tab_2', '192.168.0.10');
 
@@ -245,8 +231,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       });
 
       test('a whole course behind one NAT address can log in at the same moment', () => {
-        // Game day: everyone presses "Spieler suchen" at once from the university
-        // WLAN, which reaches the server through a single public address.
         const course = Array.from({ length: 80 }, (_, i) => mockSocket(`student_${i}`, '198.51.100.20'));
 
         course.forEach((socket, i) => gm.enqueuePlayer(socket, `Student_${i}`));
@@ -267,7 +251,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('iterative queue search handles 5000 disconnected sockets without Call Stack Overflow', () => {
-      // Populate queue with 5000 disconnected candidate entries
       for (let i = 0; i < 5000; i++) {
         gm.waitingQueue.push({
           socket: { id: `dead_${i}`, connected: false },
@@ -292,7 +275,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         emit: jest.fn()
       };
 
-      // Non-recursive enqueue should cleanly drain disconnected sockets without RangeError
       expect(() => {
         gm.enqueuePlayer(liveSocket1, 'LivePlayer1');
       }).not.toThrow();
@@ -301,7 +283,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         gm.enqueuePlayer(liveSocket2, 'LivePlayer2');
       }).not.toThrow();
 
-      // The two live sockets must be matched!
       expect(liveSocket1.emit).toHaveBeenCalledWith('gameStart', expect.any(Object));
       expect(liveSocket2.emit).toHaveBeenCalledWith('gameStart', expect.any(Object));
       expect(gm.games.size).toBe(1);
@@ -331,7 +312,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
       );
 
-    // More than the per-address budget, so the limit must trip if the key holds.
     const FLOOD = new GameManager({}).queueIpLimiter.max + 10;
 
     test('ignores a spoofed header when no proxy is trusted', () => {
@@ -351,7 +331,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('uses the client entry of the chain, not the raw header', () => {
-      // The client forged 198.51.100.1; the trusted proxy appended its real address.
       const socket = makeSocket('s1', '10.0.0.1', '198.51.100.1, 203.0.113.7');
       expect(getClientAddress(socket, compileTrustProxy('10.0.0.1'))).toBe('203.0.113.7');
     });
@@ -431,7 +410,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         ([event, payload]) => event === 'actionError' && payload.message.includes('Zu viele Anmeldeversuche')
       );
 
-    // One login per socket, so only the shared address budget can stop them.
     const floodFrom = (addresses, prefix) => {
       const sockets = addresses.map((address, i) => makeSocket(`${prefix}_${i}`, address));
       sockets.forEach((socket, i) => gm.enqueuePlayer(socket, `${prefix}${i}`));
@@ -440,8 +418,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
 
     test('two addresses in one /64 share a single budget', () => {
       const budget = gm.queueIpLimiter.max;
-      // A client owning 2001:db8:1:2::/64 picks a fresh address per connection;
-      // both ends of the block must still be counted together.
       const addresses = Array.from({ length: budget + 1 }, (_, i) =>
         i % 2 === 0 ? '2001:db8:1:2::1' : '2001:db8:1:2:ffff:ffff:ffff:ffff'
       );
@@ -459,12 +435,10 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         'blockA'
       );
 
-      // The exhausted block stays exhausted ...
       const sameBlock = makeSocket('blockA_extra', '2001:db8:1:2:ffff:ffff:ffff:ffff');
       gm.enqueuePlayer(sameBlock, 'SameBlock');
       expect(wasThrottled(sameBlock)).toBe(true);
 
-      // ... while the neighbouring /64 is untouched by it.
       const otherBlock = makeSocket('blockB_1', '2001:db8:1:3::1');
       gm.enqueuePlayer(otherBlock, 'OtherBlock');
       expect(wasThrottled(otherBlock)).toBe(false);
@@ -472,7 +446,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
 
     test('an IPv4-mapped address shares the budget of the plain IPv4 address', () => {
       const budget = gm.queueIpLimiter.max;
-      // The dual-stack listener reports the same client either way.
       floodFrom(Array(budget).fill('::ffff:1.2.3.4'), 'mapped');
 
       const plain = makeSocket('plain_v4', '1.2.3.4');
@@ -489,7 +462,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('rateLimitKey passes non-IP values through unchanged', () => {
-      // Mock sockets without a handshake fall back to socket.id.
       expect(rateLimitKey('sock_chat_1')).toBe('sock_chat_1');
       expect(rateLimitKey('')).toBe('');
       expect(rateLimitKey(undefined)).toBeUndefined();
@@ -571,8 +543,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
         join: jest.fn(),
         emit: jest.fn()
       };
-      // Nur Steuerzeichen: sanitizeText entfernt sie, danach bleibt ein leerer
-      // Name übrig, der abgelehnt werden muss.
       gm.enqueuePlayer(socket, String.fromCharCode(0).repeat(12));
       expect(gm.waitingQueue.length).toBe(0);
       expect(socket.emit).not.toHaveBeenCalled();
@@ -580,8 +550,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
   });
 
   describe('XSS: the client is the escaping boundary', () => {
-    // Read as one client: the escaping has to happen wherever the markup is
-    // built, which is the dock view today and may move again tomorrow.
     const clientJs = loadClientScripts();
 
     test('sanitizeText keeps ampersands and angle brackets intact', () => {
@@ -595,8 +563,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
       expect(sanitizeText(42)).toBe('');
     });
 
-    // The server deliberately no longer escapes, so the markup the client
-    // builds by hand must run every server-supplied string through escapeHtml.
     test('chat markup escapes both sender and text', () => {
       expect(clientJs).toContain('escapeHtml(msg.sender)');
       expect(clientJs).toContain('escapeHtml(msg.text)');
@@ -608,7 +574,6 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('no chat field is ever interpolated into markup raw', () => {
-      // The chat bubble is the one place that builds markup from a message.
       const withMessageData = clientJs.match(/innerHTML\s*=\s*`[^`]*msg\.[^`]*`/g) || [];
       expect(withMessageData.length).toBeGreaterThan(0);
       withMessageData.forEach(assignment => {
@@ -620,7 +585,7 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
   describe('DOS-03: maxHttpBufferSize Configuration', () => {
     test('server io configuration restricts maxHttpBufferSize to <= 10 KB', () => {
       expect(serverIo.opts.maxHttpBufferSize).toBeDefined();
-      expect(serverIo.opts.maxHttpBufferSize).toBeLessThanOrEqual(10240); // 10 KB
+      expect(serverIo.opts.maxHttpBufferSize).toBeLessThanOrEqual(10240);
     });
   });
 
@@ -670,12 +635,10 @@ describe('Security & DoS Hardening Tests (CH-05, DOS-01, DOS-03)', () => {
     });
 
     test('a compressed body with trailing bytes cannot reach a decompressor', async () => {
-      // The payload of GHSA-27r3-jxmh-p828: one valid gzip frame, then garbage.
       const body = Buffer.concat([gzipSync('{"a":1}'), Buffer.from('trailing bytes')]);
       const reply = await post(body, { 'Content-Encoding': 'gzip' });
 
       expect(reply).toBe(404);
-      // The server is still there and answers the next request normally.
       expect(await post('{}')).toBe(404);
     });
   });

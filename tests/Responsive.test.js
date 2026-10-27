@@ -1,15 +1,3 @@
-/**
- * Responsive.test.js
- * Static guards for the mobile/handheld support of the web client.
- *
- * These assertions are deliberately structural: they pin the decisions that
- * make the app usable on a phone (own row for the name field, 16px inputs,
- * safe-area padding, touch-sized targets, no hover-only affordances) so a
- * later refactor of the stylesheet cannot silently drop them. They run against
- * the resolved sheet, not one file, so moving a rule between CSS modules keeps
- * them honest.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadStylesheet } from '../scripts/css-bundle.js';
@@ -18,13 +6,10 @@ import { loadClientScripts } from '../scripts/client-bundle.js';
 const publicDir = path.join(import.meta.dirname, '..', 'public');
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
 const css = loadStylesheet();
-// Behaviour of "the client", read across every script the page loads, so a
-// module split cannot quietly drop one of these guarantees.
 const clientJs = loadClientScripts();
 const boardJs = fs.readFileSync(path.join(publicDir, 'js', 'boardRenderer.js'), 'utf8');
 const audioJs = fs.readFileSync(path.join(publicDir, 'js', 'audio.js'), 'utf8');
 
-/** Returns the body of the first media query whose prelude contains `needle`. */
 function mediaBlock(needle) {
   const start = css.indexOf(needle);
   expect(start).toBeGreaterThan(-1);
@@ -125,7 +110,6 @@ describe('Game layout on phones', () => {
   test('landscape phones put the panels beside the board', () => {
     const landscape = mediaBlock('@media (orientation: landscape) and (height <= 560px)');
     expect(landscape).toContain('"player-w board player-b"');
-    // The board is sized off the short edge so it stays fully visible.
     expect(landscape).toMatch(/\.board-wrapper\s*\{[^}]*width:\s*min\(/);
   });
 
@@ -192,7 +176,6 @@ describe('Touch interaction', () => {
     const pointer = Number(boardJs.match(/const HIT_RADIUS_POINTER = (\d+);/)[1]);
     const touch = Number(boardJs.match(/const HIT_RADIUS_TOUCH = (\d+);/)[1]);
     expect(touch).toBeGreaterThan(pointer);
-    // Neighbouring intersections are 80 user units apart.
     expect(2 * touch).toBeLessThan(80);
     expect(boardJs).toContain("window.matchMedia('(pointer: coarse)')");
   });
@@ -212,15 +195,12 @@ describe('Touch interaction', () => {
     const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
     const hoverAt = rules.indexOf('@media (hover: hover) and (pointer: fine)');
     expect(hoverAt).toBeGreaterThan(-1);
-    // Nothing before that block may rely on :hover — on touch it would stick.
     expect(rules.slice(0, hoverAt)).not.toContain(':hover');
-    // Touch gets press feedback on the board instead.
     expect(css).toMatch(/\.board-point-group:active \.grid-socket/);
   });
 
   test('audio is unlocked by user activation (autoplay policy)', () => {
     expect(audioJs).toContain('unlock()');
-    // pointerup grants activation for touch and pen, keydown for the keyboard.
     expect(clientJs).toContain("document.addEventListener('pointerup', unlockAudio");
     expect(clientJs).toContain("document.addEventListener('keydown', unlockAudio");
   });

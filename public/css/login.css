@@ -1,9 +1,3 @@
-/* ==========================================================================
-   Screens 1 & 2: getting into a game
-   The login/lobby form and the matchmaking queue that follows it.
-   ========================================================================== */
-
-/* ── Screen 1: login & lobby ── */
 #screen-login {
   align-items: center;
   justify-content: center;
@@ -99,7 +93,6 @@
   width: 100%;
 }
 
-/* ── Screen 2: matchmaking queue ── */
 #screen-queue {
   align-items: center;
   justify-content: center;

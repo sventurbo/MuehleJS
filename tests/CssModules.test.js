@@ -1,18 +1,3 @@
-/**
- * CssModules.test.js
- * Guards for the split stylesheet.
- *
- * public/css/style.css is a manifest: it holds no rules, only the @layer
- * statement that fixes the cascade order and the @import list that puts every
- * module into its layer. These assertions keep that contract
- * intact — a module that is never imported would silently stop applying, and
- * a rule that creeps back into the manifest would sit outside the modules.
- *
- * They also pin the seam the split had to cross: scripts/contrast-check.js
- * reads the design tokens out of the stylesheet, and skips whatever it cannot
- * find, so a sheet it stops understanding would pass CI reporting nothing.
- */
-
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,7 +15,6 @@ const cssDir = path.join(import.meta.dirname, '..', 'public', 'css');
 const manifest = fs.readFileSync(path.join(cssDir, 'style.css'), 'utf8');
 const modules = listModules();
 
-/** Strips comments, so assertions only see the rules a browser would apply. */
 function rules(css) {
   return css.replace(/\/\*[\s\S]*?\*\//g, '').trim();
 }
@@ -80,8 +64,6 @@ describe('The resolved stylesheet', () => {
   const css = loadStylesheet();
 
   test('holds every module whole, in import order', () => {
-    // Resolving is concatenation, nothing else: each module has to appear
-    // verbatim, and after the one imported before it.
     const bundled = rules(css);
     let cursor = -1;
     for (const name of modules) {
@@ -100,8 +82,6 @@ describe('The resolved stylesheet', () => {
     };
     expect(declaredIn('tokens.css').size).toBeGreaterThan(50);
     for (const name of modules.filter(m => m !== 'tokens.css')) {
-      // --travel-x/--travel-y are set inline by boardRenderer.js per stone and
-      // only have a fallback in the module that animates them.
       const local = [...declaredIn(name)].filter(v => !v.startsWith('--travel-'));
       expect({ module: name, declared: local }).toEqual({ module: name, declared: [] });
     }
@@ -109,8 +89,6 @@ describe('The resolved stylesheet', () => {
 });
 
 describe('Precedence comes from the layer order, not from !important', () => {
-  // Inside cascade layers !important turns the layer order upside down, so
-  // the sheet does without it: whatever has to win sits in a later layer.
   const css = rules(loadStylesheet());
 
   test('no declaration is marked !important', () => {
@@ -138,9 +116,6 @@ describe('Precedence comes from the layer order, not from !important', () => {
 });
 
 describe('The contrast checker still reaches the tokens', () => {
-  // runContrastCheck() skips a pair whose variables it cannot find, so a sheet
-  // it can no longer parse does not fail the check — it reports nothing and
-  // passes. These assertions make that silence loud.
   const variables = parseCssVariables(loadStylesheet());
 
   test('both themes are parsed out of the resolved sheet', () => {

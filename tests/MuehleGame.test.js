@@ -41,7 +41,7 @@ describe('MuehleGame Rule Engine', () => {
     test('outer corners should have degree 2 and outer midpoints degree 3', () => {
       expect(ADJACENCY['a7'].length).toBe(2);
       expect(ADJACENCY['d7'].length).toBe(3);
-      expect(ADJACENCY['d6'].length).toBe(4); // middle midpoint connects 4 points
+      expect(ADJACENCY['d6'].length).toBe(4);
     });
   });
 
@@ -87,44 +87,37 @@ describe('MuehleGame Rule Engine', () => {
     });
 
     test('detects mill formation and requires piece removal', () => {
-      // W: a7, B: b6
       game.placePiece('W', 'a7');
       game.placePiece('B', 'b6');
-      // W: d7, B: d6
       game.placePiece('W', 'd7');
       game.placePiece('B', 'd6');
-      // W: g7 -> Completes mill ['a7', 'd7', 'g7']!
       const res = game.placePiece('W', 'g7');
 
       expect(res.success).toBe(true);
       expect(res.millFormed).toBe(true);
       expect(game.awaitingRemoval).toBe(true);
-      expect(game.turn).toBe('W'); // Still W's turn to remove!
+      expect(game.turn).toBe('W');
       expect(res.removablePieces).toEqual(expect.arrayContaining(['b6', 'd6']));
 
-      // Try to place another piece while awaiting removal -> should fail
       const placeDuringRemoval = game.placePiece('W', 'c5');
       expect(placeDuringRemoval.success).toBe(false);
 
-      // Remove opponent piece at 'b6'
       const removeRes = game.removePiece('W', 'b6');
       expect(removeRes.success).toBe(true);
       expect(game.board['b6']).toBeNull();
       expect(game.piecesOnBoard.B).toBe(1);
       expect(game.capturedPieces.B).toBe(1);
       expect(game.awaitingRemoval).toBe(false);
-      expect(game.turn).toBe('B'); // Turn passes to B
+      expect(game.turn).toBe('B');
     });
 
     test('protects opponent pieces that are in a mill unless all are in mills', () => {
-      // Set up B with a mill at ['b6', 'd6', 'f6'] and one piece outside at ['f4']
       game.board['b6'] = 'B';
       game.board['d6'] = 'B';
       game.board['f6'] = 'B';
       game.board['f4'] = 'B';
       game.piecesOnBoard.B = 4;
 
-      // W closes mill at ['a7', 'd7', 'g7']
       game.board['a7'] = 'W';
       game.board['d7'] = 'W';
       game.piecesOnBoard.W = 2;
@@ -134,28 +127,23 @@ describe('MuehleGame Rule Engine', () => {
       const res = game.placePiece('W', 'g7');
       expect(res.millFormed).toBe(true);
 
-      // 'f4' is not in a mill, so it should be removable
       expect(res.removablePieces).toEqual(['f4']);
 
-      // Attempting to remove 'b6' (which is protected in a mill) must fail
       const failRemove = game.removePiece('W', 'b6');
       expect(failRemove.success).toBe(false);
       expect(game.board['b6']).toBe('B');
 
-      // Removing 'f4' must succeed
       const successRemove = game.removePiece('W', 'f4');
       expect(successRemove.success).toBe(true);
       expect(game.board['f4']).toBeNull();
     });
 
     test('allows removing a mill piece if ALL opponent pieces are in mills', () => {
-      // B only has 3 pieces, all in a mill ['b6', 'd6', 'f6']
       game.board['b6'] = 'B';
       game.board['d6'] = 'B';
       game.board['f6'] = 'B';
       game.piecesOnBoard.B = 3;
 
-      // W forms mill
       game.board['a7'] = 'W';
       game.board['d7'] = 'W';
       game.piecesOnBoard.W = 2;
@@ -164,7 +152,6 @@ describe('MuehleGame Rule Engine', () => {
 
       const res = game.placePiece('W', 'g7');
       expect(res.millFormed).toBe(true);
-      // All 3 of B's pieces are in a mill, so all 3 become removable!
       expect(res.removablePieces.sort()).toEqual(['b6', 'd6', 'f6'].sort());
 
       const removeRes = game.removePiece('W', 'b6');
@@ -214,7 +201,7 @@ describe('MuehleGame Rule Engine', () => {
       game.board['a7'] = 'W';
       game.turn = 'W';
 
-      const res = game.movePiece('W', 'a7', 'g7'); // g7 is not adjacent to a7
+      const res = game.movePiece('W', 'a7', 'g7');
       expect(res.success).toBe(false);
       expect(game.board['a7']).toBe('W');
       expect(game.turn).toBe('W');
@@ -236,13 +223,11 @@ describe('MuehleGame Rule Engine', () => {
       game.board['c5'] = 'B';
       game.turn = 'W';
 
-      // Move g4 to g7 -> completes ['a7', 'd7', 'g7']
       const moveRes = game.movePiece('W', 'g4', 'g7');
       expect(moveRes.success).toBe(true);
       expect(moveRes.millFormed).toBe(true);
       expect(game.awaitingRemoval).toBe(true);
 
-      // Remove opponent piece at 'c5'
       const remRes = game.removePiece('W', 'c5');
       expect(remRes.success).toBe(true);
       expect(game.board['c5']).toBeNull();
@@ -255,8 +240,8 @@ describe('MuehleGame Rule Engine', () => {
       game.phase = 'MOVING';
       game.unplacedPieces.W = 0;
       game.unplacedPieces.B = 0;
-      game.piecesOnBoard.W = 3; // White can fly!
-      game.piecesOnBoard.B = 5; // Black cannot fly
+      game.piecesOnBoard.W = 3;
+      game.piecesOnBoard.B = 5;
     });
 
     test('allows player with 3 pieces to jump to any vacant spot', () => {
@@ -268,7 +253,6 @@ describe('MuehleGame Rule Engine', () => {
       expect(game.canJump('W')).toBe(true);
       expect(game.canJump('B')).toBe(false);
 
-      // Jump from a1 to g7 (not adjacent!)
       const res = game.movePiece('W', 'a1', 'g7');
       expect(res.success).toBe(true);
       expect(game.board['a1']).toBeNull();
@@ -280,7 +264,6 @@ describe('MuehleGame Rule Engine', () => {
       game.turn = 'B';
       game.board['d7'] = 'B';
 
-      // B tries to jump from d7 to a1
       const res = game.movePiece('B', 'd7', 'a1');
       expect(res.success).toBe(false);
     });
@@ -304,7 +287,6 @@ describe('MuehleGame Rule Engine', () => {
       game.turn = 'W';
       game.awaitingRemoval = true;
 
-      // W removes B's piece at 'a1' -> B now has 2 pieces
       const res = game.removePiece('W', 'a1');
       expect(res.success).toBe(true);
       expect(game.piecesOnBoard.B).toBe(2);
@@ -320,50 +302,32 @@ describe('MuehleGame Rule Engine', () => {
       game.piecesOnBoard.W = 4;
       game.piecesOnBoard.B = 4;
 
-      // Trap Black's stone at a7:
-      // a7 connects only to d7 and a4.
-      // If B is at a7, and W blocks d7 and a4, B has no moves from a7.
-      // Let's place all of B's pieces so they have no open neighbors:
       game.board['a7'] = 'B';
       game.board['d7'] = 'W';
       game.board['a4'] = 'W';
 
-      // Place remaining B pieces also blocked:
-      // g7 connects to d7 (W) and g4. Put W on g4.
       game.board['g7'] = 'B';
       game.board['g4'] = 'W';
 
-      // a1 connects to a4 (W) and d1. Put W on d1.
       game.board['a1'] = 'B';
       game.board['d1'] = 'W';
 
-      // B has 3 pieces: a7, g7, a1. BUT wait, if B has 3 pieces, B can jump!
-      // So give B 4 pieces:
-      // g1 connects to g4 (W) and d1 (W). Put B on g1.
       game.board['g1'] = 'B';
       game.board['d1'] = 'W';
       game.board['g4'] = 'W';
 
-      // W makes a move that passes turn to B
-      // Let W move d6 to d5 (not affecting the trap)
       game.board['d6'] = 'W';
       game.turn = 'W';
 
       const moveRes = game.movePiece('W', 'd6', 'd5');
       expect(moveRes.success).toBe(true);
 
-      // Now it's B's turn, but B has 4 pieces on [a7, g7, a1, g1] and ALL neighbors are occupied by W!
-      // B has no legal moves!
       expect(game.winner).toBe('W');
       expect(game.phase).toBe('FINISHED');
       expect(game.endReason).toContain('eingesperrt');
     });
 
-    // Regression (#23): the placement that ends the SETTING phase handed the
-    // turn to a trapped opponent without ending the game, so it hung forever.
     test('player wins when the last placed stone traps the opponent', () => {
-      // Free after the final placement: a7, d7, g7, b6, d6, f6.
-      // Every stone next to them is Black, so White cannot move anywhere.
       ['a4', 'g4', 'd5', 'f4', 'a1', 'g1', 'c3', 'e3'].forEach(pt => {
         game.board[pt] = 'B';
       });
@@ -374,7 +338,6 @@ describe('MuehleGame Rule Engine', () => {
       game.unplacedPieces = { W: 0, B: 1 };
       game.turn = 'B';
 
-      // b4 is White's last way out; the final Black stone closes it.
       expect(game.getValidDestinations('c4', 'W')).toEqual(['b4']);
       expect(game.getValidDestinations('b2', 'W')).toEqual(['b4']);
 
@@ -428,8 +391,6 @@ describe('MuehleGame Rule Engine', () => {
       expect(result.point).toBe('a7');
     });
 
-    // Regression: without `player` the client logged every single move as
-    // "Schwarz", because `undefined === 'W'` is always false.
     test('placePiece names the acting player', () => {
       expect(game.placePiece('W', 'a7').player).toBe('W');
       expect(game.placePiece('B', 'a1').player).toBe('B');
@@ -470,8 +431,6 @@ describe('MuehleGame Rule Engine', () => {
 
   describe('Draws (Remis)', () => {
     beforeEach(() => {
-      // Four stones each on the corners of the outer and the middle square:
-      // the moves below never close a mill and never trap anybody.
       Object.assign(game, {
         phase: 'MOVING',
         unplacedPieces: { W: 0, B: 0 },
@@ -485,7 +444,6 @@ describe('MuehleGame Rule Engine', () => {
       });
     });
 
-    /** One round trip of both players: every position of it comes back after. */
     const ROUND_TRIP = [
       ['W', 'a7', 'd7'],
       ['B', 'b6', 'd6'],
@@ -496,7 +454,6 @@ describe('MuehleGame Rule Engine', () => {
     test('the third occurrence of a position is a draw', () => {
       expect(REPETITION_LIMIT).toBe(3);
 
-      // Two round trips bring every position up to its second occurrence.
       for (let trip = 0; trip < 2; trip++) {
         ROUND_TRIP.forEach(([player, from, to]) => {
           expect(game.movePiece(player, from, to).success).toBe(true);
@@ -527,7 +484,6 @@ describe('MuehleGame Rule Engine', () => {
       ROUND_TRIP.forEach(([player, from, to]) => game.movePiece(player, from, to));
       game.movesSinceCapture = 30;
 
-      // White moves d6 -> d7 and closes a7-d7-g7, then captures b2.
       game.board['d6'] = 'W';
       game.piecesOnBoard.W = 5;
       game.turn = 'W';
@@ -535,7 +491,6 @@ describe('MuehleGame Rule Engine', () => {
       expect(game.removePiece('W', 'b2').success).toBe(true);
 
       expect(game.movesSinceCapture).toBe(0);
-      // Only the position right after the capture is on record.
       expect(game.positionCounts.size).toBe(1);
       expect(game.phase).toBe('MOVING');
     });
@@ -601,7 +556,6 @@ describe('MuehleGame Rule Engine', () => {
       game.board['d7'] = 'B';
       game.piecesOnBoard = { W: 1, B: 1 };
 
-      // a7 is adjacent to d7 (taken) and a4 (free).
       expect(game.getLegalActions('W')).toEqual([{ action: 'move', player: 'W', from: 'a7', to: 'a4' }]);
     });
 
@@ -627,8 +581,6 @@ describe('MuehleGame Rule Engine', () => {
     test('makeRandomLegalMove takes its choice from the injected randomness', () => {
       const legal = game.getLegalActions('W');
 
-      // 0 picks the first legal action, and a value at the very top of the
-      // range must still stay inside the list.
       expect(game.makeRandomLegalMove('W', () => 0).point).toBe(legal[0].point);
       expect(new MuehleGame().makeRandomLegalMove('W', () => 0.999999999).point).toBe(legal[legal.length - 1].point);
     });
@@ -670,7 +622,6 @@ describe('MuehleGame Rule Engine', () => {
         expect(before.length).toBeGreaterThan(0);
         expect(result.success).toBe(true);
 
-        // Counters and board never drift apart, whichever action was chosen.
         const state = autoGame.getState();
         ['W', 'B'].forEach(color => {
           const onBoard = Object.values(state.board).filter(v => v === color).length;
@@ -679,9 +630,6 @@ describe('MuehleGame Rule Engine', () => {
         });
       }
 
-      // Random play may or may not decide the game within the budget — the
-      // draw rules end it at the latest — so what matters is that every move
-      // was legal and marked as played by the server.
       expect(autoGame.moveHistory.length).toBeGreaterThan(18);
       autoGame.moveHistory.forEach(entry => expect(entry.auto).toBe(true));
       expect(autoGame.phase).not.toBe('SETTING');

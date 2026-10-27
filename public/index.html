@@ -10,13 +10,10 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/style.css">
-  <!-- The controller is the only entry point; it imports the shared rules, the
-       sound controller and the views itself. -->
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
   <div class="app-wrapper">
-    <!-- Main Top Navigation -->
     <header class="app-header">
       <div class="header-brand">
         <div class="brand-icon">
@@ -49,10 +46,8 @@
       </div>
     </header>
 
-    <!-- Main Content Screens -->
     <main class="app-main">
 
-      <!-- SCREEN 1: LOGIN & LOBBY -->
       <section id="screen-login" class="screen">
         <div class="login-card">
           <div class="login-hero">
@@ -65,8 +60,6 @@
             <p class="subtitle">Das klassische Strategiespiel für zwei Spieler im Browser. Tritt gegen einen Mitspieler an.</p>
           </div>
 
-          <!-- The browser checks the name before submitting (required, pattern:
-               at least one non-blank character); the server checks it again. -->
           <form id="login-form" class="login-form-box">
             <label for="username-input" class="form-label">Dein Spielername</label>
             <div class="input-group">
@@ -94,7 +87,6 @@
         </div>
       </section>
 
-      <!-- SCREEN 2: MATCHMAKING QUEUE -->
       <section id="screen-queue" class="screen" hidden>
         <div class="queue-card">
           <div class="radar-container">
@@ -117,10 +109,7 @@
         </div>
       </section>
 
-      <!-- SCREEN 3: ACTIVE GAMEPLAY -->
       <section id="screen-game" class="screen" hidden>
-        <!-- Status row: phase and what to do now in one sentence, tinted by
-             whose turn it is, next to the game tools. -->
         <div class="game-hud">
           <p id="hud-status-banner" class="hud-status-banner my-turn" role="status">
             <strong id="hud-phase-text" class="hud-phase">Setzphase</strong>
@@ -144,9 +133,7 @@
           </div>
         </div>
 
-        <!-- Gameplay Layout: Players & Board -->
         <div class="game-arena">
-          <!-- Left: Player White Profile -->
           <aside class="player-panel" id="player-w-card">
             <div class="player-header">
               <div class="stone-avatar avatar-w" aria-hidden="true"></div>
@@ -154,8 +141,6 @@
                 <h3 id="player-w-name" class="player-name">Spieler 1</h3>
                 <span class="color-tag">Weiß, beginnt</span>
               </div>
-              <!-- Turn clock, shown on the card of the player on turn. Pure display:
-                   the clock that counts runs in GameManager. -->
               <div id="player-w-clock" class="turn-clock" hidden role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
                 <svg class="turn-clock-ring" viewBox="0 0 36 36" aria-hidden="true">
                   <circle class="turn-clock-track" cx="18" cy="18" r="15.5"/>
@@ -179,12 +164,10 @@
             </div>
           </aside>
 
-          <!-- Center: SVG Board Container -->
           <div class="board-wrapper">
             <div id="board-container" class="board-container"></div>
           </div>
 
-          <!-- Right: Player Black Profile -->
           <aside class="player-panel" id="player-b-card">
             <div class="player-header">
               <div class="stone-avatar avatar-b" aria-hidden="true"></div>
@@ -192,8 +175,6 @@
                 <h3 id="player-b-name" class="player-name">Spieler 2</h3>
                 <span class="color-tag">Schwarz</span>
               </div>
-              <!-- Turn clock, shown on the card of the player on turn. Pure display:
-                   the clock that counts runs in GameManager. -->
               <div id="player-b-clock" class="turn-clock" hidden role="timer" aria-live="off" aria-label="Verbleibende Zugzeit">
                 <svg class="turn-clock-ring" viewBox="0 0 36 36" aria-hidden="true">
                   <circle class="turn-clock-track" cx="18" cy="18" r="15.5"/>
@@ -218,9 +199,7 @@
           </aside>
         </div>
 
-        <!-- Bottom Game Drawer: Move Log & Chat -->
         <section class="game-bottom-dock">
-          <!-- Tab bar: only rendered on small screens, where the two panels share one slot -->
           <div class="dock-tabs" role="tablist" aria-label="Protokoll und Chat">
             <button type="button" id="dock-tab-log" class="dock-tab" role="tab" aria-selected="true" aria-controls="dock-panel-log" data-dock-tab="log">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -242,7 +221,6 @@
             </button>
           </div>
 
-          <!-- Move History Log -->
           <div class="dock-panel move-log-panel is-active" id="dock-panel-log" role="tabpanel" aria-labelledby="dock-tab-log" data-dock-panel="log">
             <div class="panel-header">
               <h4>
@@ -260,7 +238,6 @@
             <ul id="move-log-list" class="move-log-list"></ul>
           </div>
 
-          <!-- Live Chat Panel -->
           <div class="dock-panel chat-panel" id="dock-panel-chat" role="tabpanel" aria-labelledby="dock-tab-chat" data-dock-panel="chat">
             <div class="panel-header">
               <h4>
@@ -285,8 +262,6 @@
       </section>
     </main>
 
-    <!-- DIALOG: GAME OVER. The buttons close it with the player's choice as its
-         returnValue; Escape counts as going back to the lobby. -->
     <dialog id="modal-game-over" class="modal game-over-box" aria-labelledby="game-over-title">
       <h2 id="game-over-title" class="game-over-title win">Partie Beendet</h2>
       <div id="game-over-winner-name" class="winner-subtitle">Gewinner: Spieler</div>
@@ -298,8 +273,6 @@
       </form>
     </dialog>
 
-    <!-- DIALOG: RULES. Opened and closed by the invoker commands on its buttons;
-         a click beside it closes it too (closedby). -->
     <dialog id="modal-rules" class="modal rules-card" aria-labelledby="rules-title" closedby="any">
       <div class="rules-header">
         <h2 id="rules-title">Offizielle Mühle-Regeln</h2>
@@ -344,8 +317,6 @@
       </div>
     </dialog>
 
-    <!-- DIALOG: SURRENDER. Opened by the flag button in the HUD; only the
-         "surrender" choice gives the game up. -->
     <dialog id="modal-surrender" class="modal confirm-box" aria-labelledby="surrender-title" closedby="any">
       <h2 id="surrender-title" class="confirm-title">Partie aufgeben?</h2>
       <p class="reason-text">Dein Gegner gewinnt die Partie damit sofort.</p>
@@ -356,7 +327,6 @@
       </form>
     </dialog>
 
-    <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
   </div>
 </body>

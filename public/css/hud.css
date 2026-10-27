@@ -1,11 +1,3 @@
-/* ==========================================================================
-   Screen 3: HUD
-   One status row above the board: the tinted banner with phase and
-   instruction, and the game tools beside it. The turn clock lives on the
-   player panels (arena.css).
-   ========================================================================== */
-
-/* Shell of screen 3: the column the HUD, the arena and the dock stack in. */
 #screen-game {
   padding-block: var(--sp-4) var(--sp-5);
   padding-inline: var(--sp-5);
@@ -69,8 +61,6 @@
   }
 }
 
-/* Status banner: a tinted notice with a leading state dot, the phase in bold
-   and the instruction after it. It takes whatever width the tools leave. */
 .hud-status-banner {
   flex: 1;
   min-width: 0;

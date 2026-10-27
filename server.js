@@ -1,30 +1,9 @@
-/**
- * server.js
- * Entry point of the Mühle web game.
- *
- * It does three things and nothing else:
- *   1. serve the static client (public/) and the shared rule module (shared/),
- *   2. translate Socket.io events into GameManager calls,
- *   3. bind the network, IPv6-first with a working IPv4 path in every case.
- *
- * Everything that can be decided about a game is decided in lib/, so this file
- * stays a thin, readable map of the client/server protocol.
- */
-
 import http from 'node:http';
 import path from 'node:path';
 import express from 'express';
 import { Server } from 'socket.io';
 import { GameManager } from './lib/GameManager.js';
 
-/**
- * The port to listen on: a number on the command line ("npm start 8080",
- * "node server.js 8080") wins, then PORT from the environment, then 3000.
- *
- * `npm start` loads .env into the environment (see .env.example), so the
- * command line has to come first: otherwise a PORT line in .env would quietly
- * replace the port the server was explicitly started with.
- */
 export function resolvePort(args = process.argv.slice(2), env = process.env) {
   const cliPort = args.find(arg => /^\d+$/.test(arg));
   return parseInt(cliPort || env.PORT || '3000', 10);
@@ -32,21 +11,13 @@ export function resolvePort(args = process.argv.slice(2), env = process.env) {
 
 const PORT = resolvePort();
 
-// ── Express: static client + status endpoint ────────────────────────────────
 export const app = express();
 app.disable('x-powered-by');
 app.use(express.static(path.join(import.meta.dirname, 'public')));
-// The rule module the browser and lib/MuehleGame.js share. Serving it from its
-// own folder keeps a single copy on disk instead of one per side.
 app.use('/shared', express.static(path.join(import.meta.dirname, 'shared')));
-// DOS-03: no route takes a request body, so none is ever parsed. Without a body
-// parser a body is never read into memory or decompressed, which also keeps
-// body-parser's DoS through compressed bodies (GHSA-27r3-jxmh-p828) out.
 
 export const primaryServer = http.createServer(app);
 
-// Socket.io with cross-origin support, heartbeat tuning and a payload cap
-// (DOS-03: a 10 KB frame limit stops oversized-message floods).
 export const io = new Server(primaryServer, {
   cors: {
     origin: '*',
@@ -57,19 +28,11 @@ export const io = new Server(primaryServer, {
   pingInterval: 5000
 });
 
-// TRUST_PROXY names the reverse proxies whose X-Forwarded-For may identify the
-// client (see README). Unset, the header is ignored and the connection's own
-// address counts, since any client can write the header itself.
-//
-// TURN_TIMEOUT_MS overrides the 25 s a player has per decision; an unusable
-// value falls back to that default inside the GameManager, so a typo in the
-// environment can never switch the timer off.
 export const gameManager = new GameManager(io, {
   trustProxy: process.env.TRUST_PROXY,
   turnTimeoutMs: process.env.TURN_TIMEOUT_MS
 });
 
-// Health and info endpoint.
 app.get('/api/status', (req, res) => {
   res.json({
     status: 'ok',
@@ -78,21 +41,6 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// ── Socket.io protocol ──────────────────────────────────────────────────────
-
-/**
- * Registers a socket event handler that can never take the server down.
- *
- * Every inbound event is attacker-controlled, so each handler runs inside the
- * same guard: an exception is logged and answered with a generic message
- * instead of escaping into Socket.io's error path. The requirement is that a
- * faulty or malicious client terminates its own game, never the process.
- *
- * @param {Object} socket The client socket.
- * @param {string} event The event name the client emits.
- * @param {Function} handler Receives the (already untrusted) payload.
- * @param {boolean} [notify] Whether to answer the client with `serverError`.
- */
 function safeOn(socket, event, handler, notify = true) {
   socket.on(event, payload => {
     try {
@@ -104,40 +52,33 @@ function safeOn(socket, event, handler, notify = true) {
   });
 }
 
-/** Reads a string field out of an untrusted payload; '' when it is anything else. */
 function readText(data, field) {
   return typeof data?.[field] === 'string' ? data[field] : '';
 }
 
 io.on('connection', socket => {
-  // Enter matchmaking with a display name.
   safeOn(socket, 'login', data => {
     gameManager.enqueuePlayer(socket, readText(data, 'username'));
   });
 
-  // Phase 1: place a stone.
   safeOn(socket, 'placePiece', data => {
     const point = readText(data, 'point');
     if (point) gameManager.handlePlacePiece(socket, point);
   });
 
-  // Phase 2 & 3: move (or jump with) a stone.
   safeOn(socket, 'movePiece', data => {
     const from = readText(data, 'from');
     const to = readText(data, 'to');
     if (from && to) gameManager.handleMovePiece(socket, from, to);
   });
 
-  // Capture an opponent stone after closing a mill.
   safeOn(socket, 'removePiece', data => {
     const point = readText(data, 'point');
     if (point) gameManager.handleRemovePiece(socket, point);
   });
 
-  // Give up the running game.
   safeOn(socket, 'forfeit', () => gameManager.handleForfeit(socket), false);
 
-  // In-game chat.
   safeOn(
     socket,
     'chatMessage',
@@ -148,45 +89,19 @@ io.on('connection', socket => {
     false
   );
 
-  // Cancel the search, or return to the lobby from a finished game.
   safeOn(socket, 'leaveGame', () => gameManager.leaveGame(socket.id), false);
 
-  // Connection dropped: end the session and let the opponent win.
   safeOn(socket, 'disconnect', () => gameManager.handlePlayerDisconnect(socket.id), false);
 });
 
-// ── Network binding ─────────────────────────────────────────────────────────
-
-/**
- * Errors of the IPv6 listener that mean "this host has no IPv6". Only these
- * justify the IPv4 fallback: a port that is taken or needs root fails on
- * 0.0.0.0 just the same and has to be reported, not hidden behind a fallback.
- */
 const NO_IPV6_ERRORS = new Set(['EAFNOSUPPORT', 'EADDRNOTAVAIL']);
 
-/**
- * Ends a start that cannot succeed with a readable reason and exit code 1.
- *
- * Without this, the error ended up in the uncaughtException guard below: the
- * process logged it as handled and, with nothing left listening, quit with
- * exit code 0, so a script or process manager saw a successful start.
- */
 function abortStart(err) {
   const hint = err.code === 'EADDRINUSE' ? ' Is another server running? Pick another port: npm start 8080' : '';
   console.error(`[Network] Cannot listen on port ${PORT}: ${err.message}.${hint}`);
   process.exit(1);
 }
 
-/**
- * Starts listening so the game is reachable over IPv6 *and* IPv4.
- *
- * Node binds '::' as a dual-stack socket (the `ipv6Only` option of listen()
- * defaults to false), so it serves IPv4 clients as well. Two cases need help,
- * and both are handled here:
- *   - the host has no IPv6 at all  → fall back to a plain 0.0.0.0 listener,
- *   - the system cannot put IPv4 on an IPv6 socket → a second listener on
- *     0.0.0.0 is added (EADDRINUSE simply means '::' already covers IPv4).
- */
 function startServer() {
   if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
     abortStart(new RangeError('a port is a whole number between 1 and 65535'));
@@ -224,8 +139,6 @@ function startServer() {
   });
 }
 
-// Last line of defence: whatever slips past the per-event guards above must not
-// end the process while two people are playing.
 process.on('uncaughtException', err => {
   console.error('[CRITICAL] Uncaught exception caught safely:', err);
 });
@@ -234,7 +147,6 @@ process.on('unhandledRejection', reason => {
   console.error('[CRITICAL] Unhandled rejection caught safely:', reason);
 });
 
-// Start listening if run directly
 if (import.meta.main) {
   startServer();
 }

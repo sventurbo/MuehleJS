@@ -1,8 +1,3 @@
-/* ==========================================================================
-   Board internals (SVG emitted by boardRenderer.js)
-   ========================================================================== */
-
-/* Gradient stops are styled here so the board follows the active theme. */
 .plate-stop-start {
   stop-color: var(--board-plate);
 }
@@ -42,13 +37,10 @@
     stroke var(--dur-2) var(--ease-out);
 }
 
-/* Every point is clickable; the hit area around it makes that a generous target. */
 .board-point-group {
   cursor: pointer;
 }
 
-/* A click that could not do anything: the point shakes once and glows red.
-   With reduced motion the shake is gone and the glow alone remains. */
 .board-point-group.is-rejected {
   filter: drop-shadow(0 0 4px var(--accent-red));
   animation: pointReject var(--dur-3) var(--ease-out);
@@ -67,27 +59,19 @@
 
 .grid-label {
   fill: var(--board-label);
-  /* Fully opaque, so the coordinates stay readable and the contrast check
-     tests the colour that is actually rendered (issue #59). In rem rather
-     than a fixed px font size. */
   font-size: 0.7rem;
 }
 
-/* Touch devices get the same socket feedback on press instead of on hover. */
 .board-point-group:active .grid-socket {
   fill: var(--hover-socket);
   stroke: var(--accent-blue);
 }
 
-/* Visible keyboard focus (issue #58). */
 .board-point-group:focus-visible .grid-socket {
   stroke: var(--accent-blue);
   stroke-width: 2.5;
 }
 
-/* Point markers. Every point carries all three of them from the moment the
-   board is built; boardRenderer.js only switches the `is-*` class on the point
-   group, so a board update never creates or destroys a node. */
 .dest-indicator,
 .dest-dot,
 .selection-ring,
@@ -102,7 +86,6 @@
   display: block;
 }
 
-/* Valid destination: a calm ring plus a solid centre dot. */
 .dest-indicator {
   fill: var(--tint-blue);
   stroke: var(--accent-blue);
@@ -113,12 +96,10 @@
   fill: var(--accent-blue);
 }
 
-/* Currently selected stone */
 .selection-ring {
   stroke: var(--accent-blue);
 }
 
-/* Opponent stone that may be captured */
 .removal-target {
   fill: var(--tint-red);
   stroke: var(--accent-red);
@@ -126,7 +107,6 @@
 
 .game-piece {
   filter: drop-shadow(0 2px 3px var(--piece-shadow));
-  /* Scale around the stone's own centre, not the origin of the SVG canvas. */
   transform-box: fill-box;
   transform-origin: center;
   transition: filter var(--dur-2) var(--ease-out);
@@ -159,24 +139,16 @@
   filter: drop-shadow(0 2px 3px var(--piece-shadow)) drop-shadow(0 0 6px var(--tint-red-strong));
 }
 
-/* Stone motion. boardRenderer.js keeps a stone's node while it stays on its
-   point, so each of these runs exactly once: when the stone appears, travels
-   or leaves. The renderer drops the class again when the animation ends. */
-
-/* Placed: drops onto the point with a slight overshoot. */
 .piece-entering {
   animation: pieceEnter var(--dur-3) var(--ease-out);
 }
 
-/* Moved: glides in from its old point (offset set inline by the renderer),
-   lifted off the board on the way. */
 .piece-arriving {
   animation:
     pieceTravel var(--dur-4) var(--ease-in-out),
     pieceLift var(--dur-4) var(--ease-in-out);
 }
 
-/* Captured: shrinks and fades, then the renderer removes the node. */
 .piece-leaving {
   pointer-events: none;
   animation: pieceLeave var(--dur-3) var(--ease-in) forwards;
@@ -220,7 +192,6 @@
   }
 }
 
-/* Mill: a single gold beam that fades in and out once. */
 .mill-gold-beam {
   stroke: var(--accent-gold);
   animation: millBeam 2.5s var(--ease-out) forwards;

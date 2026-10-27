@@ -1,22 +1,4 @@
-/**
- * muehleRules.js
- * Pure, side-effect free board geometry and rules — the single source of truth
- * for BOTH sides of the game.
- *
- * The server engine (lib/MuehleGame.js) imports this module and builds its
- * authoritative state machine on top of it; the browser imports the very same
- * file from /shared and draws its markers from it. There is therefore no second
- * copy of the board that could drift out of step — a stone the board marks is
- * by construction a stone the server accepts.
- *
- * Everything here is a function of a plain board object, so it holds no state
- * and can be called from either side at any time. Decisions still belong to the
- * server alone; the client uses these functions purely for immediate feedback.
- */
-
-// Adjacency graph: 32 undirected edges over the 24 board points.
 export const ADJACENCY = {
-  // Outer square
   'a7': ['d7', 'a4'],
   'd7': ['a7', 'g7', 'd6'],
   'g7': ['d7', 'g4'],
@@ -26,7 +8,6 @@ export const ADJACENCY = {
   'd1': ['a1', 'g1', 'd2'],
   'g1': ['d1', 'g4'],
 
-  // Middle square
   'b6': ['d6', 'b4'],
   'd6': ['b6', 'f6', 'd7', 'd5'],
   'f6': ['d6', 'f4'],
@@ -36,7 +17,6 @@ export const ADJACENCY = {
   'd2': ['b2', 'f2', 'd1', 'd3'],
   'f2': ['d2', 'f4'],
 
-  // Inner square
   'c5': ['d5', 'c4'],
   'd5': ['c5', 'e5', 'd6'],
   'e5': ['d5', 'e4'],
@@ -49,18 +29,10 @@ export const ADJACENCY = {
 
 export const POINTS = Object.keys(ADJACENCY);
 
-/**
- * German names of the two colours. Win reasons, HUD labels and the move log
- * all name a colour, so the wording lives here once instead of in a ternary
- * on each side of the wire.
- */
 export const COLOR_NAMES = { W: 'Weiß', B: 'Schwarz' };
 
-/** The name to show for a colour ('W' / 'B'). */
 export const colorName = color => COLOR_NAMES[color] ?? '';
 
-// All 16 possible mills (triplets of collinear points): the horizontal ones,
-// the vertical ones, then the four that cross the squares.
 // prettier-ignore
 export const MILLS = [
   ['a7', 'd7', 'g7'], ['b6', 'd6', 'f6'], ['c5', 'd5', 'e5'],
@@ -70,7 +42,6 @@ export const MILLS = [
   ['d7', 'd6', 'd5'], ['g4', 'f4', 'e4'], ['d1', 'd2', 'd3'], ['a4', 'b4', 'c4']
 ];
 
-// Precomputed mills per point for fast lookups.
 export const MILLS_BY_POINT = {};
 POINTS.forEach(p => {
   MILLS_BY_POINT[p] = MILLS.filter(m => m.includes(p));
@@ -78,34 +49,19 @@ POINTS.forEach(p => {
 
 export const getOpponent = player => (player === 'W' ? 'B' : 'W');
 
-/**
- * Is the game in `state` decided? Asked through the phase, not the winner: a
- * draw ends the game without one.
- */
 export const isGameOver = state => state?.phase === 'FINISHED';
 
-/**
- * Is the stone of `player` at `point` part of a completed mill?
- */
 export function isPointInMill(board, point, player) {
   if (board[point] !== player) return false;
   return (MILLS_BY_POINT[point] ?? []).some(mill => mill.every(pt => board[pt] === player));
 }
 
-/**
- * Are all stones `player` has on the board part of a mill?
- */
 export function areAllPiecesInMills(board, player) {
   const playerPoints = POINTS.filter(pt => board[pt] === player);
   if (playerPoints.length === 0) return true;
   return playerPoints.every(pt => isPointInMill(board, pt, player));
 }
 
-/**
- * All opponent stones `player` may legally capture.
- * Rule: a stone inside a mill is protected, unless every opponent stone is
- * inside a mill — then any of them may be taken.
- */
 export function getRemovablePoints(board, player) {
   const opponent = getOpponent(player);
   const opponentPoints = POINTS.filter(pt => board[pt] === opponent);
@@ -117,14 +73,6 @@ export function getRemovablePoints(board, player) {
   return opponentPoints.filter(pt => !isPointInMill(board, pt, opponent));
 }
 
-/**
- * Single source of truth for the capture markers.
- *
- * Returns the points this client may click right now — which is also exactly
- * the set the board is allowed to draw a `.removal-target` ring on. Outside a
- * pending capture (not our turn, no mill closed, game already decided) the set
- * is empty, so no ring can outlive the state that produced it.
- */
 export function getCaptureTargets(gameState, playerColor) {
   if (!gameState || !playerColor) return [];
   if (isGameOver(gameState)) return [];
@@ -133,24 +81,12 @@ export function getCaptureTargets(gameState, playerColor) {
   return getRemovablePoints(gameState.board, playerColor);
 }
 
-/**
- * Destinations a stone at `from` may move to (jumping when down to 3 stones).
- */
 export function getValidDestinations(board, from, player, canJump) {
   if (board[from] !== player) return [];
   if (canJump) return POINTS.filter(pt => board[pt] === null);
   return (ADJACENCY[from] ?? []).filter(pt => board[pt] === null);
 }
 
-/**
- * What changed between two boards, so the renderer can animate exactly that.
- *
- * A move shows up as one stone leaving a point and a stone of the same colour
- * arriving on another; it is reported as `moved` so it can travel instead of
- * vanishing and reappearing. Every other difference is a plain placement or
- * removal. Derived from the boards alone, so it cannot disagree with the
- * state the board is being brought in line with.
- */
 export function diffBoards(prevBoard, nextBoard) {
   const placed = [];
   const removed = [];

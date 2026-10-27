@@ -1,16 +1,6 @@
-/**
- * GameRules.test.js
- * The client draws its capture rings from shared/muehleRules.js — the very
- * module the server engine in lib/MuehleGame.js is built on. These tests pin
- * that the two really are one: the geometry is the same object on both sides,
- * and the engine's stateful answers still match the shared pure functions, so
- * a stone the board marks is always a stone the server accepts.
- */
-
 import * as RULES from '../shared/muehleRules.js';
 import { MuehleGame, POINTS, MILLS, ADJACENCY } from '../lib/MuehleGame.js';
 
-/** Builds a game whose board holds exactly the given stones. */
 function gameWith(stones, overrides = {}) {
   const game = new MuehleGame('rules_test');
   Object.entries(stones).forEach(([pt, color]) => {
@@ -22,7 +12,6 @@ function gameWith(stones, overrides = {}) {
   return game;
 }
 
-/** Deterministic PRNG so a failing random board is reproducible. */
 function makeRandom(seed) {
   let state = seed >>> 0;
   return () => {
@@ -33,8 +22,6 @@ function makeRandom(seed) {
 
 describe('Shared rule module (shared/muehleRules.js)', () => {
   describe('Board geometry is one object, not a copy', () => {
-    // The engine re-exports what it was handed. Identity, not equality, is what
-    // rules out a second board that could drift away from this one.
     test('the engine hands out the shared 24 points', () => {
       expect(RULES.POINTS.length).toBe(24);
       expect(POINTS).toBe(RULES.POINTS);
@@ -47,7 +34,6 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
 
     test('the engine hands out the shared adjacency graph', () => {
       expect(ADJACENCY).toBe(RULES.ADJACENCY);
-      // 32 undirected edges over the 24 points, counted from both ends.
       const degrees = POINTS.reduce((sum, pt) => sum + ADJACENCY[pt].length, 0);
       expect(degrees).toBe(64);
     });
@@ -58,8 +44,8 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
       const game = gameWith({
         b6: 'B',
         d6: 'B',
-        f6: 'B', // closed mill, protected
-        a1: 'B', // loose stone
+        f6: 'B',
+        a1: 'B',
         a7: 'W',
         d7: 'W',
         g7: 'W'
@@ -82,7 +68,6 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
     });
 
     test('counts a stone shared by two mills as protected only once', () => {
-      // b6 belongs to b6-d6-f6 and b6-b4-b2; both are closed, plus a loose stone.
       const game = gameWith({
         b6: 'B',
         d6: 'B',
@@ -144,9 +129,6 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
     });
 
     test('marks nothing once the game is decided', () => {
-      // Regression: the capture set used to be cached in a field that the
-      // game-over branch never reset, so rings stayed on a finished board while
-      // the click handler refused them.
       const game = gameWith(
         { b6: 'B', a1: 'B', a7: 'W' },
         { awaitingRemoval: true, turn: 'W', winner: 'W', endReason: 'Test', phase: 'FINISHED' }
@@ -163,9 +145,9 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
       const stones = {
         b6: 'B',
         d6: 'B',
-        f6: 'B', // protected mill
+        f6: 'B',
         c5: 'B',
-        f2: 'B', // loose stones
+        f2: 'B',
         a7: 'W',
         d7: 'W',
         g7: 'W',
@@ -181,7 +163,6 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
       const marked = RULES.getCaptureTargets(state, 'W');
       expect(marked.sort()).toEqual(['c5', 'f2']);
 
-      // Marked stones must be accepted by the authoritative engine.
       marked.forEach(point => {
         const game = gameWith(stones, {
           awaitingRemoval: true,
@@ -192,7 +173,6 @@ describe('Shared rule module (shared/muehleRules.js)', () => {
         expect(game.removePiece('W', point).success).toBe(true);
       });
 
-      // Every other point must be rejected — so it must never carry a ring.
       POINTS.filter(pt => !marked.includes(pt)).forEach(point => {
         const game = gameWith(stones, {
           awaitingRemoval: true,

@@ -56,7 +56,6 @@ describe('Full Server & Socket.io Integration Flow', () => {
 
     client1.on('queueWaiting', data => {
       expect(data.position).toBe(1);
-      // Once client1 is waiting, connect client2
       client2.emit('login', { username: 'SpielerBeta' });
     });
 
@@ -64,18 +63,14 @@ describe('Full Server & Socket.io Integration Flow', () => {
     const checkGameStart = () => {
       gamesStarted++;
       if (gamesStarted === 2) {
-        // Both received gameStart
         expect(p1Data.gameId).toBe(p2Data.gameId);
         expect(p1Data.yourColor).not.toBe(p2Data.yourColor);
 
-        // Identify who is White ('W') and places first
         const whiteClient = p1Data.yourColor === 'W' ? client1 : client2;
         const blackClient = p1Data.yourColor === 'W' ? client2 : client1;
 
-        // White places on 'a1'
         whiteClient.emit('placePiece', { point: 'a1' });
 
-        // Both clients should receive gameStateUpdate
         blackClient.once('gameStateUpdate', update => {
           expect(update.state.board['a1']).toBe('W');
           expect(update.state.turn).toBe('B');
@@ -97,7 +92,6 @@ describe('Full Server & Socket.io Integration Flow', () => {
   });
 
   test('Opponent disconnect notifies remaining player', done => {
-    // If client2 disconnects, client1 should receive opponentDisconnected
     client1.once('opponentDisconnected', data => {
       expect(data.endReason).toContain('Verbindung getrennt');
       done();
@@ -108,8 +102,6 @@ describe('Full Server & Socket.io Integration Flow', () => {
 });
 
 describe('Turn timer over the socket interface', () => {
-  // A short turn keeps the test fast; the server treats it exactly like the
-  // 25 s it runs with in production.
   const TURN_TIMEOUT_MS = 400;
 
   let httpServer;
@@ -144,16 +136,8 @@ describe('Turn timer over the socket interface', () => {
     httpServer.close(done);
   });
 
-  /** Resolves with the first `event` a client receives. */
   const nextEvent = (client, event) => new Promise(resolve => client.once(event, resolve));
 
-  /**
-   * Pairs two clients and resolves once both are in the game, so a test can
-   * start from a running session.
-   *
-   * The listeners for the opening `turnTimer` are attached before the login, so
-   * the announcement that arrives together with `gameStart` is not missed.
-   */
   const pairClients = () => {
     clientA = Client(`http://127.0.0.1:${port}`);
     clientB = Client(`http://127.0.0.1:${port}`);
@@ -179,7 +163,6 @@ describe('Turn timer over the socket interface', () => {
   test('nobody moves: the timer expires and both clients see the automatic move', async () => {
     const started = await pairClients();
 
-    // Both clients are told how long the player on turn has.
     const announcements = await Promise.all([started.timerA, started.timerB]);
     announcements.forEach(announcement => {
       expect(announcement).toEqual(
@@ -190,7 +173,6 @@ describe('Turn timer over the socket interface', () => {
       );
     });
 
-    // Neither client sends a move; the server has to play for White.
     const [timeoutA, timeoutB, updateA, updateB] = await Promise.all([
       nextEvent(clientA, 'turnTimeout'),
       nextEvent(clientB, 'turnTimeout'),
@@ -198,7 +180,6 @@ describe('Turn timer over the socket interface', () => {
       nextEvent(clientB, 'gameStateUpdate')
     ]);
 
-    // Both sides learn who ran out of time and which move was played for them.
     [timeoutA, timeoutB].forEach(event => {
       expect(event.player).toBe('W');
       expect(event.timeoutMs).toBe(TURN_TIMEOUT_MS);
@@ -207,7 +188,6 @@ describe('Turn timer over the socket interface', () => {
     });
     expect(timeoutA.autoMove.point).toBe(timeoutB.autoMove.point);
 
-    // The move really happened, on a point that was free, and the turn moved on.
     [updateA, updateB].forEach(update => {
       expect(update.lastAction).toEqual(expect.objectContaining({ action: 'place', auto: true }));
       expect(update.state.board[timeoutA.autoMove.point]).toBe('W');
@@ -215,7 +195,6 @@ describe('Turn timer over the socket interface', () => {
       expect(update.state.turn).toBe('B');
     });
 
-    // Both clients are in the same game, so both saw the same session.
     expect(started.a.gameId).toBe(started.b.gameId);
     expect(started.a.yourColor).not.toBe(started.b.yourColor);
   });
@@ -231,8 +210,6 @@ describe('Turn timer over the socket interface', () => {
     expect(update.lastAction.auto).toBeUndefined();
     expect(update.state.board['a7']).toBe('W');
 
-    // Black now owns the clock: the next automatic move is Black's, not a
-    // second one for White.
     const timeout = await nextEvent(whiteClient, 'turnTimeout');
     expect(timeout.player).toBe('B');
   });
@@ -272,11 +249,9 @@ describe('Turn timer UI', () => {
       appJs.indexOf("this.socket.on('turnTimeout'"),
       appJs.indexOf("this.socket.on('gameOver'")
     );
-    // Only the own timeout is sticky; the opponent's still fades on its own.
     expect(handler.match(/\{ sticky: true \}/g)).toHaveLength(1);
     expect(handler).toMatch(/if \(data\.player === this\.myColor\) \{[\s\S]*?\{ sticky: true \}[\s\S]*?\} else \{/);
 
-    // A sticky toast is a button that only a click removes; no timer does.
     const sticky = overlaysJs.slice(
       overlaysJs.indexOf('if (sticky) {'),
       overlaysJs.indexOf('} else {', overlaysJs.indexOf('if (sticky) {'))
@@ -299,9 +274,6 @@ describe('Turn timer UI', () => {
   });
 
   test('the client only displays the clock and never plays on it', () => {
-    // The countdown lives in the HUD view, which holds no socket at all: if a
-    // move could be emitted from a browser timer, the 25 s limit would be as
-    // manipulable as the client.
     const code = hudJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(code).toContain('setInterval');
     expect(code).not.toContain('socket');

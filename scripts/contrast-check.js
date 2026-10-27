@@ -3,15 +3,8 @@
 import { contrastRatio, resolveColor } from './contrast.js';
 import { loadStylesheet } from './css-bundle.js';
 
-// ── CSS Variable Parser ──
-
 const LIGHT_DARK = 'light-dark(';
 
-/**
- * The side of every light-dark(<light>, <dark>) pair in `value` that the
- * browser would pick in `scheme` ('light' or 'dark'). Pairs may sit inside a
- * longer value (a shadow list) and may themselves hold functions such as rgb().
- */
 export function resolveScheme(value, scheme) {
   let out = '';
   let cursor = 0;
@@ -33,13 +26,6 @@ export function resolveScheme(value, scheme) {
   return (out + value.slice(cursor)).trim();
 }
 
-/**
- * Replaces every var(--name) in `value` with the value of that token, so a
- * token may be derived from another one, e.g.
- * color-mix(in oklch, var(--accent-blue) 10%, transparent). A name that is
- * not a token stays as it is; the value is then no colour the checker can
- * read, and the checks in tests/CssModules.test.js report it.
- */
 export function resolveVars(value, tokens, seen = []) {
   return value.replace(/var\(\s*--([\w-]+)\s*\)/g, (reference, name) => {
     if (seen.includes(name)) throw new SyntaxError(`Circular var(): --${[...seen, name].join(' -> --')}`);
@@ -47,11 +33,6 @@ export function resolveVars(value, tokens, seen = []) {
   });
 }
 
-/**
- * The design tokens of the :root block, once per theme: every light-dark()
- * pair resolved to the side that theme shows and every var() reference
- * replaced by the token it names, every other value as it is.
- */
 export function parseCssVariables(cssContent) {
   const variables = { dark: {}, light: {} };
 
@@ -68,8 +49,6 @@ export function parseCssVariables(cssContent) {
   }
   return variables;
 }
-
-// ── Contrast Test Definitions ──
 
 export const CONTRAST_TESTS = [
   {
@@ -214,8 +193,6 @@ export const CONTRAST_TESTS = [
   }
 ];
 
-// ── Main Check Function ──
-
 export function runContrastCheck(cssContent) {
   const variables = parseCssVariables(cssContent);
   const results = [];
@@ -247,12 +224,7 @@ export function runContrastCheck(cssContent) {
   return { results, allPassed };
 }
 
-// ── Main ──
-
-/** The CLI report. Kept in a function so importing this module is side-effect free. */
 function main() {
-  // The tokens live in public/css/tokens.css; loadStylesheet() resolves the
-  // @import graph of style.css, so the checker finds them wherever they sit.
   const cssContent = loadStylesheet();
   const { results, allPassed } = runContrastCheck(cssContent);
 
